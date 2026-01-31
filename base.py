@@ -24,89 +24,105 @@ CHROMATIC_INTERVALS: dict[int, tuple[str, ...]] = {
     10: ('b7',), 11: ('7',),
 }
 
-IONIAN_ST: list[int] = [0, 2, 4, 5, 7, 9, 11]
+IONIAN_SCALE_INTERVALS: list[int] = [0, 2, 4, 5, 7, 9, 11]
 
-def execution_time(func):
+
+def execution_time(
+    func
+):
     def wrapper(*args, **kwargs):
-        start = perf_counter()
+        start_time: float = perf_counter()
         result = func(*args, **kwargs)
-        end = perf_counter()
-        print(f"Execution time: {end - start:.4f} seconds")
+        end_time: float = perf_counter()
+        print(f"Execution time: {end_time - start_time:.4f} seconds")
         return result
     return wrapper
 
 
 class LazyTheory:
-    def __init__(self, total_frets: int):
+    total_frets: int
+
+    def __init__(
+        self, 
+        total_frets: int
+    ) -> None:
         self.total_frets = total_frets
 
-    def mode_from_major(self, degree: int) -> list[int]:
-        """Return a list of the intervals in the mode using the Major scale. Literally the only time this is useful."""
-        rotated = IONIAN_ST[degree:] + IONIAN_ST[:degree]
-        return set([(x - rotated[0]) % 12 for x in rotated])
+    def mode_intervals_from_major_scale(
+        self, 
+        major_scale_degree: int
+    ) -> set[int]:
+        """Return a set of intervals for the mode derived from the major (Ionian) scale."""
+        rotated_scale: list[int] = IONIAN_SCALE_INTERVALS[major_scale_degree:] + IONIAN_SCALE_INTERVALS[:major_scale_degree]
+        return {(interval - rotated_scale[0]) % 12 for interval in rotated_scale}
 
-    def mode_notes_up_string(self, start_interval: int, mode_intervals: list[int]) -> list[tuple[int, int]]:
-        """Return all frets and their intervals on this string in the mode."""
-        notes = []
-        for fret in range(self.total_frets + 1):
-            interval = (start_interval + fret) % 12
-            if interval in mode_intervals:
-                notes.append((fret, interval))
-        return notes
+    def frets_in_mode_for_string(
+        self, 
+        start_interval: int, 
+        mode_intervals: list[int]
+    ) -> list[tuple[int, int]]:
+        """Return all fret numbers and their intervals on a string in a given mode."""
+        frets_with_intervals: list[tuple[int, int]] = []
+        for fret_number in range(self.total_frets + 1):
+            interval_at_fret: int = (start_interval + fret_number) % 12
+            if interval_at_fret in mode_intervals:
+                frets_with_intervals.append((fret_number, interval_at_fret))
+        return frets_with_intervals
 
     @execution_time
-    def parse_tuning(self, tuning: str, key: str, mode: str):
-        strings = [s.strip().upper() for s in tuning]
-        if not all(s in NOTE_TO_CHROMATIC for s in strings):
+    def parse_tuning(
+        self, 
+        tuning: str, 
+        key: str, 
+        mode: str
+    ) -> pl.DataFrame:
+        string_notes: list[str] = [note.strip().upper() for note in tuning]
+        if not all(note in NOTE_TO_CHROMATIC for note in string_notes):
             raise ValueError("Invalid note in tuning")
 
-        key = key.upper().strip()
-        chromatic_key = NOTE_TO_CHROMATIC[key]
+        key_note: str = key.upper().strip()
+        key_chromatic_value: int = NOTE_TO_CHROMATIC[key_note]
 
-        mode = mode.upper().strip()
-        mode_intervals = self.mode_from_major(MODE_ST_DEGREES[mode])
+        mode_name: str = mode.upper().strip()
+        mode_interval_set: set[int] = self.mode_intervals_from_major_scale(MODE_ST_DEGREES[mode_name])
 
-        df = pl.DataFrame(
-            schema={
-                "key": pl.Utf8,
-                "string": pl.Utf8,
-                "note": pl.Utf8,
-                "chromatic_note": pl.Int8,
-                "interval": pl.Int8,
-                "interval_label": pl.Utf8,
-                "fret": pl.Int8,
-            }
-        )
+        rows: list[dict[str, int | str]] = []
 
-        for string_note in strings:
-            chromatic_note = NOTE_TO_CHROMATIC[string_note]
-            start_interval = (chromatic_note - chromatic_key) % 12
+        for string_note in string_notes:
+            string_root_chromatic: int = NOTE_TO_CHROMATIC[string_note]
+            starting_interval: int = (string_root_chromatic - key_chromatic_value) % 12
+            frets_and_intervals: list[tuple[int, int]] = self.frets_in_mode_for_string(starting_interval, list(mode_interval_set))
 
-            notes_up = self.mode_notes_up_string(start_interval, mode_intervals)
+            for fret_number, interval_value in frets_and_intervals:
+                note_at_fret: str = CHROMATIC_TO_NOTE[(string_root_chromatic + fret_number - 1) % 12 + 1]
+                chromatic_value_at_fret: int = NOTE_TO_CHROMATIC[note_at_fret]
+                interval_label: str = CHROMATIC_INTERVALS[interval_value][0]
 
-            for fret, interval in notes_up:
-                note = CHROMATIC_TO_NOTE[(chromatic_note + fret - 1) % 12 + 1]
-                chromatic_note = NOTE_TO_CHROMATIC[note]
-                interval_label = CHROMATIC_INTERVALS[interval][0]
+                rows.append({
+                    "key": key_note,
+                    "string": string_note,
+                    "note": note_at_fret,
+                    "chromatic_note": chromatic_value_at_fret,
+                    "interval": interval_value,
+                    "interval_label": interval_label,
+                    "fret": fret_number,
+                })
 
+        df: pl.DataFrame = pl.DataFrame(rows, schema={
+            "key": pl.Utf8,
+            "string": pl.Utf8,
+            "note": pl.Utf8,
+            "chromatic_note": pl.Int8,
+            "interval": pl.Int8,
+            "interval_label": pl.Utf8,
+            "fret": pl.Int8,
+        })
 
-                df = df.vstack(
-                    pl.DataFrame({
-                        "key": [key],
-                        "string": [string_note],
-                        "note": [note],
-                        "chromatic_note": pl.Series([chromatic_note], dtype=pl.Int8),
-                        "interval": pl.Series([interval], dtype=pl.Int8),
-                        "interval_label": [interval_label],
-                        "fret": pl.Series([fret], dtype=pl.Int8),
-                    })
-                )
-
-        print(df)
         df.write_csv("/home/ethan/code/venv/lazy_theory/intervals.csv")
+        print(df)
         return df
 
 
 if __name__ == "__main__":
-    theory = LazyTheory(total_frets=12)
-    theory.parse_tuning("EADGBE", "E", "DORIAN")
+    guitar_theory: LazyTheory = LazyTheory(total_frets=12)
+    guitar_theory.parse_tuning("EADGBE", "E", "DORIAN")
