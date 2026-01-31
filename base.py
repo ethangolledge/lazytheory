@@ -1,31 +1,30 @@
 import polars as pl
 from time import perf_counter
 
-NOTE_TO_CHROMATIC = {
+NOTE_TO_CHROMATIC: dict[str, int] = {
     "C": 1, "C#": 2, "DB": 2, "D": 3,
     "D#": 4, "EB": 4, "E": 5, "F": 6,
     "F#": 7, "GB": 7, "G": 8, "G#": 9,
     "AB": 9, "A": 10, "A#": 11, "BB": 11, "B": 12,
 }
 
-CHROMATIC_TO_NOTE = {
+CHROMATIC_TO_NOTE: dict[int, str] = {
     1: 'C', 2: 'C#', 3: 'D', 4: 'D#', 5: 'E', 6: 'F',
     7: 'F#', 8: 'G', 9: 'G#', 10: 'A', 11: 'A#', 12: 'B'
 }
 
-MODE_ST_DEGREES = {
+MODE_ST_DEGREES: dict[str, int] = {
     'IONIAN': 0, 'DORIAN': 1, 'PHRYGIAN': 2, 'LYDIAN': 3,
     'MIXOLYDIAN': 4, 'AEOLIAN': 5, 'LOCRIAN': 6,
 }
 
-CHROMATIC_INTERVALS = {
+CHROMATIC_INTERVALS: dict[int, tuple[str, ...]] = {
     0: ('1',), 1: ('b2',), 2: ('2',), 3: ('b3',), 4: ('3',),
     5: ('4',), 6: ('b5', '#4'), 7: ('5',), 8: ('b6',), 9: ('6',),
     10: ('b7',), 11: ('7',),
 }
 
-IONIAN_ST = [0, 2, 4, 5, 7, 9, 11]
-
+IONIAN_ST: list[int] = [0, 2, 4, 5, 7, 9, 11]
 
 def execution_time(func):
     def wrapper(*args, **kwargs):
@@ -42,17 +41,16 @@ class LazyTheory:
         self.total_frets = total_frets
 
     def mode_from_major(self, degree: int) -> list[int]:
-        """Return a list of the intervals in the mode"""
+        """Return a list of the intervals in the mode using the Major scale. Literally the only time this is useful."""
         rotated = IONIAN_ST[degree:] + IONIAN_ST[:degree]
-        return [(x - rotated[0]) % 12 for x in rotated]
+        return set([(x - rotated[0]) % 12 for x in rotated])
 
     def mode_notes_up_string(self, start_interval: int, mode_intervals: list[int]) -> list[tuple[int, int]]:
         """Return all frets and their intervals on this string in the mode."""
-        mode_set = set(mode_intervals)
         notes = []
         for fret in range(self.total_frets + 1):
-            interval = (l + fret) % 12
-            if interval in mode_set:
+            interval = (start_interval + fret) % 12
+            if interval in mode_intervals:
                 notes.append((fret, interval))
         return notes
 
@@ -66,8 +64,7 @@ class LazyTheory:
         chromatic_key = NOTE_TO_CHROMATIC[key]
 
         mode = mode.upper().strip()
-        mode_degree = MODE_ST_DEGREES[mode]
-        mode_intervals = self.mode_from_major(mode_degree)
+        mode_intervals = self.mode_from_major(MODE_ST_DEGREES[mode])
 
         df = pl.DataFrame(
             schema={
@@ -89,7 +86,9 @@ class LazyTheory:
 
             for fret, interval in notes_up:
                 note = CHROMATIC_TO_NOTE[(chromatic_note + fret - 1) % 12 + 1]
+                chromatic_note = NOTE_TO_CHROMATIC[note]
                 interval_label = CHROMATIC_INTERVALS[interval][0]
+
 
                 df = df.vstack(
                     pl.DataFrame({
@@ -110,4 +109,4 @@ class LazyTheory:
 
 if __name__ == "__main__":
     theory = LazyTheory(total_frets=12)
-    theory.parse_tuning("EADGBE", "E", "IONIAN")
+    theory.parse_tuning("EADGBE", "E", "DORIAN")
