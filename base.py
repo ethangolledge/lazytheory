@@ -12,36 +12,6 @@ CHROMATIC_TO_NOTE: dict[int, str] = {
     1: 'C', 2: 'C#', 3: 'D', 4: 'D#', 5: 'E', 6: 'F',
     7: 'F#', 8: 'G', 9: 'G#', 10: 'A', 11: 'A#', 12: 'B'
 }
-MODE_DEGREES: dict[str, dict[int, str]] = {
-    'IONIAN_ST_SCALE_INTERVALS': {
-        0: 'Ionian',
-        1: 'Dorian',
-        2: 'Phrygian',
-        3: 'Lydian',
-        4: 'Mixolydian',
-        5: 'Aeolian',
-        6: 'Locrian'
-    },
-    'AEOLIAN_HM_SCALE_INTERVALS': {
-        0: 'Harmonic Minor',
-        1: 'Locrian ♯6',
-        2: 'Ionian ♯5',
-        3: 'Dorian ♯4',
-        4: 'Phrygian Dominant',
-        5: 'Lydian ♯2',
-        6: 'Super Locrian'
-    },
-    'AEOLIAN_MD_SCALE_INTERVALS': {
-        0: 'Melodic Minor',
-        1: 'Dorian ♭2',
-        2: 'Lydian Augmented',
-        3: 'Lydian Dominant',
-        4: 'Mixolydian ♭6',
-        5: 'Locrian ♮2',
-        6: 'Altered'
-    }
-}
-
 
 CHROMATIC_INTERVALS: dict[int, tuple[str, ...]] = {
     0: ('1',), 1: ('b2',), 2: ('2',), 3: ('b3',), 4: ('3',),
@@ -49,114 +19,194 @@ CHROMATIC_INTERVALS: dict[int, tuple[str, ...]] = {
     10: ('b7',), 11: ('7',),
 }
 
-IONIAN_ST_SCALE_INTERVALS: list[int] = [0, 2, 4, 5, 7, 9, 11]
-AEOLIAN_HM_SCALE_INTERVALS: list[int] = [0, 2, 3, 5, 7, 8, 11] # raised 7th
-AEOLIAN_MD_SCALE_INTERVALS: list[int] = [0, 2, 3, 5, 7, 9, 11] # raised 6th and 7th
+MODE_DEGREES: dict[str, dict[int, str]] = {
+    'IONIAN_ST_SCALE_INTERVALS': {
+        0: 'Ionian', 1: 'Dorian', 2: 'Phrygian', 3: 'Lydian',
+        4: 'Mixolydian', 5: 'Aeolian', 6: 'Locrian'
+    },
+    'AEOLIAN_HM_SCALE_INTERVALS': {
+        0: 'Harmonic Minor', 1: 'Locrian ♯6', 2: 'Ionian ♯5',
+        3: 'Dorian ♯4', 4: 'Phrygian Dominant', 5: 'Lydian ♯2', 6: 'Super Locrian'
+    },
+    'AEOLIAN_MD_SCALE_INTERVALS': {
+        0: 'Melodic Minor', 1: 'Dorian ♭2', 2: 'Lydian Augmented',
+        3: 'Lydian Dominant', 4: 'Mixolydian ♭6', 5: 'Locrian ♮2', 6: 'Altered'
+    },
+    'WHOLE_TONE_SCALE': {0: 'Whole Tone'},
+    'DIMINISHED_SCALE': {0: 'Diminished'},
+    'PENTATONIC_MAJOR': {0: 'Major Pentatonic'},
+    'PENTATONIC_MINOR': {0: 'Minor Pentatonic'}
+}
+
+IONIAN_ST_SCALE_INTERVALS = [0, 2, 4, 5, 7, 9, 11]
+AEOLIAN_HM_SCALE_INTERVALS = [0, 2, 3, 5, 7, 8, 11]  # raised 7th
+AEOLIAN_MD_SCALE_INTERVALS = [0, 2, 3, 5, 7, 9, 11]  # raised 6th & 7th
+
+WHOLE_TONE_SCALE = [0, 2, 4, 6, 8, 10]
+DIMINISHED_SCALE = [0, 2, 3, 5, 6, 8, 9, 11]
+PENTATONIC_MAJOR = [0, 2, 4, 7, 9]
+PENTATONIC_MINOR = [0, 3, 5, 7, 10]
 
 
-def execution_time(
-    func
-):
+def execution_time(func):
     def wrapper(*args, **kwargs):
-        start_time: float = perf_counter()
+        start_time = perf_counter()
         result = func(*args, **kwargs)
-        end_time: float = perf_counter()
+        end_time = perf_counter()
         print(f"Execution time: {end_time - start_time:.4f} seconds")
         return result
     return wrapper
 
 
 class LazyTheory:
-    total_frets: int
-
     def __init__(
         self, 
-        total_frets: int
-    ) -> None:
+        total_frets: int,
+        tuning: str,
+        key: str
+    ):
         self.total_frets = total_frets
+        self.key_note = key.upper()
+        self.key_chromatic = NOTE_TO_CHROMATIC[self.key_note]
+        self.tuning = tuning
+
+        self.open_string_notes = [n.strip().upper() for n in tuning]
+        if not all(n in NOTE_TO_CHROMATIC for n in self.open_string_notes):
+            raise ValueError("Invalid note in tuning")
 
     def mode_intervals_from_scale(
-        self,
-        degree: int,
+        self, 
+        degree: int = 0, 
         scale_variant: str = "NATURAL"
-    ) -> set[int]:
-        scale_variant = scale_variant.upper().strip()
-        if scale_variant not in ("NATURAL", "HARMONIC", "MELODIC"):
+    ) -> list[int]:
+        """Return the mode intervals for a given scale and degree."""
+        scale_variant = scale_variant.upper().replace(" ", "")
+
+        scale_map = {
+            "NATURAL": (IONIAN_ST_SCALE_INTERVALS, 'IONIAN_ST_SCALE_INTERVALS'),
+            "HARMONIC": (AEOLIAN_HM_SCALE_INTERVALS, 'AEOLIAN_HM_SCALE_INTERVALS'),
+            "MELODIC": (AEOLIAN_MD_SCALE_INTERVALS, 'AEOLIAN_MD_SCALE_INTERVALS'),
+            "WHOLETONE": (WHOLE_TONE_SCALE, 'WHOLE_TONE_SCALE'),
+            "DIMINISHED": (DIMINISHED_SCALE, 'DIMINISHED_SCALE'),
+            "PENTATONICMAJOR": (PENTATONIC_MAJOR, 'PENTATONIC_MAJOR'),
+            "PENTATONICMINOR": (PENTATONIC_MINOR, 'PENTATONIC_MINOR')
+        }
+
+        if scale_variant not in scale_map:
             raise ValueError("Invalid scale variant")
 
-        if scale_variant == "NATURAL":
-            scale_intervals = IONIAN_ST_SCALE_INTERVALS
-            variant_key = 'IONIAN_ST_SCALE_INTERVALS'
-        elif scale_variant == "HARMONIC":
-            scale_intervals = AEOLIAN_HM_SCALE_INTERVALS
-            variant_key = 'AEOLIAN_HM_SCALE_INTERVALS'
-        elif scale_variant == "MELODIC":
-            scale_intervals = AEOLIAN_MD_SCALE_INTERVALS
-            variant_key = 'AEOLIAN_MD_SCALE_INTERVALS'
+        scale_intervals, variant_key = scale_map[scale_variant]
 
-        rotated_scale = scale_intervals[degree:] + scale_intervals[:degree]
+        # Rotate scale if multiple modes exist
+        if variant_key in ("IONIAN_ST_SCALE_INTERVALS", "AEOLIAN_HM_SCALE_INTERVALS", "AEOLIAN_MD_SCALE_INTERVALS"):
+            degree %= len(scale_intervals)
+            rotated = scale_intervals[degree:] + scale_intervals[:degree]
+            mode_name = MODE_DEGREES[variant_key][degree]
+            print(f"Mode: {mode_name}")
+        else:
+            rotated = scale_intervals
+            mode_name = MODE_DEGREES[variant_key][0]
+            print(f"Scale: {mode_name}")
 
-        mode_name = MODE_DEGREES[variant_key][degree]
-
-        print(f"Mode: {mode_name}")
-
-        return {(interval - rotated_scale[0]) % 12 for interval in rotated_scale}        
+        base = rotated[0]
+        return [(i - base) % 12 for i in rotated]
 
     def frets_in_mode_for_string(
         self, 
         start_interval: int, 
         mode_intervals: list[int]
     ) -> list[tuple[int, int]]:
-        """Return all fret numbers and their intervals on a string in a given mode."""
-        frets_with_intervals: list[tuple[int, int]] = []
-        for fret_number in range(self.total_frets + 1):
-            interval_at_fret: int = (start_interval + fret_number) % 12
-            if interval_at_fret in mode_intervals:
-                frets_with_intervals.append((fret_number, interval_at_fret))
-        return frets_with_intervals
+        """Return fret numbers and interval values for a string in a mode."""
+        return [(fret, (start_interval + fret) % 12)
+                for fret in range(self.total_frets + 1)
+                if (start_interval + fret) % 12 in mode_intervals]
+
+    def build_chords(
+        self,
+        interval: int, 
+        mode_intervals: list[int],
+        chord_size: int = 3
+    ):
+        n = len(mode_intervals)
+
+        # Find root index in the mode
+        root_idx = mode_intervals.index(interval)
+        print("Mode index of interval:", root_idx)
+
+        # Build chord intervals stacking every other degree
+        chord_intervals_key_relative = [
+            mode_intervals[(root_idx + i * 2) % n] for i in range(chord_size)
+        ]
+        print("Chord intervals (key-relative):", chord_intervals_key_relative)
+
+        # Key-relative labels
+        chord_interval_labels_key_relative = [
+            CHROMATIC_INTERVALS[i][0] for i in chord_intervals_key_relative
+        ]
+        print("Chord interval labels (key-relative):", chord_interval_labels_key_relative)
+
+        # Degree-relative intervals (distance from chord root)
+        chord_intervals_degree_relative = [
+            (i - interval) % 12 for i in chord_intervals_key_relative
+        ]
+        print("Chord intervals (degree-relative):", chord_intervals_degree_relative)
+
+        # Degree-relative labels
+        chord_interval_labels_degree_relative = [
+            CHROMATIC_INTERVALS[i][0] for i in chord_intervals_degree_relative
+        ]
+        print("Chord interval labels (degree-relative):", chord_interval_labels_degree_relative)
+
+
+        # we first need to determine the intervals that make up the chord
+        # we need to use the KEY intervals to build the chord
+        # we then find the degree of the interval
+        # we use this to walk backwards to return the intervals relative to the interval
+        # i.e 2nd degree of ionian is MAJOR, this is the 2, 4, 6 (using the key root intervals)
+        # in reality, we name chords by using the intervals relative to the root of the degree (i.e not the key root intervals)
+        # So this chord is make up of 1, 2, 5, making it a major chord.
+        # We can then add extensions and what not
+        # it is imperatve that we keep the data always relative to the key, even if we only show the relative to the degree root tot he user
 
     @execution_time
-    def parse_tuning(
-        self, 
-        tuning: str, 
-        key: str,
-        scale_variant: str,
-        degree: str
+    def fretboard_builder(
+        self,
+        scale_variant: str = "NATURAL",
+        degree: int = 0,
+        save_csv: str | None = None
     ) -> pl.DataFrame:
-        string_notes: list[str] = [note.strip().upper() for note in tuning]
-        if not all(note in NOTE_TO_CHROMATIC for note in string_notes):
-            raise ValueError("Invalid note in tuning")
 
-        key_note: str = key.upper().strip()
-        key_chromatic_value: int = NOTE_TO_CHROMATIC[key_note]
+        mode_intervals = self.mode_intervals_from_scale(degree, scale_variant)
+        print(mode_intervals)
+        rows = []
+        self.build_chords(interval=5, mode_intervals=mode_intervals)
 
-        mode_intervals: set[int] = self.mode_intervals_from_scale(degree, scale_variant)
+        for string_number, open_string_note in enumerate(self.open_string_notes, 1):
+            string_chromatic = NOTE_TO_CHROMATIC[open_string_note]
+            start_interval = (string_chromatic - self.key_chromatic) % 12
+            frets_and_intervals = self.frets_in_mode_for_string(start_interval, mode_intervals)
 
-        rows: list[dict[str, int | str]] = []
-
-        for string_note in string_notes:
-            string_root_chromatic: int = NOTE_TO_CHROMATIC[string_note]
-            starting_interval: int = (string_root_chromatic - key_chromatic_value) % 12
-            frets_and_intervals: list[tuple[int, int]] = self.frets_in_mode_for_string(starting_interval, list(mode_intervals))
-
-            for fret_number, interval_value in frets_and_intervals:
-                note_at_fret: str = CHROMATIC_TO_NOTE[(string_root_chromatic + fret_number - 1) % 12 + 1]
-                chromatic_value_at_fret: int = NOTE_TO_CHROMATIC[note_at_fret]
-                interval_label: str = CHROMATIC_INTERVALS[interval_value][0]
+            for fret, interval_value in frets_and_intervals:
+                # Calculate note at fret and convert to 1–12 to pull the chromatic note
+                note_at_fret = CHROMATIC_TO_NOTE[((string_chromatic + fret - 1) % 12) + 1]
+                chromatic_value_at_fret = NOTE_TO_CHROMATIC[note_at_fret]
+                interval_label = CHROMATIC_INTERVALS[interval_value][0]
 
                 rows.append({
-                    "key": key_note,
-                    "string": string_note,
+                    "key": self.key_note,
+                    "string": open_string_note,
+                    "string_number": string_number,
                     "note": note_at_fret,
                     "chromatic_note": chromatic_value_at_fret,
                     "interval": interval_value,
                     "interval_label": interval_label,
-                    "fret": fret_number,
+                    "fret": fret,
                 })
 
-        df: pl.DataFrame = pl.DataFrame(rows, schema={
+        df = pl.DataFrame(rows, schema={
             "key": pl.Utf8,
             "string": pl.Utf8,
+            "string_number": pl.Int8,
             "note": pl.Utf8,
             "chromatic_note": pl.Int8,
             "interval": pl.Int8,
@@ -164,11 +214,13 @@ class LazyTheory:
             "fret": pl.Int8,
         })
 
-        df.write_csv("/home/ethan/code/venv/lazy_theory/intervals.csv")
-        print(df)
+        if save_csv:
+            df.write_csv(save_csv)
+
+        print(df.head(20))
         return df
 
 
 if __name__ == "__main__":
-    guitar_theory: LazyTheory = LazyTheory(total_frets=12)
-    guitar_theory.parse_tuning("EADGBE", "E", "MELODIC", 5)
+    guitar_theory = LazyTheory(total_frets=12, tuning="EADGBE", key="E")
+    guitar_theory.fretboard_builder(scale_variant="NATURAL", degree=0, save_csv="/home/ethan/code/venv/lazy_theory/intervals.csv")
