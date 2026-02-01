@@ -38,6 +38,20 @@ MODE_DEGREES: dict[str, dict[int, str]] = {
     'PENTATONIC_MINOR': {0: 'Minor Pentatonic'}
 }
 
+CHORD_INTERVALS = {
+    (0, 3, 7): "minor",
+    (0, 4, 7): "major",
+    (0, 3, 6): "diminished",
+    (0, 4, 8): "augmented",
+    (0, 4, 7, 10): "dominant 7th",
+    (0, 4, 7, 11): "major 7th",
+    (0, 3, 7, 10): "minor 7th",
+    (0, 3, 6, 10): "half-diminished 7th",
+    (0, 3, 6, 9): "diminished 7th",
+    (0, 4, 8, 10): "augmented 7th",
+}
+
+
 IONIAN_ST_SCALE_INTERVALS = [0, 2, 4, 5, 7, 9, 11]
 AEOLIAN_HM_SCALE_INTERVALS = [0, 2, 3, 5, 7, 8, 11]  # raised 7th
 AEOLIAN_MD_SCALE_INTERVALS = [0, 2, 3, 5, 7, 9, 11]  # raised 6th & 7th
@@ -125,7 +139,7 @@ class LazyTheory:
         self,
         interval: int, 
         mode_intervals: list[int],
-        chord_size: int = 3
+        chord_size: int = 4
     ):
         n = len(mode_intervals)
 
@@ -157,16 +171,14 @@ class LazyTheory:
         ]
         print("Chord interval labels (degree-relative):", chord_interval_labels_degree_relative)
 
+        return chord_intervals_degree_relative
 
-        # we first need to determine the intervals that make up the chord
-        # we need to use the KEY intervals to build the chord
-        # we then find the degree of the interval
-        # we use this to walk backwards to return the intervals relative to the interval
-        # i.e 2nd degree of ionian is MAJOR, this is the 2, 4, 6 (using the key root intervals)
-        # in reality, we name chords by using the intervals relative to the root of the degree (i.e not the key root intervals)
-        # So this chord is make up of 1, 2, 5, making it a major chord.
-        # We can then add extensions and what not
-        # it is imperatve that we keep the data always relative to the key, even if we only show the relative to the degree root tot he user
+    def identify_chord(
+        self,
+        degree_relative_intervals: list[int]
+    ) -> str:
+        sorted_intervals = tuple(sorted(degree_relative_intervals))
+        return CHORD_INTERVALS.get(sorted_intervals, "unknown")
 
     @execution_time
     def fretboard_builder(
@@ -179,7 +191,9 @@ class LazyTheory:
         mode_intervals = self.mode_intervals_from_scale(degree, scale_variant)
         print(mode_intervals)
         rows = []
-        self.build_chords(interval=5, mode_intervals=mode_intervals)
+        inter_list = self.build_chords(interval=7, mode_intervals=mode_intervals)
+        chord = self.identify_chord(inter_list)
+        print(chord)
 
         for string_number, open_string_note in enumerate(self.open_string_notes, 1):
             string_chromatic = NOTE_TO_CHROMATIC[open_string_note]
