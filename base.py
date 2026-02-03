@@ -1,5 +1,6 @@
 import polars as pl
 from time import perf_counter
+import json
 
 NOTE_TO_CHROMATIC: dict[str, int] = {
     "C": 1, "C#": 2, "DB": 2, "D": 3,
@@ -134,51 +135,76 @@ class LazyTheory:
         return [(fret, (start_interval + fret) % 12)
                 for fret in range(self.total_frets + 1)
                 if (start_interval + fret) % 12 in mode_intervals]
-
-    def build_chords(
-        self,
-        interval: int, 
-        mode_intervals: list[int],
-        chord_size: int = 4
-    ):
-        n = len(mode_intervals)
-
-        # Find root index in the mode
-        root_idx = mode_intervals.index(interval)
-        print("Mode index of interval:", root_idx)
-
-        # Build chord intervals stacking every other degree
-        chord_intervals_key_relative = [
-            mode_intervals[(root_idx + i * 2) % n] for i in range(chord_size)
-        ]
-        print("Chord intervals (key-relative):", chord_intervals_key_relative)
-
-        # Key-relative labels
-        chord_interval_labels_key_relative = [
-            CHROMATIC_INTERVALS[i][0] for i in chord_intervals_key_relative
-        ]
-        print("Chord interval labels (key-relative):", chord_interval_labels_key_relative)
-
-        # Degree-relative intervals (distance from chord root)
-        chord_intervals_degree_relative = [
-            (i - interval) % 12 for i in chord_intervals_key_relative
-        ]
-        print("Chord intervals (degree-relative):", chord_intervals_degree_relative)
-
-        # Degree-relative labels
-        chord_interval_labels_degree_relative = [
-            CHROMATIC_INTERVALS[i][0] for i in chord_intervals_degree_relative
-        ]
-        print("Chord interval labels (degree-relative):", chord_interval_labels_degree_relative)
-
-        return chord_intervals_degree_relative
-
+        
     def identify_chord(
         self,
         degree_relative_intervals: list[int]
     ) -> str:
         sorted_intervals = tuple(sorted(degree_relative_intervals))
         return CHORD_INTERVALS.get(sorted_intervals, "unknown")
+
+    def build_chords_rework(
+        self,
+        mode_intervals: list[int],
+        chord_size: int = 4
+    ):
+        chord_dict: dict[str, list[dict]] = {}
+        scale_len = len(mode_intervals)
+
+        for degree in range(scale_len):
+            root_interval = mode_intervals[degree]
+
+            # Key-relative intervals
+            chord_intervals_key = [
+                mode_intervals[(degree + i * 2) % scale_len]
+                for i in range(chord_size)
+            ]
+
+            # Degree-relative intervals (distance from chord root)
+            chord_intervals_degree = [
+                (i - root_interval) % 12
+                for i in chord_intervals_key
+            ]
+
+            # Labels
+            chord_interval_labels_key = [
+                CHROMATIC_INTERVALS[i][0]
+                for i in chord_intervals_key
+            ]
+
+            chord_interval_labels_degree = [
+                CHROMATIC_INTERVALS[i][0]
+                for i in chord_intervals_degree
+            ]
+
+            chord_name = f"{degree + 1}_chord"
+
+            quality = self.identify_chord(chord_intervals_degree)
+            root_note = CHROMATIC_TO_NOTE[root_interval + 1]
+            chord_display_name = f"{root_note} {quality}"
+
+            chord_name = f"{degree + 1}_chord"
+
+            chord_dict[chord_name] = [
+                {
+                    "degree": degree + 1,
+                    "root_interval": root_interval,
+                    "root_note": root_note,
+
+                    "intervals_key": chord_intervals_key,
+                    "intervals_degree": chord_intervals_degree,
+
+                    "labels_key": chord_interval_labels_key,
+                    "labels_degree": chord_interval_labels_degree,
+
+                    "quality": quality,
+                    "chord_name": chord_display_name,
+
+                    "chord_size": chord_size
+                }
+            ]
+
+        return chord_dict
 
     @execution_time
     def fretboard_builder(
@@ -191,9 +217,9 @@ class LazyTheory:
         mode_intervals = self.mode_intervals_from_scale(degree, scale_variant)
         print(mode_intervals)
         rows = []
-        inter_list = self.build_chords(interval=7, mode_intervals=mode_intervals)
-        chord = self.identify_chord(inter_list)
-        print(chord)
+        chord_dict = self.build_chords_rework(mode_intervals)
+        print(chord_dict)
+        print(json.dumps(chord_dict, indent=2))
 
         for string_number, open_string_note in enumerate(self.open_string_notes, 1):
             string_chromatic = NOTE_TO_CHROMATIC[open_string_note]
