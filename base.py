@@ -52,6 +52,20 @@ CHORD_INTERVALS = {
     (0, 4, 8, 10): "augmented 7th",
 }
 
+INTERVAL_CONSONANCE_RATIOS: dict[int, float] = {
+    0: 1.0,      # unison
+    1: 16/15,    # minor 2nd
+    2: 9/8,      # major 2nd
+    3: 6/5,      # minor 3rd
+    4: 5/4,      # major 3rd
+    5: 4/3,      # perfect 4th
+    6: 45/32,    # tritone
+    7: 3/2,      # perfect 5th
+    8: 8/5,      # minor 6th
+    9: 5/3,      # major 6th
+    10: 9/5,     # minor 7th
+    11: 15/8,    # major 7th
+}
 
 IONIAN_ST_SCALE_INTERVALS = [0, 2, 4, 5, 7, 9, 11]
 AEOLIAN_HM_SCALE_INTERVALS = [0, 2, 3, 5, 7, 8, 11]  # raised 7th
@@ -62,7 +76,6 @@ DIMINISHED_SCALE = [0, 2, 3, 5, 6, 8, 9, 11]
 PENTATONIC_MAJOR = [0, 2, 4, 7, 9]
 PENTATONIC_MINOR = [0, 3, 5, 7, 10]
 
-
 def execution_time(func):
     def wrapper(*args, **kwargs):
         start_time = perf_counter()
@@ -71,7 +84,6 @@ def execution_time(func):
         print(f"Execution time: {end_time - start_time:.4f} seconds")
         return result
     return wrapper
-
 
 class LazyTheory:
     def __init__(
@@ -126,6 +138,117 @@ class LazyTheory:
         base = rotated[0]
         return [(i - base) % 12 for i in rotated]
 
+    def identify_notes(
+        self,
+        key_relative_intervals: list[int]
+    ) -> list[str]:
+        """
+        Determine the actual note names for the scale intervals,ensuring each note letter appears only once.
+        """
+        used_letters = set()
+        notes_in_scale = []
+
+        key_chromatic = self.key_chromatic
+        key_letter = self.key_note[0]
+
+        for interval in key_relative_intervals:
+            chrom_value = (key_chromatic + interval - 1) % 12 + 1
+            candidate = CHROMATIC_TO_NOTE[chrom_value]
+
+            candidate_letter = candidate[0]
+            if candidate_letter in used_letters:
+                # pick enharmonic alternative if available
+                alternatives = [n for n, v in NOTE_TO_CHROMATIC.items() if v == chrom_value and n[0] not in used_letters]
+                if alternatives:
+                    candidate = alternatives[0]
+
+            notes_in_scale.append(candidate)
+            used_letters.add(candidate[0])
+
+        return notes_in_scale
+
+
+    def identify_chord(
+        self,
+        degree_relative_intervals: list[int]
+    ) -> str:
+        sorted_intervals = tuple(sorted(degree_relative_intervals))
+        return CHORD_INTERVALS.get(sorted_intervals, "unknown")
+
+    def label_intervals(
+        self,
+        intervals: list[int]
+    ):
+        return [CHROMATIC_INTERVALS[i][0] for i in intervals]
+
+    def compute_chord_intervals(
+        self,
+        mode_intervals: list[int],
+        degree: int, 
+        chord_size: int
+    ):
+        scale_len = len(mode_intervals)
+        chord_intervals_key = [
+            mode_intervals[(degree + i * 2) % scale_len]
+            for i in range(chord_size)
+        ]
+        root_interval = mode_intervals[degree]
+        chord_intervals_degree = [
+            (i - root_interval) % 12 for i in chord_intervals_key
+        ]
+        return chord_intervals_key, chord_intervals_degree, root_interval
+
+
+    def build_chords(
+        self, 
+        mode_intervals: list[int], 
+        chord_size: int = 4
+    ):
+        chord_dict: dict[str, list[dict]] = {}
+        scale_len = len(mode_intervals)
+
+        # Get notes for the scale with unique letters
+        scale_notes = self.identify_notes(mode_intervals)
+
+        for degree in range(scale_len):
+            chord_intervals_key, chord_intervals_degree, root_interval = self.compute_chord_intervals(
+                mode_intervals, degree, chord_size
+            )
+
+            chord_interval_labels_key = self.label_intervals(chord_intervals_key)
+            chord_interval_labels_degree = self.label_intervals(chord_intervals_degree)
+
+            tones = [
+                {
+                    "tone_index": i,
+                    "interval_key_relative": chord_intervals_key[i],
+                    "interval_degree_relative": chord_intervals_degree[i],
+                    "label_key": chord_interval_labels_key[i],
+                    "label_degree": chord_interval_labels_degree[i],
+                    "note": scale_notes[(degree + i * 2) % scale_len]  # assign actual note
+                }
+                for i in range(chord_size)
+            ]
+
+            quality = self.identify_chord(chord_intervals_degree)
+            root_note = scale_notes[degree]
+            chord_display_name = f"{root_note} {quality}"
+            chord_name = f"{degree + 1}_chord"
+
+            chord_dict[chord_name] = [
+                {
+                    "degree": degree + 1,
+                    "root_interval": root_interval,
+                    "root_note": root_note,
+                    "quality": quality,
+                    "chord_name": chord_display_name,
+                    "chord_size": chord_size,
+                    "tones": tones
+                }
+            ]
+
+        return chord_dict
+
     def frets_in_mode_for_string(
         self, 
         start_interval: int, 
@@ -136,76 +259,6 @@ class LazyTheory:
                 for fret in range(self.total_frets + 1)
                 if (start_interval + fret) % 12 in mode_intervals]
         
-    def identify_chord(
-        self,
-        degree_relative_intervals: list[int]
-    ) -> str:
-        sorted_intervals = tuple(sorted(degree_relative_intervals))
-        return CHORD_INTERVALS.get(sorted_intervals, "unknown")
-
-    def build_chords_rework(
-        self,
-        mode_intervals: list[int],
-        chord_size: int = 4
-    ):
-        chord_dict: dict[str, list[dict]] = {}
-        scale_len = len(mode_intervals)
-
-        for degree in range(scale_len):
-            root_interval = mode_intervals[degree]
-
-            # Key-relative intervals
-            chord_intervals_key = [
-                mode_intervals[(degree + i * 2) % scale_len]
-                for i in range(chord_size)
-            ]
-
-            # Degree-relative intervals (distance from chord root)
-            chord_intervals_degree = [
-                (i - root_interval) % 12
-                for i in chord_intervals_key
-            ]
-
-            # Labels
-            chord_interval_labels_key = [
-                CHROMATIC_INTERVALS[i][0]
-                for i in chord_intervals_key
-            ]
-
-            chord_interval_labels_degree = [
-                CHROMATIC_INTERVALS[i][0]
-                for i in chord_intervals_degree
-            ]
-
-            chord_name = f"{degree + 1}_chord"
-
-            quality = self.identify_chord(chord_intervals_degree)
-            root_note = CHROMATIC_TO_NOTE[root_interval + 1]
-            chord_display_name = f"{root_note} {quality}"
-
-            chord_name = f"{degree + 1}_chord"
-
-            chord_dict[chord_name] = [
-                {
-                    "degree": degree + 1,
-                    "root_interval": root_interval,
-                    "root_note": root_note,
-
-                    "intervals_key": chord_intervals_key,
-                    "intervals_degree": chord_intervals_degree,
-
-                    "labels_key": chord_interval_labels_key,
-                    "labels_degree": chord_interval_labels_degree,
-
-                    "quality": quality,
-                    "chord_name": chord_display_name,
-
-                    "chord_size": chord_size
-                }
-            ]
-
-        return chord_dict
-
     @execution_time
     def fretboard_builder(
         self,
@@ -215,9 +268,12 @@ class LazyTheory:
     ) -> pl.DataFrame:
 
         mode_intervals = self.mode_intervals_from_scale(degree, scale_variant)
-        print(mode_intervals)
+
+        # Get notes for the scale with unique letters
+        scale_notes = self.identify_notes(mode_intervals)
+
         rows = []
-        chord_dict = self.build_chords_rework(mode_intervals)
+        chord_dict = self.build_chords(mode_intervals)
         print(chord_dict)
         print(json.dumps(chord_dict, indent=2))
 
@@ -227,8 +283,9 @@ class LazyTheory:
             frets_and_intervals = self.frets_in_mode_for_string(start_interval, mode_intervals)
 
             for fret, interval_value in frets_and_intervals:
-                # Calculate note at fret and convert to 1–12 to pull the chromatic note
-                note_at_fret = CHROMATIC_TO_NOTE[((string_chromatic + fret - 1) % 12) + 1]
+                # Use scale_notes to ensure proper sharps/flats
+                note_index = (interval_value + self.key_chromatic - 1) % len(scale_notes)
+                note_at_fret = scale_notes[note_index]
                 chromatic_value_at_fret = NOTE_TO_CHROMATIC[note_at_fret]
                 interval_label = CHROMATIC_INTERVALS[interval_value][0]
 
