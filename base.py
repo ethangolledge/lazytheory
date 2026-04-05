@@ -1,6 +1,7 @@
 import polars as pl
 from time import perf_counter
 import json
+import duckdb
 
 NOTE_TO_CHROMATIC: dict[str, int] = {
     "C": 1, "C#": 2, "DB": 2, "D": 3,
@@ -199,7 +200,7 @@ class LazyTheory:
         return chord_intervals_key, chord_intervals_degree, root_interval
 
 
-    def build_chords(
+    def chords_dict(
         self, 
         mode_intervals: list[int], 
         chord_size: int = 4
@@ -249,6 +250,69 @@ class LazyTheory:
 
         return chord_dict
 
+    @execution_time
+    def chord_builder(
+        self,
+        chord_size: int = 3,
+        scale_variant: str = "NATURAL",
+        degree: int = 0,
+        save_csv: str | None = None
+    ) -> pl.DataFrame:
+        """
+        Build a Polars DataFrame from chords_dict output, using key-relative intervals
+        for direct joining with fretboard_builder DF.
+        Each row corresponds to a single tone in a chord.
+        """
+        mode_intervals = self.mode_intervals_from_scale(degree, scale_variant)
+        chord_dict = self.chords_dict(mode_intervals, chord_size)
+        scale_notes = self.identify_notes(mode_intervals)
+        rows = []
+
+        for chord_name, chord_info_list in chord_dict.items():
+            chord_info = chord_info_list[0]
+            root_interval = chord_info["root_interval"]
+
+            for tone in chord_info["tones"]:
+                # Compute key-relative interval for this tone
+                interval_key_relative = (root_interval + tone["interval_degree_relative"]) % 12
+                interval_label = CHROMATIC_INTERVALS[interval_key_relative][0]
+                note = tone["note"]
+
+                rows.append({
+                    "chord_name": chord_info["chord_name"],
+                    "chord_degree": chord_info["degree"],
+                    "chord_quality": chord_info["quality"],
+                    "chord_size": chord_info["chord_size"],
+                    "tone_index": tone["tone_index"],
+                    "tone_note": note,
+                    "interval": interval_key_relative,   # key-relative
+                    "interval_label": interval_label,    # label for key-relative interval
+                    "root_note": chord_info["root_note"],
+                    "root_interval": root_interval
+                })
+
+        df = pl.DataFrame(rows, schema={
+            "chord_name": pl.Utf8,
+            "chord_degree": pl.Int8,
+            "chord_quality": pl.Utf8,
+            "chord_size": pl.Int8,
+            "tone_index": pl.Int8,
+            "tone_note": pl.Utf8,
+            "interval": pl.Int8,
+            "interval_label": pl.Utf8,
+            "root_note": pl.Utf8,
+            "root_interval": pl.Int8
+        })
+
+        if save_csv:
+            df.write_csv(save_csv)
+
+        duckdb.register("chords_table", df.to_arrow())
+        print(df.head(20))
+        return df
+
+
+
     def frets_in_mode_for_string(
         self, 
         start_interval: int, 
@@ -267,15 +331,12 @@ class LazyTheory:
         save_csv: str | None = None
     ) -> pl.DataFrame:
 
-        mode_intervals = self.mode_intervals_from_scale(degree, scale_variant)
+        mode_intervals = self.mode_intervals_from_scale(degree, scale_variant) # might be worth moving this down the exection
 
         # Get notes for the scale with unique letters
         scale_notes = self.identify_notes(mode_intervals)
 
         rows = []
-        chord_dict = self.build_chords(mode_intervals)
-        print(chord_dict)
-        print(json.dumps(chord_dict, indent=2))
 
         for string_number, open_string_note in enumerate(self.open_string_notes, 1):
             string_chromatic = NOTE_TO_CHROMATIC[open_string_note]
@@ -314,10 +375,107 @@ class LazyTheory:
         if save_csv:
             df.write_csv(save_csv)
 
+        duckdb.register("frets_table", df.to_arrow())
+
+
         print(df.head(20))
         return df
 
 
 if __name__ == "__main__":
+    scale_variant = "NATURAL"
+    degree = 0
     guitar_theory = LazyTheory(total_frets=12, tuning="EADGBE", key="E")
-    guitar_theory.fretboard_builder(scale_variant="NATURAL", degree=0, save_csv="/home/ethan/code/venv/lazy_theory/intervals.csv")
+    guitar_theory.fretboard_builder(scale_variant=scale_variant, degree=degree, save_csv="/home/ethan/code/venv/lazy_theory/intervals.csv")
+    guitar_theory.chord_builder(scale_variant=scale_variant, degree=degree, chord_size=4, save_csv="/home/ethan/code/venv/lazy_theory/chords.csv")
+    
+    # Parameters
+    MAX_FRET_SPAN = 4  # maximum distance between lowest and highest fret in an inversion
+
+    # SQL: join frets and chords on key-relative interval
+    # then compute inversions per chord using the min fret of the chord tones
+    query = f"""
+    WITH chord_notes AS (
+        SELECT
+            c.chord_name,
+            c.chord_degree,
+            c.chord_quality,
+            c.chord_size,
+            c.tone_index,
+            c.tone_note AS chord_tone_note,
+            c.interval AS chord_interval,
+            c.root_note AS chord_root_note,
+            c.root_interval AS chord_root_interval
+        FROM chords_table AS c
+    ),
+
+    fret_chord_matches AS (
+        SELECT 
+            f.key,
+            f.string,
+            f.string_number,
+            f.note AS fret_note,
+            f.chromatic_note,
+            f.interval AS fret_interval,
+            f.interval_label AS fret_interval_label,
+            f.fret,
+            cn.chord_name,
+            cn.chord_degree,
+            cn.chord_quality,
+            cn.chord_size,
+            cn.tone_index,
+            cn.chord_tone_note,
+            cn.chord_interval,
+            cn.chord_root_note,
+            cn.chord_root_interval
+        FROM frets_table AS f
+        JOIN chord_notes AS cn
+          ON f.interval = cn.chord_interval
+    ),
+
+    chord_positions AS (
+        SELECT
+            chord_name,
+            chord_degree,
+            chord_quality,
+            chord_size,
+            chord_root_note,
+            chord_root_interval,
+            ARRAY_AGG(fret) AS frets,
+            ARRAY_AGG(fret_note) AS notes,
+            ARRAY_AGG(string_number) AS strings,
+            MIN(fret) AS lowest_fret,
+            MAX(fret) AS highest_fret
+        FROM fret_chord_matches
+        GROUP BY chord_name, chord_degree, chord_quality, chord_size, chord_root_note, chord_root_interval
+    ),
+
+    valid_inversions AS (
+        SELECT
+            *,
+            highest_fret - lowest_fret AS fret_span,
+            ROW_NUMBER() OVER (PARTITION BY chord_name ORDER BY lowest_fret) AS inversion_number
+        FROM chord_positions
+        WHERE (highest_fret - lowest_fret) <= {MAX_FRET_SPAN}  -- filter after aggregation
+    )
+
+    SELECT
+        vi.chord_name,
+        vi.chord_degree,
+        vi.chord_quality,
+        vi.chord_size,
+        vi.chord_root_note,
+        vi.chord_root_interval,
+        vi.inversion_number,
+        UNNEST(vi.notes) AS note,
+        UNNEST(vi.frets) AS fret,
+        UNNEST(vi.strings) AS string_number
+    FROM valid_inversions AS vi
+    ORDER BY chord_name, inversion_number, fret
+    """
+
+    # Execute and get Polars DF
+    joined_df = duckdb.query(query).pl()
+
+    # Save as CSV
+    joined_df.write_csv("/home/ethan/code/venv/lazy_theory/fretboard_chords_inversions.csv")
