@@ -1,0 +1,37 @@
+# Each table is one step pattern (the gaps between scale members, summing to the steps per
+# period) and the names of its modes, in rotation order: the first name is the pattern itself,
+# the second starts on its second member, and so on. Name as many modes as you like.
+
+[diatonic]
+steps = [2, 2, 1, 2, 2, 2, 1]
+modes = ["Ionian", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian", "Locrian"]
+
+[harmonic_minor]
+steps = [2, 1, 2, 2, 1, 3, 1]
+modes = [
+    "Harmonic Minor", "Locrian ♮6", "Ionian ♯5", "Dorian ♯4",
+    "Phrygian Dominant", "Lydian ♯2", "Ultralocrian",
+]
+
+[melodic_minor]
+steps = [2, 1, 2, 2, 2, 2, 1]
+modes = [
+    "Melodic Minor", "Dorian ♭2", "Lydian Augmented", "Lydian Dominant",
+    "Mixolydian ♭6", "Locrian ♮2", "Altered",
+]
+
+[pentatonic]
+steps = [2, 2, 3, 2, 3]
+modes = [
+    "Major Pentatonic", "Suspended Pentatonic", "Blues Minor Pentatonic",
+    "Blues Major Pentatonic", "Minor Pentatonic",
+]
+
+# Symmetric scales: rotating further only repeats these modes.
+[whole_tone]
+steps = [2, 2, 2, 2, 2, 2]
+modes = ["Whole Tone"]
+
+[diminished]
+steps = [2, 1, 2, 1, 2, 1, 2, 1]
+modes = ["Diminished (Whole-Half)", "Diminished (Half-Whole)"]
