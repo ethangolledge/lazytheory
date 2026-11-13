@@ -35,7 +35,7 @@ frequency. Equal *ratios* sound like equal *distances*. 100→200 Hz sounds like
 200→400 Hz.
 
 **[physics]** Below roughly 20 Hz, a periodic event is heard as separate pulses (rhythm), not as a
-pitch. Rhythm and pitch are the same thing at different speeds (see §9).
+pitch. Rhythm and pitch are the same thing at different speeds (see §10).
 
 ## 2. Intervals are ratios
 
@@ -190,6 +190,21 @@ diatonic modes in order of brightness, each one lowering exactly one note:
 distinct transpositions and modes (Messiaen's *modes of limited transposition*). Whole-tone
 `{0,2,4,6,8,10}` has 2 transpositions; diminished/octatonic `{0,2,3,5,6,8,9,11}` has 3.
 
+**[math]** *Maximal evenness* (Clough & Douthett 1991). Spreading k notes as evenly as possible
+through N steps, `floor(i · N / k)` for `i = 0 … k−1`, produces many familiar structures from
+just two numbers:
+
+| k in 12 | Result |
+|---|---|
+| 3 | augmented triad |
+| 4 | diminished seventh |
+| 5 | pentatonic |
+| 6 | whole-tone |
+| 7 | diatonic (the Locrian rotation) |
+| 8 | octatonic |
+
+When k divides N the result is perfectly even, so it is symmetric and ambiguous (see §9).
+
 **[convention]** The Greek mode names, "harmonic minor", "melodic minor" and so on are labels.
 Harmonic and melodic minor are *alterations* of the diatonic scale, not generated scales. They are
 as valid as any other set but are not derived from a single generator. Any set can be given any
@@ -209,6 +224,11 @@ starting degree. With a 7-note diatonic scale:
 
 The stride is a scale-degree count. The resulting step intervals depend on the scale. Stride 2 in
 the diatonic scale gives 3- or 4-step gaps; in a pentatonic scale it gives different ones.
+
+**[math]** *Why exactly two kinds of third.* In the diatonic scale, every stride (2nd, 3rd, 4th …)
+comes in exactly two sizes (*Myhill's property*; such scales are *well-formed*). Stride 2 gives
+3 or 4 steps, so stacked triads can only be built from minor and major thirds. Chord quality
+follows from the scale's structure; it doesn't need to be listed.
 
 **[math]** Stacking every degree of a 7-note diatonic scale with stride 2 gives triads with these
 step sets (relative to each chord root):
@@ -270,7 +290,61 @@ both.
 theory") are style guidance. They can be built as optional rule sets on top of the math, never
 inside it.
 
-## 9. Rhythm
+## 9. Tension and resolution
+
+"Tension" is not a single quantity. It combines parts with different sources, and the code keeps
+them separate.
+
+| Component | Tag | Measured from |
+|---|---|---|
+| Roughness / ratio complexity | **[physics]** | Partials and ratios (Plomp & Levelt; Sethares) |
+| Voice-leading distance | **[math]** | Two pitch sets (Tymoczko) |
+| Notes outside the current scale | **[math]** | A chord and a scale |
+| Expectation, which note feels like home | **[convention]** (learned) | Listening experience (Krumhansl; Huron) |
+
+**[math]** *Voice leading.* Pair each note of one chord with a note of the next, every note
+taking part, and add up how far each moves. The *voice-leading distance* is the smallest
+possible total.
+
+**[math]** Small distance alone is not resolution. Into C major `{0,4,7}`, vi7 `{9,0,4,7}` moves
+only 2 steps, and V7 `{7,11,2,5}` moves 4. Release needs a dissonance first that small motion
+then removes. V7 → I, measured from the target root:
+
+| Voice | Moves to | Steps |
+|---|---|---|
+| 7 | 7 | 0 (shared) |
+| 11 | 0 | +1 (leading tone) |
+| 2 | 0 | −2 |
+| 5 | 4 | −1 (the seventh falls) |
+
+`11` and `5` form a *tritone*: 6 steps, half the octave, the 12-TET step with no single simple
+ratio (§3). Both its notes sit one step from a note of the target and move in opposite
+directions.
+
+**[math]** *Consequences, all derived rather than listed:*
+
+- *Secondary dominants (tonicization).* Treat any chord root X as a temporary home. Its dominant
+  is the four-note stacked chord on degree 5 of the major scale built on X. It adds exactly one
+  note outside the key: X − 1, a leading tone into X.
+- *Tritone substitution.* Transposing a dominant by N/2 keeps its tritone, because the tritone
+  maps onto itself under that transposition.
+- *Borrowed chords (modal mixture).* Chords stacked from a different rotation on the same root,
+  e.g. Aeolian chords used in Ionian.
+- *Neo-Riemannian moves.* Between major and minor triads, the moves P (`{0,4,7}→{0,3,7}`), L
+  (`→{4,7,11}`) and R (`→{9,0,4}`) are the triad changes of distance 1, 1 and 2. Cohn showed
+  this smoothness comes from the maths of 12 equal steps, not from acoustics.
+
+**[physics, contested]** *Root motion by a fifth.* The dominant's root is the 3rd harmonic of the
+target's root, so one theory (Rameau; later Terhardt and Parncutt's *virtual pitch*) says the
+ear hears the target as the dominant's implied fundamental. Evidence is mixed and the theory
+explains minor chords poorly, so the code doesn't depend on it.
+
+**[convention]** Which chord sounds like "home" (*centricity*) is learned. Tymoczko lists it among
+five features of tonality, with small melodic steps, acoustic consonance, chords of similar
+structure, and a limited pool of notes. Only centricity is not computable from the sets
+themselves.
+
+## 10. Rhythm
 
 **[physics]** Rhythm is periodicity below about 20 Hz. A 3:2 polyrhythm and a perfect fifth (3:2)
 are the same ratio. Speed the rhythm up past ~20 Hz and it becomes the interval. So the ratio
@@ -320,4 +394,18 @@ length is pure arithmetic.
 | **chord** | Pitch-class set sounded together, measured from its own root |
 | **voicing** | A chord with actual octave placement |
 | **string tuning** | An instrument's open-string pitches, *not* a temperament |
+| **voice leading** | Pairing the notes of one chord with the next; its distance is the total movement |
+| **tonicization** | Treating a chord root as a temporary home to derive chords around it |
 | **cycle** | A repeating rhythmic frame of N beats |
+
+## References
+
+- Clough, J. & Douthett, J. (1991). Maximally even sets. *Journal of Music Theory* 35.
+- Cohn, R. (1997). Neo-Riemannian operations, parsimonious trichords, and their *Tonnetz*
+  representations. *Journal of Music Theory* 41.
+- Lerdahl, F. & Krumhansl, C. (2007). Modeling tonal tension. *Music Perception* 24(4).
+- Parncutt, R. (1988). Revision of Terhardt's model of the root(s) of a musical chord.
+  *Music Perception* 6.
+- Plomp, R. & Levelt, W. (1965). Tonal consonance and critical bandwidth. *JASA* 38.
+- Sethares, W. (2005). *Tuning, Timbre, Spectrum, Scale*. Springer.
+- Tymoczko, D. (2011). *A Geometry of Music*. Oxford University Press.

@@ -30,14 +30,18 @@ chords, melody and rhythm, and learn why they work.
 Requires [uv](https://docs.astral.sh/uv/).
 
 ```sh
-uv sync                                     # create .venv and install the package
-uv run python -m unittest discover tests    # run the tests
+uv sync                                     # create .venv with the package and dev tools
+uv run python -m unittest discover tests    # tests
+uv run ruff format . && uv run ruff check . # format and lint
+uv run mypy                                 # type check (strict, src only)
 ```
+
+The same checks run on every push (`.github/workflows/checks.yml`).
 
 ## Status
 
 Early. `src/lazy_theory/core` and `catalog` are built: temperaments, pitch-class sets, scales and
-modes, chord stacking and identification. `base.py` is the original 12-TET guitar prototype,
+modes, chord stacking and identification, voice leading. `base.py` is the original 12-TET guitar prototype,
 kept until fretboard mapping moves into the layered design in `docs/architecture.md`.
 
 Near-term goals carried over from the prototype:

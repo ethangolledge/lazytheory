@@ -47,6 +47,7 @@ same layer don't import each other unless shown here.
 | `pcset` | `PitchClassSet`: immutable set mod `size`, step patterns, rotation | — |
 | `scale` | `Scale(PitchClassSet)`: always contains its root; stacks chords by stride | pcset |
 | `chord` | `identify`: names a set against patterns passed in by the caller, trying every root | pcset |
+| `voice_leading` | Smallest total movement from one set to another, with each voice's move | pcset |
 | `rhythm` | `Cycle`, groupings, subdivisions, polyrhythm alignment | — |
 | `catalog` | Named scales and chord patterns in TOML, loaded into core objects (later: string tunings, talas) | core |
 | `naming` | Letter names, interval labels, Greek names, reference pitch: core values → strings | core |
@@ -63,6 +64,9 @@ same layer don't import each other unless shown here.
   own: voicings and inversions need pitch height, which comes with `instruments`.
 - **Identification lives in core but holds no names.** `identify` takes the patterns as an
   argument, so core never imports the catalog.
+- **Harmony is composed, not listed.** Secondary dominants, tritone substitutes and borrowed
+  chords come from `chord`, `rotate`, `transpose` and `voice_leading`
+  (see `tests/test_harmony.py`). There is no function table and no single "tension" score.
 - **Scales are step patterns; chords are members.** Each is written the way it's usually thought
   about. A scale's steps also fix its `size`, so a 31-step scale needs no extra setting.
 
@@ -81,6 +85,8 @@ same layer don't import each other unless shown here.
 - **Core has no third-party dependencies.** Polars and DuckDB belong in `export` only.
 - **No hidden I/O or printing in core.** Functions return values; callers decide what to show
   or save.
+- **Layer rules are tested.** `tests/test_architecture.py` fails if a layer imports upwards or
+  core imports anything outside the standard library. Add each new layer to its `LAYERS` list.
 - **Tests come from the facts.** Every [math] claim in `theory.md` should become a test (e.g.
   rotating Ionian 5 degrees gives Aeolian; stacking 7 fifths gives Lydian).
 
@@ -97,7 +103,8 @@ lazy_theory/
 │   │   ├── temperament.py
 │   │   ├── pcset.py
 │   │   ├── scale.py
-│   │   └── chord.py
+│   │   ├── chord.py
+│   │   └── voice_leading.py
 │   ├── catalog/          # built: loader + scales.toml, chords.toml
 │   ├── rhythm/           # proposed
 │   ├── naming/           # proposed
@@ -110,5 +117,3 @@ lazy_theory/
 
 - Compute live vs. store results in a database: decided when the web app's needs are known.
 - Web stack: later.
-- Automatically enforcing the layer rules (e.g. with `import-linter`): optional, needs a
-  dependency.
