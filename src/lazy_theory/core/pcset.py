@@ -1,0 +1,57 @@
+"""Pitch-class sets: the maths shared by scales and chords."""
+
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
+from itertools import accumulate, pairwise
+from typing import Self
+
+
+@dataclass(frozen=True)
+class PitchClassSet:
+    """Pitch classes in a system of `size` steps per period.
+
+    Members are reduced mod `size` and stored sorted without duplicates, so (12, 7, 4, 0) and
+    (0, 4, 7) are the same set.
+    """
+
+    pitch_classes: tuple[int, ...]
+    size: int = 12
+
+    def __post_init__(self) -> None:
+        if self.size < 1:
+            raise ValueError(f"size must be positive, got {self.size}")
+        normalised = tuple(sorted({pc % self.size for pc in self.pitch_classes}))
+        if not normalised:
+            raise ValueError("a pitch-class set needs at least one member")
+        object.__setattr__(self, "pitch_classes", normalised)
+
+    @classmethod
+    def from_steps(cls, steps: Iterable[int]) -> Self:
+        """Build from a step pattern starting on 0. The steps sum to `size`.
+
+        (2, 2, 1, 2, 2, 2, 1) gives (0, 2, 4, 5, 7, 9, 11) with size 12.
+        """
+        steps = tuple(steps)
+        if not steps or any(step < 1 for step in steps):
+            raise ValueError(f"steps must be positive, got {steps}")
+        return cls(tuple(accumulate(steps[:-1], initial=0)), sum(steps))
+
+    @property
+    def steps(self) -> tuple[int, ...]:
+        """Gaps between neighbouring members, wrapping round the period. Sums to `size`."""
+        wrapped = self.pitch_classes + (self.pitch_classes[0] + self.size,)
+        return tuple(high - low for low, high in pairwise(wrapped))
+
+    def rotate(self, degree: int) -> Self:
+        """Re-root on the member at `degree` (0-based, wraps). For a scale, this gives its modes."""
+        root = self.pitch_classes[degree % len(self)]
+        return type(self)(tuple(pc - root for pc in self.pitch_classes), self.size)
+
+    def __len__(self) -> int:
+        return len(self.pitch_classes)
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self.pitch_classes)
+
+    def __contains__(self, pitch_class: object) -> bool:
+        return isinstance(pitch_class, int) and pitch_class % self.size in self.pitch_classes
