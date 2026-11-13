@@ -49,6 +49,30 @@ class PitchClassSetTest(unittest.TestCase):
         whole_tone = PitchClassSet((0, 2, 4, 6, 8, 10))
         self.assertEqual(whole_tone.rotate(1), whole_tone)
 
+    def test_transpose(self):
+        self.assertEqual(PitchClassSet((0, 4, 7)).transpose(7).pitch_classes, (2, 7, 11))
+        self.assertEqual(PitchClassSet((0, 4, 7)).transpose(-1).pitch_classes, (3, 6, 11))
+
+    def test_maximally_even(self):
+        expected = {
+            3: (0, 4, 8),
+            4: (0, 3, 6, 9),
+            5: (0, 2, 4, 7, 9),
+            6: (0, 2, 4, 6, 8, 10),
+            7: (0, 1, 3, 5, 6, 8, 10),
+            8: (0, 1, 3, 4, 6, 7, 9, 10),
+        }
+        for notes, pitch_classes in expected.items():
+            self.assertEqual(PitchClassSet.maximally_even(notes).pitch_classes, pitch_classes)
+
+    def test_maximally_even_in_other_temperaments(self):
+        self.assertEqual(PitchClassSet.maximally_even(3, 31).pitch_classes, (0, 10, 20))
+
+    def test_maximally_even_rejects_impossible_counts(self):
+        for notes in (0, 13):
+            with self.assertRaises(ValueError, msg=notes):
+                PitchClassSet.maximally_even(notes)
+
     def test_contains_wraps(self):
         self.assertIn(12, IONIAN)
         self.assertNotIn(1, IONIAN)

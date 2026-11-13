@@ -36,6 +36,16 @@ class PitchClassSet:
             raise ValueError(f"steps must be positive, got {steps}")
         return cls(tuple(accumulate(steps[:-1], initial=0)), sum(steps))
 
+    @classmethod
+    def maximally_even(cls, notes: int, size: int = 12) -> Self:
+        """`notes` pitch classes spread as evenly as possible through `size` steps.
+
+        4 in 12 is the diminished seventh, 6 in 12 the whole-tone scale, 7 in 12 a diatonic mode.
+        """
+        if not 0 < notes <= size:
+            raise ValueError(f"notes must be between 1 and {size}, got {notes}")
+        return cls(tuple(i * size // notes for i in range(notes)), size)
+
     @property
     def steps(self) -> tuple[int, ...]:
         """Gaps between neighbouring members, wrapping round the period. Sums to `size`."""
@@ -46,6 +56,11 @@ class PitchClassSet:
         """Re-root on the member at `degree` (0-based, wraps). For a scale, this gives its modes."""
         root = self.pitch_classes[degree % len(self)]
         return type(self)(tuple(pc - root for pc in self.pitch_classes), self.size)
+
+    def transpose(self, steps: int) -> PitchClassSet:
+        """Move every member up by `steps`. A moved scale no longer starts on its root, so the
+        result is always a plain PitchClassSet."""
+        return PitchClassSet(tuple(pc + steps for pc in self.pitch_classes), self.size)
 
     def __len__(self) -> int:
         return len(self.pitch_classes)

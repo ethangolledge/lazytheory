@@ -18,6 +18,19 @@ class ScaleTest(unittest.TestCase):
         fifths = Scale(tuple(7 * i for i in range(7)))
         self.assertEqual(fifths, IONIAN.rotate(3))  # Lydian
 
+    def test_seven_maximally_even_notes_give_the_diatonic_scale(self):
+        self.assertEqual(Scale.maximally_even(7), IONIAN.rotate(6))  # Locrian
+
+    def test_transposed_scale_is_a_plain_set(self):
+        self.assertIs(type(IONIAN.transpose(2)), PitchClassSet)
+
+    def test_every_diatonic_stride_comes_in_exactly_two_sizes(self):
+        # Myhill's property: why stacked diatonic thirds are only ever major or minor.
+        notes = IONIAN.pitch_classes
+        for stride in range(1, 7):
+            sizes = {(notes[(i + stride) % 7] - notes[i]) % 12 for i in range(7)}
+            self.assertEqual(len(sizes), 2, stride)
+
     def test_diatonic_triads(self):
         triads = [IONIAN.chord(degree).pitch_classes for degree in range(7)]
         major, minor, diminished = (0, 4, 7), (0, 3, 7), (0, 3, 6)
