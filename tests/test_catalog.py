@@ -52,7 +52,9 @@ class CustomCatalogTest(unittest.TestCase):
         return path
 
     def test_any_scale_with_any_name(self):
-        path = self.write_toml('[mine]\nsteps = [1, 3, 1, 2, 1, 3, 1]\nmodes = ["Double Harmonic"]\n')
+        path = self.write_toml(
+            '[mine]\nsteps = [1, 3, 1, 2, 1, 3, 1]\nmodes = ["Double Harmonic"]\n'
+        )
         self.assertEqual(load_scales(path)["Double Harmonic"].pitch_classes, (0, 1, 4, 5, 7, 8, 11))
 
     def test_microtonal_scale(self):

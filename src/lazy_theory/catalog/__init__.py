@@ -8,6 +8,7 @@ import tomllib
 from importlib.resources import files
 from importlib.resources.abc import Traversable
 from pathlib import Path
+from typing import Any
 
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
@@ -36,7 +37,7 @@ def load_chords(path: Path | None = None) -> dict[str, PitchClassSet]:
     return chords
 
 
-def _read(path: Path | Traversable) -> dict:
+def _read(path: Path | Traversable) -> dict[str, Any]:
     with path.open("rb") as file:
         return tomllib.load(file)
 

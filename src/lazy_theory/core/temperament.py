@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from fractions import Fraction
 from itertools import pairwise
-from math import log2
+from math import log2, pow
 
 
 def ratio_to_cents(ratio: float) -> float:
@@ -16,7 +16,7 @@ def ratio_to_cents(ratio: float) -> float:
 
 
 class Temperament(ABC):
-    """A system of `size` steps per `period`, where `period` is a frequency ratio (2 for octaves)."""
+    """A system of `size` steps per `period`, a frequency ratio (2 for octaves)."""
 
     period: Fraction
 
@@ -47,7 +47,7 @@ class EqualTemperament(Temperament):
             raise ValueError(f"period must be greater than 1, got {self.period}")
 
     def ratio(self, step: int) -> float:
-        return float(self.period) ** (step / self.size)
+        return pow(self.period, step / self.size)
 
 
 @dataclass(frozen=True)
