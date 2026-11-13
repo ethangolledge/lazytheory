@@ -2,6 +2,9 @@ import polars as pl
 from time import perf_counter
 import json
 import duckdb
+from pathlib import Path
+
+PROJECT_DIR = Path(__file__).resolve().parent
 
 NOTE_TO_CHROMATIC: dict[str, int] = {
     "C": 1, "C#": 2, "DB": 2, "D": 3,
@@ -256,7 +259,7 @@ class LazyTheory:
         chord_size: int = 3,
         scale_variant: str = "NATURAL",
         degree: int = 0,
-        save_csv: str | None = None
+        save_csv: str | Path | None = None
     ) -> pl.DataFrame:
         """
         Build a Polars DataFrame from chords_dict output, using key-relative intervals
@@ -328,7 +331,7 @@ class LazyTheory:
         self,
         scale_variant: str = "NATURAL",
         degree: int = 0,
-        save_csv: str | None = None
+        save_csv: str | Path | None = None
     ) -> pl.DataFrame:
 
         mode_intervals = self.mode_intervals_from_scale(degree, scale_variant) # might be worth moving this down the exection
@@ -386,8 +389,8 @@ if __name__ == "__main__":
     scale_variant = "NATURAL"
     degree = 0
     guitar_theory = LazyTheory(total_frets=12, tuning="EADGBE", key="E")
-    guitar_theory.fretboard_builder(scale_variant=scale_variant, degree=degree, save_csv="/home/ethan/code/venv/lazy_theory/intervals.csv")
-    guitar_theory.chord_builder(scale_variant=scale_variant, degree=degree, chord_size=4, save_csv="/home/ethan/code/venv/lazy_theory/chords.csv")
+    guitar_theory.fretboard_builder(scale_variant=scale_variant, degree=degree, save_csv=PROJECT_DIR / "intervals.csv")
+    guitar_theory.chord_builder(scale_variant=scale_variant, degree=degree, chord_size=4, save_csv=PROJECT_DIR / "chords.csv")
     
     # Parameters
     MAX_FRET_SPAN = 4  # maximum distance between lowest and highest fret in an inversion
@@ -478,4 +481,4 @@ if __name__ == "__main__":
     joined_df = duckdb.query(query).pl()
 
     # Save as CSV
-    joined_df.write_csv("/home/ethan/code/venv/lazy_theory/fretboard_chords_inversions.csv")
+    joined_df.write_csv(PROJECT_DIR / "fretboard_chords_inversions.csv")
