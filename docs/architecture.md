@@ -1,7 +1,8 @@
 # Architecture
 
-How the code will turn [theory.md](theory.md) into software. **Status: proposal.** The current
-code is in `base.py`, a 12-TET guitar prototype that will be replaced module by module.
+How the code will turn [theory.md](theory.md) into software. **Status:** `core` and `catalog` are
+built and tested. The rest is proposal. `base.py` is the original 12-TET guitar prototype, kept
+for reference until `instruments` and `export` replace it.
 
 ## Goals
 
@@ -32,7 +33,7 @@ same layer don't import each other unless shown here.
             └──────────────┬──────────────────┘
                            │
             ┌──────────────┴──────────────────┐
-  core      │ temperament → interval → pcset  │   pure maths, standard library only
+  core      │ temperament     pcset           │   pure maths, standard library only
             │                 ↓               │
             │           scale, chord          │
             │                                 │
@@ -42,16 +43,28 @@ same layer don't import each other unless shown here.
 
 | Module | Responsibility | Depends on |
 |---|---|---|
-| `temperament` | Steps ↔ ratio/cents/frequency. `Temperament` base; `EqualTemperament(n, period)`, `JustIntonation(ratios)` | — |
-| `interval` | `Interval` as a step count within a temperament; ratio and cents via the temperament | temperament |
-| `pcset` | `PitchClassSet`: immutable set mod N with transpose, rotate, invert, complement, step pattern | temperament |
-| `scale` | `Scale(PitchClassSet)`: modes, generated scales, degrees | pcset |
-| `chord` | `Chord(PitchClassSet)`: building by stride from a scale, inversions, voicings, matching against patterns | pcset, scale |
+| `temperament` | Steps → ratio and cents. `Temperament` base; `EqualTemperament(size, period)`, `JustIntonation(ratios)` | — |
+| `pcset` | `PitchClassSet`: immutable set mod `size`, step patterns, rotation | — |
+| `scale` | `Scale(PitchClassSet)`: always contains its root; stacks chords by stride | pcset |
+| `chord` | `identify`: names a set against patterns passed in by the caller, trying every root | pcset |
 | `rhythm` | `Cycle`, groupings, subdivisions, polyrhythm alignment | — |
-| `catalog` | Named scales, chord patterns, string tunings, talas, stored as data files and loaded into core objects | core |
+| `catalog` | Named scales and chord patterns in TOML, loaded into core objects (later: string tunings, talas) | core |
 | `naming` | Letter names, interval labels, Greek names, reference pitch: core values → strings | core |
 | `instruments` | `Instrument` base; `Keyboard`, `FrettedInstrument(string tuning, frets)`: position ↔ pitch | core |
 | `export` | DataFrames, CSV, database tables, query helpers | everything below |
+
+## Decisions so far
+
+- **No `Interval` class.** An interval is a step count; `Temperament.ratio(steps)` and
+  `.cents(steps)` cover the physics. Add a class only when something needs more than an int.
+- **`pcset` doesn't depend on `temperament`.** Set maths only needs the number of steps
+  (`size`), so a set doesn't carry a temperament around. Join them when a pitch needs a ratio.
+- **No `Chord` class yet.** A chord is a `PitchClassSet`. A class arrives with behaviour of its
+  own: voicings and inversions need pitch height, which comes with `instruments`.
+- **Identification lives in core but holds no names.** `identify` takes the patterns as an
+  argument, so core never imports the catalog.
+- **Scales are step patterns; chords are members.** Each is written the way it's usually thought
+  about. A scale's steps also fix its `size`, so a 31-step scale needs no extra setting.
 
 ## Design rules
 
@@ -80,23 +93,21 @@ lazy_theory/
 │   ├── theory.md
 │   └── architecture.md
 ├── src/lazy_theory/
-│   ├── core/
+│   ├── core/             # built
 │   │   ├── temperament.py
-│   │   ├── interval.py
 │   │   ├── pcset.py
 │   │   ├── scale.py
 │   │   └── chord.py
-│   ├── rhythm/
-│   ├── catalog/          # loaders + data files (scales, chords, tunings, talas)
-│   ├── naming/
-│   ├── instruments/
-│   └── export/
+│   ├── catalog/          # built: loader + scales.toml, chords.toml
+│   ├── rhythm/           # proposed
+│   ├── naming/           # proposed
+│   ├── instruments/      # proposed
+│   └── export/           # proposed
 └── tests/
 ```
 
 ## Open decisions
 
-- Data file format for `catalog` (TOML is in the standard library and readable).
 - Compute live vs. store results in a database: decided when the web app's needs are known.
 - Web stack: later.
 - Automatically enforcing the layer rules (e.g. with `import-linter`): optional, needs a

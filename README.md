@@ -25,10 +25,20 @@ chords, melody and rhythm, and learn why they work.
   convention.
 - [docs/architecture.md](docs/architecture.md): how the code is organised and extended.
 
+## Development
+
+Requires [uv](https://docs.astral.sh/uv/).
+
+```sh
+uv sync                                     # create .venv and install the package
+uv run python -m unittest discover tests    # run the tests
+```
+
 ## Status
 
-Early. `base.py` is the original 12-TET guitar prototype (scales, modes, diatonic chords,
-fretboard mapping). It is being replaced by the layered design in `docs/architecture.md`.
+Early. `src/lazy_theory/core` and `catalog` are built: temperaments, pitch-class sets, scales and
+modes, chord stacking and identification. `base.py` is the original 12-TET guitar prototype,
+kept until fretboard mapping moves into the layered design in `docs/architecture.md`.
 
 Near-term goals carried over from the prototype:
 
