@@ -1,0 +1,13 @@
+[project]
+name = "lazy-theory"
+version = "0.1.0"
+description = "Music theory as intervals and maths, built on the physics of sound."
+authors = [
+    { name = "ethan golledge", email = "ethg@hotmail.co.uk" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.11.3,<0.12.0"]
+build-backend = "uv_build"
