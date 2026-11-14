@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lazy_theory.catalog import load_chords, load_scales
+from lazy_theory.catalog import load_chords, load_scales, load_tunings
 from lazy_theory.core.chord import identify
 
 SCALES = load_scales()
@@ -41,6 +41,11 @@ class BundledCatalogTest(unittest.TestCase):
         scale = SCALES["Major Pentatonic"]
         for degree in range(len(scale)):
             self.assertTrue(identify(scale.chord(degree), CHORDS), degree)
+
+    def test_tunings_are_gaps_between_strings(self):
+        tunings = load_tunings()
+        self.assertEqual(tunings["guitar standard"], (5, 5, 5, 4, 5))
+        self.assertEqual(sum(tunings["guitar standard"]), 24)  # two octaves, low E to high E
 
 
 class CustomCatalogTest(unittest.TestCase):

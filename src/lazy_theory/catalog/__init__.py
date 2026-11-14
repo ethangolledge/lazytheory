@@ -1,4 +1,4 @@
-"""Named scales and chords, loaded from TOML data files.
+"""Named scales, chords and string tunings, loaded from TOML data files.
 
 Names are convention (docs/theory.md), so they live here as data rather than in core. Pass a
 path to load your own file instead of the bundled one.
@@ -35,6 +35,14 @@ def load_chords(path: Path | None = None) -> dict[str, PitchClassSet]:
     for name, members in data["chords"].items():
         _add(chords, name, PitchClassSet(tuple(members), data["size"]))
     return chords
+
+
+def load_tunings(path: Path | None = None) -> dict[str, tuple[int, ...]]:
+    """Every named string tuning as gaps between neighbouring open strings, keyed by name."""
+    tunings: dict[str, tuple[int, ...]] = {}
+    for name, gaps in _read(path or _BUNDLED / "tunings.toml")["tunings"].items():
+        _add(tunings, name, tuple(gaps))
+    return tunings
 
 
 def _read(path: Path | Traversable) -> dict[str, Any]:

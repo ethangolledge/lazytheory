@@ -1,0 +1,12 @@
+# String tunings as gaps in steps between neighbouring open strings, first string first.
+# The first string is pitch 0; negative gaps are re-entrant strings (lower than the one before).
+
+[tunings]
+"guitar standard" = [5, 5, 5, 4, 5]
+"guitar drop D" = [7, 5, 5, 4, 5]
+"guitar DADGAD" = [7, 5, 5, 2, 5]
+"guitar open D" = [7, 5, 4, 3, 5]
+"guitar open G" = [5, 7, 5, 4, 3]
+"guitar all fourths" = [5, 5, 5, 5, 5]
+"bass standard" = [5, 5, 5]
+"ukulele standard" = [-7, 4, 5]
