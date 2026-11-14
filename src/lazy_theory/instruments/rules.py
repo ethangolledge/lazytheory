@@ -1,32 +1,37 @@
-"""Rules for choosing voicings: each takes a voicing grid (one row per voicing, one fret or MUTED
-per string) and returns a value per row. Combine them with `&`, swap any of them out.
+"""Rules for choosing voicings. Each takes voicing grids (one row per voicing, one fret or MUTED
+per string) and returns a value per row, or per pair of rows for a change between chords.
+Combine them with `&` and `+`; swap any of them out.
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from itertools import pairwise
 
 import numpy as np
 from numpy.typing import NDArray
 
-from lazy_theory.instruments.fretboard import MUTED, Grid
+from lazy_theory.instruments.fretboard import MUTED, Floats, Grid
 
 Mask = NDArray[np.bool_]
-Costs = NDArray[np.int64]
+Counts = NDArray[np.int64]
 
 
-def fingers(frets: Grid) -> Costs:
-    """Fretting fingers needed. One finger can barre every note on the lowest fret, unless an
-    open string lies under the barre; every other fretted note needs its own finger."""
-    fretted = frets > 0
-    lowest = np.where(fretted, frets, np.iinfo(frets.dtype).max).min(axis=1, keepdims=True)
-    barred = fretted & (frets == lowest)
-    under_barre = (
-        np.maximum.accumulate(barred, axis=1)
-        & np.maximum.accumulate(barred[:, ::-1], axis=1)[:, ::-1]
-    )
-    can_barre = ~(under_barre & (frets == 0)).any(axis=1)
-    with_barre = barred.any(axis=1) + (fretted & ~barred).sum(axis=1)
-    return np.where(can_barre, with_barre, fretted.sum(axis=1)).astype(np.int64)
+def fingers(frets: Grid) -> Counts:
+    """Fewest fretting fingers each voicing needs.
+
+    One finger can barre notes at the same fret across the strings between them, as long as
+    none of those strings is open, muted or fretted lower: the barre would sound over them.
+    Every other fretted note needs its own finger.
+    """
+    index = np.arange(frets.shape[1])
+    between = (index[:, None, None] <= index) & (
+        index <= index[None, :, None]
+    )  # [from, to, string]
+    lowest_between = np.where(between, frets[:, None, None, :], np.iinfo(frets.dtype).max).min(-1)
+    same_fret = frets[:, :, None] == frets[:, None, :]
+    barred = same_fret & (lowest_between >= frets[:, None, :]) & (index[:, None] < index)
+    joins_a_barre = barred.any(axis=1)
+    needed: Counts = ((frets > 0) & ~joins_a_barre).sum(axis=1)
+    return needed
 
 
 def contiguous(frets: Grid) -> Mask:
@@ -44,35 +49,51 @@ def within(frets: Grid, lowest: int, highest: int) -> Mask:
     return inside
 
 
-def transition_cost(previous: Grid, following: Grid, string_change: int) -> Costs:
-    """Cost of every change from a row of `previous` to a row of `following`.
+def motion(previous: Floats, following: Floats) -> Floats:
+    """How far a value moves from each previous voicing to each following one, e.g. the bass
+    (lowest note) or the hand. Shape (len(previous), len(following)); NaN counts as no move."""
+    moved: Floats = np.nan_to_num(np.abs(following[None, :] - previous[:, None]))
+    return moved
 
-    Frets moved on strings that sound in both, plus `string_change` for every string that starts
-    or stops. Setting `string_change` to the hand's width in frets makes changing strings cost
-    more than any move within one position. Shape is (len(previous), len(following)).
-    """
+
+def moved(previous: Grid, following: Grid) -> Counts:
+    """Steps moved on each string that sounds in both voicings: voice leading, with each string
+    a voice. Shape (len(previous), len(following))."""
     before, after = previous[:, None, :], following[None, :, :]
     shared = (before != MUTED) & (after != MUTED)
-    changed = ((before != MUTED) != (after != MUTED)).sum(axis=2)
-    moved = np.where(shared, np.abs(before - after), 0).sum(axis=2)
-    costs: Costs = moved + string_change * changed
-    return costs
+    steps: Counts = np.where(shared, np.abs(before - after), 0).sum(axis=2)
+    return steps
 
 
-def smoothest(options: Sequence[Grid], string_change: int) -> Grid:
-    """One voicing per chord, chosen so the total transition cost over the whole progression is
-    as small as possible. Every path is considered, by keeping only the cheapest way to reach
-    each voicing of each chord. Pass a single row as a chord's options to fix that voicing.
+def strings_changed(previous: Grid, following: Grid) -> Counts:
+    """Strings that start or stop sounding between voicings. Shape (len(previous),
+    len(following))."""
+    before, after = previous[:, None, :] != MUTED, following[None, :, :] != MUTED
+    changed: Counts = (before != after).sum(axis=2)
+    return changed
+
+
+def smoothest(
+    options: Sequence[Grid],
+    transition: Callable[[Grid, Grid], NDArray[np.floating] | NDArray[np.integer]],
+    cost: Callable[[Grid], NDArray[np.floating] | NDArray[np.integer]] | None = None,
+) -> Grid:
+    """One voicing per chord, with the lowest total `cost` of each voicing plus `transition`
+    of each change, over the whole progression.
+
+    Every path is considered, by keeping only the cheapest way to reach each voicing of each
+    chord (the Viterbi algorithm). Pass a single row as a chord's options to fix that voicing.
     """
     for index, voicings in enumerate(options):
         if len(voicings) == 0:
             raise ValueError(f"no voicing of chord {index} satisfies the rules")
-    total = np.zeros(len(options[0]), dtype=np.int64)
+    standing = cost or (lambda voicings: np.zeros(len(voicings)))
+    total = np.asarray(standing(options[0]), dtype=np.float64)
     best_previous = []
     for previous, following in pairwise(options):
-        reach = total[:, None] + transition_cost(previous, following, string_change)
+        reach = total[:, None] + transition(previous, following)
         best_previous.append(reach.argmin(axis=0))
-        total = reach.min(axis=0)
+        total = reach.min(axis=0) + standing(following)
     path = [int(total.argmin())]
     for pointers in reversed(best_previous):
         path.append(int(pointers[path[-1]]))

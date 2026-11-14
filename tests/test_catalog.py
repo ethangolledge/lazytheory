@@ -48,6 +48,12 @@ class BundledCatalogTest(unittest.TestCase):
         self.assertEqual(standard.gaps, (5, 5, 5, 4, 5))
         self.assertEqual(sum(standard.gaps), 24)  # two octaves, low E to high E
 
+    def test_tunings_know_their_frequency_and_length(self):
+        guitar, bass = TUNINGS["guitar standard"], TUNINGS["bass standard"]
+        self.assertAlmostEqual(guitar.hertz, 82.407, places=3)  # E2, from A4 = 440 Hz
+        self.assertAlmostEqual(bass.hertz * 2, guitar.hertz)  # E1, an octave below
+        self.assertEqual((guitar.scale_length, bass.scale_length), (648.0, 864.0))
+
 
 class RootTest(unittest.TestCase):
     def test_root_is_steps_above_the_first_string(self):
@@ -101,6 +107,14 @@ class CustomCatalogTest(unittest.TestCase):
         path = self.write_toml('[a]\nsteps = [6, 6]\nmodes = ["A", "B", "C"]\n')
         with self.assertRaises(ValueError):
             load_scales(path)
+
+    def test_tuning_needs_an_octave(self):
+        path = self.write_toml(
+            'reference = { note = "A4", hertz = 440.0 }\n'
+            '[lute]\nscale_length = 600.0\ntunings.old = { first = "G", gaps = [5] }\n'
+        )
+        with self.assertRaises(ValueError):
+            load_tunings(path)
 
     def test_rejects_duplicate_chord(self):
         path = self.write_toml('size = 12\n[chords]\n"major" = [0, 4, 7]\n"big" = [0, 7, 4]\n')

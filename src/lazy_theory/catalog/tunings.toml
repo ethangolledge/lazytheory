@@ -1,12 +1,23 @@
-# String tunings: the note name of the first string, then the gaps in steps between neighbouring
-# open strings. Negative gaps are re-entrant strings (lower than the one before).
+# Fretted instruments: scale length (nut to bridge, mm), then each tuning as its first open
+# string (letter, accidentals, octave) and the gaps in steps between neighbouring open strings.
+# Negative gaps are re-entrant strings (lower than the one before). Frequencies are measured
+# from `reference`.
 
-[tunings]
-"guitar standard" = { first = "E", gaps = [5, 5, 5, 4, 5] }
-"guitar drop D" = { first = "D", gaps = [7, 5, 5, 4, 5] }
-"guitar DADGAD" = { first = "D", gaps = [7, 5, 5, 2, 5] }
-"guitar open D" = { first = "D", gaps = [7, 5, 4, 3, 5] }
-"guitar open G" = { first = "D", gaps = [5, 7, 5, 4, 3] }
-"guitar all fourths" = { first = "E", gaps = [5, 5, 5, 5, 5] }
-"bass standard" = { first = "E", gaps = [5, 5, 5] }
-"ukulele standard" = { first = "G", gaps = [-7, 4, 5] }
+reference = { note = "A4", hertz = 440.0 }
+
+[guitar]
+scale_length = 648.0
+tunings.standard = { first = "E2", gaps = [5, 5, 5, 4, 5] }
+tunings."drop D" = { first = "D2", gaps = [7, 5, 5, 4, 5] }
+tunings.DADGAD = { first = "D2", gaps = [7, 5, 5, 2, 5] }
+tunings."open D" = { first = "D2", gaps = [7, 5, 4, 3, 5] }
+tunings."open G" = { first = "D2", gaps = [5, 7, 5, 4, 3] }
+tunings."all fourths" = { first = "E2", gaps = [5, 5, 5, 5, 5] }
+
+[bass]
+scale_length = 864.0
+tunings.standard = { first = "E1", gaps = [5, 5, 5] }
+
+[ukulele]
+scale_length = 345.0
+tunings.standard = { first = "G4", gaps = [-7, 4, 5] }

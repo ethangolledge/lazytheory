@@ -12,9 +12,11 @@ from typing import Any, NamedTuple
 
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
+from lazy_theory.core.temperament import EqualTemperament
 
 _BUNDLED = files(__package__)
 _LETTERS = tuple("CDEFGAB")
+_DIGITS = "0123456789"
 
 
 def load_scales(path: Path | None = None) -> dict[str, Scale]:
@@ -39,20 +41,38 @@ def load_chords(path: Path | None = None) -> dict[str, PitchClassSet]:
 
 
 class Tuning(NamedTuple):
-    first: str  # note name of the first open string
+    first: str  # first open string with its octave, e.g. "E2"
     gaps: tuple[int, ...]  # steps between neighbouring open strings
+    scale_length: float  # millimetres from nut to bridge
+    hertz: float  # frequency of the first open string
 
     def root(self, note: str) -> int:
         """Steps from the first open string up to `note`, e.g. 5 for "A" in standard tuning."""
-        return (_pitch_class(note) - _pitch_class(self.first)) % 12
+        return (_pitch_class(note) - _pitch_class(self.first.rstrip(_DIGITS))) % _ionian().size
 
 
 def load_tunings(path: Path | None = None) -> dict[str, Tuning]:
-    """Every named string tuning, keyed by name."""
+    """Every named tuning, keyed by instrument and name, e.g. "guitar standard"."""
+    data = _read(path or _BUNDLED / "tunings.toml")
+    reference = data.pop("reference")
+    temperament = EqualTemperament(_ionian().size)
     tunings: dict[str, Tuning] = {}
-    for name, entry in _read(path or _BUNDLED / "tunings.toml")["tunings"].items():
-        _add(tunings, name, Tuning(entry["first"], tuple(entry["gaps"])))
+    for instrument, entry in data.items():
+        for name, tuning in entry["tunings"].items():
+            steps = _pitch(tuning["first"]) - _pitch(reference["note"])
+            hertz = reference["hertz"] * temperament.ratio(steps)
+            values = Tuning(tuning["first"], tuple(tuning["gaps"]), entry["scale_length"], hertz)
+            _add(tunings, f"{instrument} {name}", values)
     return tunings
+
+
+def _pitch(note: str) -> int:
+    """Steps above C0: a note name, then its octave, which starts on C (scientific pitch
+    notation, so A4 is 57)."""
+    name = note.rstrip(_DIGITS)
+    if name == note:
+        raise ValueError(f"no octave in {note!r}")
+    return _ionian().size * int(note[len(name) :]) + _pitch_class(name)
 
 
 def _pitch_class(note: str) -> int:
@@ -60,8 +80,12 @@ def _pitch_class(note: str) -> int:
     letter, accidentals = note[:1].upper(), note[1:]
     if letter not in _LETTERS or set(accidentals) - {"#", "b"}:
         raise ValueError(f"not a note name: {note!r}")
-    natural = load_scales()["Ionian"].pitch_classes[_LETTERS.index(letter)]
+    natural = _ionian().pitch_classes[_LETTERS.index(letter)]
     return natural + accidentals.count("#") - accidentals.count("b")
+
+
+def _ionian() -> Scale:
+    return load_scales()["Ionian"]
 
 
 def _read(path: Path | Traversable) -> dict[str, Any]:
