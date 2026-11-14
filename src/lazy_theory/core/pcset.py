@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from itertools import accumulate, pairwise
+from itertools import accumulate
 from typing import Self
 
 
@@ -46,12 +46,6 @@ class PitchClassSet:
             raise ValueError(f"notes must be between 1 and {size}, got {notes}")
         return cls(tuple(i * size // notes for i in range(notes)), size)
 
-    @property
-    def steps(self) -> tuple[int, ...]:
-        """Gaps between neighbouring members, wrapping round the period. Sums to `size`."""
-        wrapped = self.pitch_classes + (self.pitch_classes[0] + self.size,)
-        return tuple(high - low for low, high in pairwise(wrapped))
-
     def rotate(self, degree: int) -> Self:
         """Re-root on the member at `degree` (0-based, wraps). For a scale, this gives its modes."""
         root = self.pitch_classes[degree % len(self)]
@@ -67,6 +61,3 @@ class PitchClassSet:
 
     def __iter__(self) -> Iterator[int]:
         return iter(self.pitch_classes)
-
-    def __contains__(self, pitch_class: object) -> bool:
-        return isinstance(pitch_class, int) and pitch_class % self.size in self.pitch_classes

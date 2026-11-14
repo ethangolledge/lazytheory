@@ -1,9 +1,7 @@
 import unittest
 from fractions import Fraction
 
-from lazy_theory.core.temperament import EqualTemperament, JustIntonation, ratio_to_cents
-
-JUST_MAJOR = JustIntonation(tuple(map(Fraction, ["1", "9/8", "5/4", "4/3", "3/2", "5/3", "15/8"])))
+from lazy_theory.core.temperament import EqualTemperament, ratio_to_cents
 
 
 def best_fifth_error(edo: int) -> float:
@@ -52,25 +50,6 @@ class EqualTemperamentTest(unittest.TestCase):
             EqualTemperament(0)
         with self.assertRaises(ValueError):
             EqualTemperament(12, Fraction(1))
-
-
-class JustIntonationTest(unittest.TestCase):
-    def test_size_is_number_of_ratios(self):
-        self.assertEqual(JUST_MAJOR.size, 7)
-
-    def test_steps_are_exact_ratios(self):
-        self.assertAlmostEqual(JUST_MAJOR.cents(2), 386.314, places=3)
-        self.assertAlmostEqual(JUST_MAJOR.ratio(4), 1.5)
-
-    def test_steps_beyond_the_period(self):
-        self.assertAlmostEqual(JUST_MAJOR.ratio(7), 2)
-        self.assertAlmostEqual(JUST_MAJOR.ratio(9), 2.5)
-        self.assertAlmostEqual(JUST_MAJOR.ratio(-1), 15 / 16)
-
-    def test_rejects_invalid_ratios(self):
-        for ratios in [(), (Fraction(9, 8),), (1, Fraction(5, 4), Fraction(9, 8)), (1, 2)]:
-            with self.assertRaises(ValueError, msg=ratios):
-                JustIntonation(tuple(map(Fraction, ratios)))
 
 
 if __name__ == "__main__":

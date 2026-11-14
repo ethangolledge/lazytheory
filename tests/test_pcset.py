@@ -33,13 +33,8 @@ class PitchClassSetTest(unittest.TestCase):
             with self.assertRaises(ValueError, msg=steps):
                 PitchClassSet.from_steps(steps)
 
-    def test_steps_round_trip(self):
-        self.assertEqual(IONIAN.steps, IONIAN_STEPS)
-        self.assertEqual(PitchClassSet.from_steps(IONIAN.steps), IONIAN)
-
     def test_rotate_is_a_mode(self):
         self.assertEqual(IONIAN.rotate(5).pitch_classes, (0, 2, 3, 5, 7, 8, 10))
-        self.assertEqual(IONIAN.rotate(5).steps, (2, 1, 2, 2, 1, 2, 2))
 
     def test_rotate_wraps(self):
         self.assertEqual(IONIAN.rotate(7), IONIAN)
@@ -72,11 +67,6 @@ class PitchClassSetTest(unittest.TestCase):
         for notes in (0, 13):
             with self.assertRaises(ValueError, msg=notes):
                 PitchClassSet.maximally_even(notes)
-
-    def test_contains_wraps(self):
-        self.assertIn(12, IONIAN)
-        self.assertNotIn(1, IONIAN)
-        self.assertNotIn("C", IONIAN)
 
 
 if __name__ == "__main__":
