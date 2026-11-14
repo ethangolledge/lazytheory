@@ -48,11 +48,20 @@ tuning = load_tunings()["guitar open D"]
 board = Fretboard.from_gaps(tuning.gaps)
 root = tuning.root("A")
 
-board.positions(load_scales()["Phrygian"], root)   # where A Phrygian lives on the neck
-board.voicings(load_chords()["minor 7th"], root)   # every playable Am7, one row per voicing
+board.positions(load_scales()["Phrygian"], root)  # where A Phrygian lives on the neck
+board.voicings(load_chords()["minor 7th"], root)  # every Am7 shape, one row per voicing
+```
+
+Choosing inversions for a progression with the rules in `lazy_theory.instruments.rules`:
+
+```python
+playable = [v[(fingers(v) <= 4) & contiguous(v) & within(v, 7, 11)] for v in voicings_per_chord]
+path = smoothest(playable, string_change=5)  # one voicing per chord, least total movement
+board.bass(path, root)                       # bass interval of each: which inversion it is
 ```
 
 ## Status
 
 Built: temperament, pitch-class sets, scales and modes, chord stacking and identification,
-voice leading, and a NumPy fretboard for any tuning. Next: rhythm, then export for the web app.
+voice leading, and a NumPy fretboard for any tuning that picks playable inversions for a
+progression. Next: rhythm, then export for the web app.

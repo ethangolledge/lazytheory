@@ -15,7 +15,8 @@ Each layer imports only from itself and the layers above it in this table.
 | | `chord` | `identify`: names a set against patterns passed in, trying every root | |
 | | `voice_leading` | Smallest total movement between two sets, voice by voice | |
 | `catalog` | | Names as data: scales, chords, tunings (TOML). Root note names | core |
-| `instruments` | `fretboard` | Positions, intervals and every voicing on any tuning; ordering by movement | core, NumPy |
+| `instruments` | `fretboard` | Positions, intervals, every voicing and its bass on any tuning | core, NumPy |
+| | `rules` | Swappable rules over voicing arrays; the smoothest path through a progression | |
 
 Planned: `rhythm` (cycles, groupings, subdivisions) in core; `export` (tables for the web app)
 on top.
@@ -39,6 +40,14 @@ on top.
 - **Voicings are found window by window.** Each window starts at a voicing's lowest fretted note
   and is `max_span` frets wide, so each voicing is built once and impossible stretches are never
   built. Muted strings are allowed anywhere.
+- **Playability is a set of small rules, not a list of shapes.** Each rule takes the voicing
+  array and returns one value per row: fingers needed (a barre on the lowest fret counts once),
+  contiguous strings, inside a fret region. Combine them with `&`; replace any rule without
+  touching the others. Limits are parameters.
+- **Inversions are chosen, not requested.** `smoothest` picks one voicing per chord with the
+  least total movement over the whole progression (frets moved, plus a cost for each string
+  that starts or stops), checking every path by keeping only the cheapest way to reach each
+  voicing. The inversion falls out; `bass` reports it.
 - **Inheritance only for shared behaviour; configuration otherwise.** `Scale` is a
   `PitchClassSet`. A guitar is a `Fretboard` with gaps `5 5 5 4 5`, not a `Guitar` class.
 - **Immutable values, no I/O in core.** Frozen dataclasses; functions return values.

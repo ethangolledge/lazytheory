@@ -287,6 +287,18 @@ closer together going up the neck. Touching a string at `L/n` brings out harmoni
 12th fret (1/2), ≈7th fret (1/3), 5th fret (1/4). A microtonal fretted instrument just uses a
 different N.
 
+**[math]** *Inversions on an instrument.* The inversion of a voicing is the interval, above the
+chord root, of its lowest-*pitched* note (not its lowest string: re-entrant tunings differ).
+
+**[physics]** *The hand.* What can be fretted is limited by the hand: four fretting fingers, one of
+which can barre a fret across several strings, reaching a few frets at once. These limits are
+parameters, since hands and techniques vary.
+
+**[convention]** *Choosing between voicings.* Players keep a progression in one position and on
+the same strings so voices move short distances and the sound stays even. Expressed as a cost
+(frets moved, plus a penalty for each string that starts or stops), the smoothest choice of
+inversions follows from the arithmetic.
+
 ## 8. Melody and harmony
 
 **[math]** Melody is a sequence of pitches over time; harmony is pitches at the same time. Both
