@@ -7,6 +7,7 @@ from lazy_theory.core.chord import identify
 
 SCALES = load_scales()
 CHORDS = load_chords()
+TUNINGS = load_tunings()
 
 
 class BundledCatalogTest(unittest.TestCase):
@@ -43,9 +44,31 @@ class BundledCatalogTest(unittest.TestCase):
             self.assertTrue(identify(scale.chord(degree), CHORDS), degree)
 
     def test_tunings_are_gaps_between_strings(self):
-        tunings = load_tunings()
-        self.assertEqual(tunings["guitar standard"], (5, 5, 5, 4, 5))
-        self.assertEqual(sum(tunings["guitar standard"]), 24)  # two octaves, low E to high E
+        standard = TUNINGS["guitar standard"]
+        self.assertEqual(standard.gaps, (5, 5, 5, 4, 5))
+        self.assertEqual(sum(standard.gaps), 24)  # two octaves, low E to high E
+
+
+class RootTest(unittest.TestCase):
+    def test_root_is_steps_above_the_first_string(self):
+        standard = TUNINGS["guitar standard"]
+        self.assertEqual([standard.root(note) for note in "EFGABCD"], [0, 1, 3, 5, 7, 8, 10])
+
+    def test_accidentals(self):
+        standard = TUNINGS["guitar standard"]
+        self.assertEqual(standard.root("F#"), standard.root("Gb"))
+        self.assertEqual(standard.root("Bb"), 6)
+        self.assertEqual(standard.root("Fb"), standard.root("E"))
+        self.assertEqual(standard.root("B##"), standard.root("C#"))
+
+    def test_same_note_in_another_tuning(self):
+        self.assertEqual(TUNINGS["guitar drop D"].root("E"), 2)
+        self.assertEqual(TUNINGS["ukulele standard"].root("C"), 5)
+
+    def test_rejects_non_notes(self):
+        for note in ("", "H", "C+", "do"):
+            with self.assertRaises(ValueError, msg=note):
+                TUNINGS["guitar standard"].root(note)
 
 
 class CustomCatalogTest(unittest.TestCase):

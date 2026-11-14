@@ -8,12 +8,13 @@ import tomllib
 from importlib.resources import files
 from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
 
 _BUNDLED = files(__package__)
+_LETTERS = tuple("CDEFGAB")
 
 
 def load_scales(path: Path | None = None) -> dict[str, Scale]:
@@ -37,12 +38,30 @@ def load_chords(path: Path | None = None) -> dict[str, PitchClassSet]:
     return chords
 
 
-def load_tunings(path: Path | None = None) -> dict[str, tuple[int, ...]]:
-    """Every named string tuning as gaps between neighbouring open strings, keyed by name."""
-    tunings: dict[str, tuple[int, ...]] = {}
-    for name, gaps in _read(path or _BUNDLED / "tunings.toml")["tunings"].items():
-        _add(tunings, name, tuple(gaps))
+class Tuning(NamedTuple):
+    first: str  # note name of the first open string
+    gaps: tuple[int, ...]  # steps between neighbouring open strings
+
+    def root(self, note: str) -> int:
+        """Steps from the first open string up to `note`, e.g. 5 for "A" in standard tuning."""
+        return (_pitch_class(note) - _pitch_class(self.first)) % 12
+
+
+def load_tunings(path: Path | None = None) -> dict[str, Tuning]:
+    """Every named string tuning, keyed by name."""
+    tunings: dict[str, Tuning] = {}
+    for name, entry in _read(path or _BUNDLED / "tunings.toml")["tunings"].items():
+        _add(tunings, name, Tuning(entry["first"], tuple(entry["gaps"])))
     return tunings
+
+
+def _pitch_class(note: str) -> int:
+    """C is 0. The letters are the Ionian scale on C; each # raises and each b lowers a step."""
+    letter, accidentals = note[:1].upper(), note[1:]
+    if letter not in _LETTERS or set(accidentals) - {"#", "b"}:
+        raise ValueError(f"not a note name: {note!r}")
+    natural = load_scales()["Ionian"].pitch_classes[_LETTERS.index(letter)]
+    return natural + accidentals.count("#") - accidentals.count("b")
 
 
 def _read(path: Path | Traversable) -> dict[str, Any]:
