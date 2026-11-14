@@ -4,7 +4,7 @@ import numpy as np
 
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
-from lazy_theory.instruments.fretboard import MUTED, Fretboard, by_movement
+from lazy_theory.instruments.fretboard import MUTED, Fretboard
 
 STANDARD = Fretboard.from_gaps((5, 5, 5, 4, 5))
 DROP_D = Fretboard.from_gaps((7, 5, 5, 4, 5))
@@ -84,24 +84,6 @@ class VoicingsTest(unittest.TestCase):
         shifted = np.where(movable == MUTED, MUTED, movable + 1)
         for frets in shifted:
             self.assertTrue(contains_row(up_one, frets.tolist()))
-
-
-class ByMovementTest(unittest.TestCase):
-    def test_orders_by_strings_changed_then_frets_moved(self):
-        current = np.array([0, 2, 2, 1, 0, 0])
-        candidates = np.array(
-            [
-                [MUTED, 2, 2, 1, 0, 0],  # one string stops
-                [1, 3, 3, 2, 1, 1],  # every string moves one fret
-                [0, 2, 2, 1, 0, 0],  # no change
-            ]
-        )
-        self.assertEqual(by_movement(current, candidates)[:, 0].tolist(), [0, 1, MUTED])
-
-    def test_dominant_resolves_by_single_steps(self):
-        g_seventh = np.array([3, 2, 0, 0, 0, 1])
-        best = by_movement(g_seventh, STANDARD.voicings(MAJOR, C))[0]
-        self.assertEqual((best - g_seventh).tolist(), [0, 1, 2, 0, 1, -1])
 
 
 if __name__ == "__main__":

@@ -95,16 +95,10 @@ class Fretboard:
         voicings: Grid = grid[starts_here & every_tone]
         return voicings
 
-
-def by_movement(current: Grid, candidates: Grid) -> Grid:
-    """`candidates` ordered from the smoothest change from `current`.
-
-    Smoothest means fewest strings starting or stopping, then least total fret movement on the
-    strings that sound in both. On one string, frets moved is steps moved, so the move on each
-    string is just `candidate - current`.
-    """
-    both = (current != MUTED) & (candidates != MUTED)
-    started_or_stopped = ((current != MUTED) != (candidates != MUTED)).sum(axis=1)
-    movement = np.where(both, np.abs(candidates - current), 0).sum(axis=1)
-    smoothest_first: Grid = candidates[np.lexsort((movement, started_or_stopped))]
-    return smoothest_first
+    def bass(self, frets: Grid, root: int) -> Grid:
+        """Interval above `root` of each voicing's lowest-sounding pitch: 0 is root position,
+        and any other chord tone names the inversion. Found by pitch, so re-entrant strings
+        are handled."""
+        pitches = np.where(frets != MUTED, self.open_strings + frets, np.iinfo(np.int16).max)
+        bass: Grid = (pitches.min(axis=1) - root) % self.size
+        return bass
