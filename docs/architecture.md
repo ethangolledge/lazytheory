@@ -14,9 +14,10 @@ Each layer imports only from itself and the layers above it in this table.
 | | `scale` | `Scale(PitchClassSet)`: always contains its root; stacks chords by stride | |
 | | `chord` | `identify`: names a set against patterns passed in, trying every root | |
 | | `voice_leading` | Smallest total movement between two sets, voice by voice | |
-| `catalog` | | Names as data: scales, chords, tunings (TOML). Root note names | core |
-| `instruments` | `fretboard` | Positions, intervals, every voicing and its bass on any tuning | core, NumPy |
-| | `rules` | Swappable rules over voicing arrays; the smoothest path through a progression | |
+| `catalog` | | Names as data: scales, chords, tunings with scale length and frequency (TOML). Note names | core |
+| `instruments` | `fretboard` | Positions, every voicing within a hand's reach, and each voicing's pitches, frequencies, stack of intervals and hand position | core, catalog, NumPy |
+| | `acoustics` | Roughness of each voicing from its frequencies | NumPy |
+| | `rules` | Swappable rules over voicing arrays; the cheapest path through a progression | |
 
 Planned: `rhythm` (cycles, groupings, subdivisions) in core; `export` (tables for the web app)
 on top.
@@ -37,17 +38,23 @@ on top.
 - **NumPy at the instrument, tuples in core.** Core sets hold 3 to 8 numbers and must be
   hashable, where tuples are faster. The fretboard works on whole grids and every combination of
   strings, where vectors pay off.
-- **Voicings are found window by window.** Each window starts at a voicing's lowest fretted note
-  and is `max_span` frets wide, so each voicing is built once and impossible stretches are never
-  built. Muted strings are allowed anywhere.
+- **Map every voicing, then work backwards.** `voicings` builds every voicing within reach, so
+  nothing is missed. Rules then remove what a hand can't play and costs rank the rest. Each
+  window starts at a voicing's lowest fretted note and ends `reach` mm up the neck, so each
+  voicing is built once and impossible stretches are never built.
+- **Physical measures in physical units.** Reach and hand movement are millimetres, from the fret
+  positions the temperament and scale length give; roughness is computed from frequencies in
+  hertz. So the same rules hold on a bass, a ukulele or a 31-EDO guitar.
 - **Playability is a set of small rules, not a list of shapes.** Each rule takes the voicing
-  array and returns one value per row: fingers needed (a barre on the lowest fret counts once),
+  array and returns one value per row: the fewest fingers needed (a finger can barre any fret),
   contiguous strings, inside a fret region. Combine them with `&`; replace any rule without
   touching the others. Limits are parameters.
-- **Inversions are chosen, not requested.** `smoothest` picks one voicing per chord with the
-  least total movement over the whole progression (frets moved, plus a cost for each string
-  that starts or stops), checking every path by keeping only the cheapest way to reach each
-  voicing. The inversion falls out; `bass` reports it.
+- **Inversions are chosen, not requested.** `smoothest` takes a cost per voicing (e.g.
+  roughness) and a cost per change (e.g. hand movement, steps moved on each string, bass
+  motion) and picks one voicing per chord with the least total over the whole progression,
+  checking every path by keeping only the cheapest way to reach each voicing. The inversions
+  fall out; `stack` reports them. The weights are arguments, because they are not yet measured
+  for guitar.
 - **Inheritance only for shared behaviour; configuration otherwise.** `Scale` is a
   `PitchClassSet`. A guitar is a `Fretboard` with gaps `5 5 5 4 5`, not a `Guitar` class.
 - **Immutable values, no I/O in core.** Frozen dataclasses; functions return values.

@@ -74,7 +74,10 @@ the physics, not a law. The code treats the period as a parameter.
   inharmonic timbres, other intervals beat least (Sethares, *Tuning, Timbre, Spectrum, Scale*).
 - *Harmonicity.* How closely the combined partials fit a single harmonic series. Across 250+
   Western listeners, this predicted preference for consonant chords; aversion to beating did not
-  (McDermott, Lehr & Oxenham 2010).
+  (McDermott, Lehr & Oxenham 2010). Reanalysing 500+ listeners and 100,000+ pieces, Harrison &
+  Pearce (2020) found consonance is a composite of roughness, harmonicity and familiarity.
+- Harmonicity depends mostly on the pitch classes; roughness depends on the voicing, because
+  the critical band within which partials beat is wider at low frequencies (§7).
 
 **[convention]** *Preferring* consonance is learned. Tsimane' listeners told consonant and
 dissonant chords apart but rated them equally pleasant (McDermott et al. 2016). The code can
@@ -282,22 +285,57 @@ be stored relative to the lowest string:
 | Guitar, all-fourths | 5 5 5 5 5 |
 | Guitar, DADGAD | 7 5 5 2 5 |
 
-**[physics]** Fret *k* in N-EDO sits at distance `L · (1 − 2^(−k/N))` from the nut, so frets get
-closer together going up the neck. Touching a string at `L/n` brings out harmonic *n*: the
-12th fret (1/2), ≈7th fret (1/3), 5th fret (1/4). A microtonal fretted instrument just uses a
-different N.
+**[physics]** A string's frequency is inversely proportional to its vibrating length, so the fret
+`k` steps up sits `L · (1 − 1/ratio(k))` from the nut (`L` the scale length): half way for the
+octave, whatever the temperament. Frets get closer together up the neck, so a hand's reach is a
+length, not a fret count. The span of frets 1–4 on a 648 mm guitar (97 mm) covers 6 frets from
+the 12th, and fewer frets on an 864 mm bass. Touching a string at `L/n` brings out harmonic *n*:
+the 12th fret (1/2), ≈7th fret (1/3), 5th fret (1/4).
 
-**[math]** *Inversions on an instrument.* The inversion of a voicing is the interval, above the
-chord root, of its lowest-*pitched* note (not its lowest string: re-entrant tunings differ).
+**[math]** *Every voicing.* A voicing gives each string a fret holding a chord tone, or mutes it,
+so that every chord tone sounds and every fretted note is within the hand's reach. The code
+builds all of them. The ways voicings of one chord differ can all be read off the fret numbers:
 
-**[physics]** *The hand.* What can be fretted is limited by the hand: four fretting fingers, one of
-which can barre a fret across several strings, reaching a few frets at once. These limits are
-parameters, since hands and techniques vary.
+| Variation | Read from |
+|---|---|
+| Inversion | Chord tone of the lowest *pitch* (not lowest string: re-entrant tunings differ) |
+| Top note | Chord tone of the highest pitch, which is heard as the melody |
+| Spacing and doubling | The chord tones from lowest to highest pitch: close, open, drop voicings |
+| String set | Which strings sound |
+| Position | Where the hand sits: the lowest fretted note, under the index finger |
 
-**[convention]** *Choosing between voicings.* Players keep a progression in one position and on
-the same strings so voices move short distances and the sound stays even. Expressed as a cost
-(frets moved, plus a penalty for each string that starts or stops), the smoothest choice of
-inversions follows from the arithmetic.
+Everything else is a filter or a cost over that full list, so nothing is missed by construction.
+
+**[physics]** *The hand.* Left-hand difficulty has three biomechanical sources, in this order of
+weight: moving the hand along the neck, a wide finger span, and playing far from the middle of
+the neck (Heijink & Meulenbroek 2002). Asked for the easiest fingerings, six professional
+guitarists avoided moving the hand in 29 of 31 cases and spanned four frets in 29. A hand has
+four fretting fingers, placed in fret order. One finger can *barre* notes at one fret across
+the strings between them, unless one of those strings is open, muted or fretted lower: the barre
+would sound over it.
+
+**[physics]** *Spacing.* The same chord is rougher when it is close and low, because the critical
+band is wider at low frequencies (§2). That is the reason behind the spacing rule, wide
+intervals at the bottom and close ones at the top (Huron 2001). A model fitted to how Bach
+voiced 370 chorales scores each voicing by roughness alongside voice-leading distance, melody
+motion and parallels (Harrison & Pearce 2020).
+
+**[convention, derived]** *How inversions are used.* The bass and the top voice are the most
+audible lines (Huron 2001), and common practice uses inversions to shape the bass line. Root
+position is the most stable (Lerdahl & Krumhansl 2007 count an inversion as 2 units of surface
+tension, a top note other than the root as 1). The unstable second inversion (6/4) is used where
+the bass holds (pedal 6/4) or passes by step (passing 6/4), and a seventh in the bass (4/2) falls
+a step to a first inversion. All of these follow from one rule, *move the bass as little as
+possible*, and the tests derive them that way.
+
+**[convention]** *Choosing voicings on guitar.* Guitar teaching learns triads in all three
+inversions on each set of adjacent strings, and seventh chords in all four (drop-2 and drop-3
+voicings), then plays a progression in one position, moving to the nearest inversion.
+That is the same as choosing the voicing path with the least hand movement, string-by-string
+motion and roughness. The code scores each change by those measures and finds the cheapest path
+through the whole progression. How much each measure weighs is not yet known for guitar.
+Harrison & Pearce fitted such weights to Bach by maximum likelihood, and the same could be done
+from a corpus of guitar tablature.
 
 ## 8. Melody and harmony
 
@@ -316,7 +354,9 @@ them separate.
 
 | Component | Tag | Measured from |
 |---|---|---|
-| Roughness and harmonicity | **[physics]** | Partials (Plomp & Levelt; Sethares; McDermott) |
+| Roughness | **[physics]** | Partials of the actual voicing (Plomp & Levelt; Hutchinson & Knopoff) |
+| Harmonicity | **[physics]** | Partials of the pitch classes (McDermott; Harrison & Pearce) |
+| Inversion, top note other than the root | **[convention]** (learned) | A voicing and its root (Lerdahl & Krumhansl) |
 | Voice-leading distance | **[math]** | Two pitch sets (Tymoczko) |
 | Notes outside the current scale | **[math]** | A chord and a scale |
 | Expectation, which note feels like home | **[convention]** (learned) | Listening experience (Krumhansl; Huron) |
@@ -424,6 +464,16 @@ length is pure arithmetic.
 - Clough, J. & Douthett, J. (1991). Maximally even sets. *Journal of Music Theory* 35.
 - Cohn, R. (1997). Neo-Riemannian operations, parsimonious trichords, and their *Tonnetz*
   representations. *Journal of Music Theory* 41.
+- Harrison, P. & Pearce, M. (2020). Simultaneous consonance in music perception and
+  composition. *Psychological Review* 127(2).
+- Harrison, P. & Pearce, M. (2020). A computational cognitive model for the analysis and
+  generation of voice leadings. *Music Perception* 37(3).
+- Heijink, H. & Meulenbroek, R. (2002). On the complexity of classical guitar playing:
+  functional adaptations to task constraints. *Journal of Motor Behavior* 34(4).
+- Huron, D. (2001). Tone and voice: a derivation of the rules of voice-leading from perceptual
+  principles. *Music Perception* 19(1).
+- Hutchinson, W. & Knopoff, L. (1978). The acoustic component of Western consonance.
+  *Interface* 7.
 - Jacoby, N. et al. (2019). Universal and non-universal features of musical pitch perception
   revealed by singing. *Current Biology* 29.
 - Lerdahl, F. & Krumhansl, C. (2007). Modeling tonal tension. *Music Perception* 24(4).
