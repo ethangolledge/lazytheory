@@ -40,9 +40,10 @@ The same checks run on every push (`.github/workflows/checks.yml`).
 
 ## Status
 
-Early. `src/lazy_theory/core` and `catalog` are built: temperaments, pitch-class sets, scales and
-modes, chord stacking and identification, voice leading. `base.py` is the original 12-TET guitar prototype,
-kept until fretboard mapping moves into the layered design in `docs/architecture.md`.
+Early. Built: temperaments, pitch-class sets, scales and modes, chord stacking and
+identification, voice leading, and a NumPy fretboard that maps any scale or chord onto any
+tuning and finds every voicing. `base.py` is the original 12-TET guitar prototype, kept for
+reference until the export layer replaces its CSV output.
 
 Near-term goals carried over from the prototype:
 
