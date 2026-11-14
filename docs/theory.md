@@ -314,6 +314,11 @@ four fretting fingers, placed in fret order. One finger can *barre* notes at one
 the strings between them, unless one of those strings is open, muted or fretted lower: the barre
 would sound over it.
 
+**[convention]** *Thumb over the neck (option, not built).* Some players fret the lowest string or
+two with the thumb, wrapped over the top of the neck, which frees a finger. It belongs to some
+styles and hands, not all, so it would be a separate rule a player opts into: allow one extra
+fretted note on the lowest strings, at or behind the index finger's fret.
+
 **[physics]** *Spacing.* The same chord is rougher when it is close and low, because the critical
 band is wider at low frequencies (§2). That is the reason behind the spacing rule, wide
 intervals at the bottom and close ones at the top (Huron 2001). A model fitted to how Bach
