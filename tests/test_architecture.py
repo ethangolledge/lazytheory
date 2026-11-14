@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 PACKAGE = Path(__file__).parents[1] / "src" / "lazy_theory"
-LAYERS = ["core", "catalog"]  # lowest first; a layer may import only itself and layers below
+LAYERS = ["core", "catalog", "instruments"]  # lowest first; import only itself and below
 
 
 def imports(path: Path) -> set[str]:

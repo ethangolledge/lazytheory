@@ -6,7 +6,9 @@ authors = [
     { name = "ethan golledge", email = "ethg@hotmail.co.uk" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "numpy>=2.5.4",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.3,<0.12.0"]
