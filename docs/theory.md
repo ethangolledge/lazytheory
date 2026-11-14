@@ -49,8 +49,12 @@ cents(r) = 1200 · log2(r)
 Intervals then *add* where ratios *multiply*: `cents(a·b) = cents(a) + cents(b)`.
 
 **[physics]** The *octave* (2:1) is the simplest interval after unison. Every partial of the upper
-note is also a partial of the lower one. Tones an octave apart are heard as "the same note,
-higher" in most studied cultures (*octave equivalence*). This is why scales repeat every octave.
+note is also a partial of the lower one.
+
+**[convention]** Hearing tones an octave apart as "the same note" (*octave equivalence*) is strong
+in Western listeners, especially musicians, but was not detected in Tsimane' listeners in the
+Bolivian Amazon (Jacoby et al. 2019). Scales repeating every octave is therefore a choice built on
+the physics, not a law. The code treats the period as a parameter.
 
 **[math]** The ratios between neighbouring harmonics give the simple intervals:
 
@@ -63,15 +67,18 @@ higher" in most studied cultures (*octave equivalence*). This is why scales repe
 | 6:5 | 6/5 | 315.641 | minor third |
 | 7:4 | 7/4 | 968.826 | harmonic seventh |
 
-**[physics]** *Consonance* (how smooth an interval sounds) has a measurable physical part. When
-partials of two tones are close but not equal, they *beat* and sound rough (Helmholtz; Plomp &
-Levelt 1965). Simple ratios line up many partials exactly, so they produce little roughness.
-That roughness depends on the timbre. With inharmonic timbres, different intervals sound smooth
-(Sethares, *Tuning, Timbre, Spectrum, Scale*).
+**[physics]** Two measurable properties separate simple-ratio intervals from complex ones:
 
-**[convention]** Ranking intervals by "consonance" beyond that physical part is learned and
-cultural. The code can compute roughness or ratio simplicity, but it must not hard-code a ranking
-of "good" and "bad" intervals.
+- *Roughness.* Partials that are close but not equal *beat* (Helmholtz; Plomp & Levelt 1965).
+  Simple ratios line up many partials exactly, so they beat less. This depends on timbre: with
+  inharmonic timbres, other intervals beat least (Sethares, *Tuning, Timbre, Spectrum, Scale*).
+- *Harmonicity.* How closely the combined partials fit a single harmonic series. Across 250+
+  Western listeners, this predicted preference for consonant chords; aversion to beating did not
+  (McDermott, Lehr & Oxenham 2010).
+
+**[convention]** *Preferring* consonance is learned. Tsimane' listeners told consonant and
+dissonant chords apart but rated them equally pleasant (McDermott et al. 2016). The code can
+compute roughness or harmonicity; it must never rank intervals as "good" or "bad".
 
 ## 3. Why 12 notes? Temperament
 
@@ -297,7 +304,7 @@ them separate.
 
 | Component | Tag | Measured from |
 |---|---|---|
-| Roughness / ratio complexity | **[physics]** | Partials and ratios (Plomp & Levelt; Sethares) |
+| Roughness and harmonicity | **[physics]** | Partials (Plomp & Levelt; Sethares; McDermott) |
 | Voice-leading distance | **[math]** | Two pitch sets (Tymoczko) |
 | Notes outside the current scale | **[math]** | A chord and a scale |
 | Expectation, which note feels like home | **[convention]** (learned) | Listening experience (Krumhansl; Huron) |
@@ -374,7 +381,9 @@ Carnatic *jāti* names the number used for a group length or subdivision:
 | miśra | 7 | ta ki ṭa ta ka di mi |
 | saṅkīrṇa | 9 | ta ka di mi ta ka ta ki ṭa |
 
-Examples: *Tīntāl* = 16 mātrās as 4+4+4+4; *Rūpak* = 7 as 3+2+2; *Ādi tāḷa* = 8 as 4+2+2.
+Examples: Hindustani *Tīntāl* = 16 mātrās as 4+4+4+4 and *Rūpak tāl* = 7 as 3+2+2; Carnatic
+*Ādi tāḷa* = 8 akṣaras as 4+2+2. Names can mislead: Carnatic *Rūpaka tāḷa* is a different
+cycle (2+4 in its common form).
 The *tihāī* (a phrase played three times so that it lands on sam) is a structural device whose
 length is pure arithmetic.
 
@@ -403,7 +412,13 @@ length is pure arithmetic.
 - Clough, J. & Douthett, J. (1991). Maximally even sets. *Journal of Music Theory* 35.
 - Cohn, R. (1997). Neo-Riemannian operations, parsimonious trichords, and their *Tonnetz*
   representations. *Journal of Music Theory* 41.
+- Jacoby, N. et al. (2019). Universal and non-universal features of musical pitch perception
+  revealed by singing. *Current Biology* 29.
 - Lerdahl, F. & Krumhansl, C. (2007). Modeling tonal tension. *Music Perception* 24(4).
+- McDermott, J., Lehr, A. & Oxenham, A. (2010). Individual differences reveal the basis of
+  consonance. *Current Biology* 20.
+- McDermott, J. et al. (2016). Indifference to dissonance in native Amazonians reveals cultural
+  variation in music perception. *Nature* 535.
 - Parncutt, R. (1988). Revision of Terhardt's model of the root(s) of a musical chord.
   *Music Perception* 6.
 - Plomp, R. & Levelt, W. (1965). Tonal consonance and critical bandwidth. *JASA* 38.
