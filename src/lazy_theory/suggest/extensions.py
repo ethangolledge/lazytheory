@@ -11,7 +11,7 @@ from itertools import combinations
 from lazy_theory.catalog import load_scales
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
-from lazy_theory.instruments.taste import Chords
+from lazy_theory.instruments.fretboard import Chords
 
 
 def stack(scale: Scale, degree: int) -> list[int]:

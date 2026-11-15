@@ -9,18 +9,18 @@ player's cheapest path through the progression, plus what the retuning costs and
 key's other chords sit on the same neck.
 """
 
-import math
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
-from itertools import product
+from functools import partial
 from typing import NamedTuple
 
 import numpy as np
 
 from lazy_theory.catalog import Tuning
 from lazy_theory.core.scale import Scale
-from lazy_theory.instruments.fretboard import Floats, Fretboard, Grid
-from lazy_theory.instruments.taste import Chords, Taste
+from lazy_theory.instruments.fretboard import Chords, Fretboard, Grid
+from lazy_theory.instruments.rules import smoothest
+from lazy_theory.instruments.taste import Taste
 
 # Tension rises with the square of frequency: 4 steps down leaves 63% of it, 2 up adds 26%.
 SAFE_STEPS = range(-4, 3)
@@ -33,26 +33,37 @@ class Suggestion(NamedTuple):
     cost: float
 
 
-def retunings(strings: int, steps: Sequence[int]) -> Grid:
-    """Every way to move each of `strings` strings by one of `steps`, one row each."""
-    moves: Grid = np.array(list(product(steps, repeat=strings)), dtype=np.int16)
-    return moves.reshape(-1, strings)
-
-
 def key(scale: Scale, root: int, notes: int = 3) -> Chords:
     """The chord on each degree of `scale` from `root`, stacked in thirds."""
     degrees = range(len(scale))
     return [(scale.chord(degree, notes), root + scale.pitch_classes[degree]) for degree in degrees]
 
 
-def screen(open_strings: Grid, chords: Chords, size: int) -> Floats:
-    """Share of open strings that are chord tones, averaged over the chords, for each row of
-    open-string pitches (strings on the last axis)."""
-    tones = np.zeros((len(chords), size), dtype=bool)
-    for index, (chord, root) in enumerate(chords):
-        tones[index, (np.array(chord.pitch_classes) + root) % size] = True
-    share: Floats = tones[:, open_strings % size].mean(axis=(0, -1))
-    return share
+def screen(
+    open_strings: Grid, steps: Sequence[int], capos: Sequence[int], chords: Chords, size: int
+) -> Grid:
+    """Open strings that are chord tones, summed over the chords, for every retuning by `steps`
+    at every capo: shape (len(steps),) * strings + (len(capos),).
+
+    A string's count depends only on its own step and the capo, so each string gets a small
+    [step, capo] table and the tables are broadcast together, never enumerated one by one.
+    """
+    hits = np.zeros(size, dtype=np.int16)  # chords each pitch class belongs to
+    for chord, root in chords:
+        hits[(np.array(chord.pitch_classes) + root) % size] += 1
+    pitch = np.add.outer(np.add.outer(open_strings, steps), capos) % size  # [string, step, capo]
+    return _by_string(hits[pitch])
+
+
+def _by_string(tables: Grid) -> Grid:
+    """Sum of one [step, capo] table per string, for every retuning and capo: each string's
+    table broadcast along its own axis, shape (steps,) * strings + (capos,)."""
+    strings, steps, capos = tables.shape
+    total: Grid = sum(
+        table.reshape([steps if axis == string else 1 for axis in range(strings)] + [capos])
+        for string, table in enumerate(tables)
+    )
+    return total
 
 
 def suggest(
@@ -74,25 +85,30 @@ def suggest(
     key), so a neck that suits these chords but not the next one ranks lower. Every chord must
     be playable. The screen keeps `shortlist` retuning and capo pairs, and always `base` with
     no capo. Equal costs rank the smaller retuning first, and a path playing the same pitches
-    as a better one is dropped. Roots stay measured from the base tuning's first open string.
+    as a better one is dropped.
     """
-    moves = retunings(len(base.open_strings), steps)
-    capo = np.array(capos, dtype=np.int16)
-    open_strings = base.open_strings + moves[:, None, :] + capo[:, None]  # [move, capo, string]
-    score = screen(open_strings, chords, base.size).ravel()
-    effort = np.repeat(np.abs(moves).sum(axis=1), len(capo))
-    pairs = [divmod(int(i), len(capo)) for i in np.lexsort((effort, -score))[:shortlist]]
-    unchanged = int(np.flatnonzero((moves == 0).all(axis=1))[0])
+    strings, step = len(base.open_strings), np.array(steps, dtype=np.int16)
+    score = screen(base.open_strings, steps, capos, chords, base.size).astype(np.int32)
+    effort = _by_string(np.broadcast_to(np.abs(step)[:, None], (strings, len(step), 1)))
+    rank = ((score.max() - score) * (effort.max() + 1) + effort).ravel()  # tones, then effort
+    kth = min(shortlist, rank.size) - 1
+    tied = np.flatnonzero(rank <= np.partition(rank, kth)[kth])  # in order, as a stable sort
+    best = tied[np.argsort(rank[tied], kind="stable")][:shortlist]
+    unchanged = np.ravel_multi_index((*(steps.index(0),) * strings, 0), score.shape)
 
     found = []
-    for move_index, capo_index in dict.fromkeys([(unchanged, 0), *pairs]):
-        move, fret = moves[move_index], int(capo[capo_index])
+    for index in dict.fromkeys([int(unchanged), *best.tolist()]):
+        *choice, capo_index = np.unravel_index(index, score.shape)
+        move, fret = step[choice], int(capos[capo_index])
         board = replace(base, open_strings=base.open_strings + move).capo(fret)
-        try:  # ValueError: some chord has no voicing this player allows
-            path, cost = taste.path(board, chords)
-            near = [taste.standing(board, taste.voicings(board, *chord)).min() for chord in context]
-        except ValueError:
-            continue
+        options = taste.options(board, [*chords, *context])
+        if any(len(voicings) == 0 for voicings in options):
+            continue  # some chord has no voicing this player allows
+        costs = taste.costs(board, options)
+        path, cost = smoothest(
+            options[: len(chords)], partial(taste.transition, board), costs[: len(chords)]
+        )
+        near = [chord_costs.min() for chord_costs in costs[len(chords) :]]
         effort_here = int(np.abs(move).sum())
         total = cost + retune * effort_here + context_weight * sum(near)
         sound = np.nan_to_num(board.notes(path), nan=-1).tobytes()
@@ -106,19 +122,15 @@ def suggest(
     return suggestions[:top]
 
 
-def name(open_strings: Grid, base: Fretboard, tunings: Mapping[str, Tuning]) -> str | None:
-    """The catalog's name for these open strings (pitch 0 being `base`'s first open string),
-    or a named tuning moved by whole steps, e.g. "guitar open D +2"; the smallest move wins."""
-    period = float(base.temperament.period)
+def name(open_strings: Grid, tunings: Mapping[str, Tuning]) -> str | None:
+    """The catalog's name for these open strings, or a named tuning moved by whole steps, e.g.
+    "guitar open D +2"; the smallest move wins."""
     moved = {}
     for tuning_name, tuning in tunings.items():
-        named = Fretboard.from_tuning(tuning)
-        if len(named.open_strings) != len(open_strings):
-            continue
-        offset = round(base.size * math.log(tuning.hertz / base.hertz, period))
-        shift = np.asarray(open_strings) - named.open_strings - offset
-        if (shift == shift[0]).all():
-            moved[tuning_name] = int(shift[0])
+        if len(tuning.open_strings) == len(open_strings):
+            shift = np.subtract(open_strings, tuning.open_strings)
+            if (shift == shift[0]).all():
+                moved[tuning_name] = int(shift[0])
     if not moved:
         return None
     nearest = min(moved, key=lambda one: abs(moved[one]))

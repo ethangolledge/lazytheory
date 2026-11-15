@@ -33,6 +33,27 @@ class LayerTest(unittest.TestCase):
                         with self.subTest(file=path.name, imports=module):
                             self.assertIn(module.split(".")[1], allowed)
 
+    def test_no_import_cycles(self):
+        graph = {
+            ".".join(
+                ("lazy_theory", *path.relative_to(PACKAGE).with_suffix("").parts)
+            ).removesuffix(".__init__"): {
+                module for module in imports(path) if module.startswith("lazy_theory.")
+            }
+            for path in PACKAGE.rglob("*.py")
+        }
+        done: set[str] = set()
+
+        def visit(module: str, path: tuple[str, ...]) -> None:
+            self.assertNotIn(module, path, f"import cycle: {' -> '.join((*path, module))}")
+            if module not in done:
+                for imported in graph.get(module, ()):
+                    visit(imported, (*path, module))
+                done.add(module)
+
+        for module in graph:
+            visit(module, ())
+
     def test_core_uses_only_the_standard_library(self):
         for path in (PACKAGE / "core").glob("*.py"):
             for module in imports(path):

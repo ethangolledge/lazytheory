@@ -26,7 +26,7 @@ STANDARD = Fretboard.from_tuning(load_tunings()["guitar standard"])
 REACH = STANDARD.fret_distance[4] - STANDARD.fret_distance[1]
 IONIAN = Scale.from_steps((2, 2, 1, 2, 2, 2, 1))
 MAJOR = PitchClassSet((0, 4, 7))
-C, F, G = 8, 1, 3  # steps above standard tuning's low E
+C, F, G = 0, 5, 7  # pitch classes
 
 
 def rows(*voicings: list[int]) -> np.ndarray:
@@ -150,7 +150,7 @@ class SmoothestTest(unittest.TestCase):
             + transition(five, one)[None, :, :]
             + cost(one)[None, None, :]
         )
-        path, total = smoothest([two, five, one], transition, cost)
+        path, total = smoothest([two, five, one], transition, [cost(two), cost(five), cost(one)])
         self.assertAlmostEqual(total, every_path.min())
         chosen = sum(cost(path[i : i + 1])[0] for i in range(3)) + sum(
             transition(path[i : i + 1], path[i + 1 : i + 2])[0, 0] for i in range(2)

@@ -2,8 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lazy_theory.catalog import load_chords, load_scales, load_tunings
+from lazy_theory.catalog import load_chords, load_scales, load_tunings, pitch, pitch_class
 from lazy_theory.core.chord import identify
+from lazy_theory.core.temperament import EqualTemperament
 
 SCALES = load_scales()
 CHORDS = load_chords()
@@ -43,38 +44,36 @@ class BundledCatalogTest(unittest.TestCase):
         for degree in range(len(scale)):
             self.assertTrue(identify(scale.chord(degree), CHORDS), degree)
 
-    def test_tunings_are_gaps_between_strings(self):
-        standard = TUNINGS["guitar standard"]
-        self.assertEqual(standard.gaps, (5, 5, 5, 4, 5))
-        self.assertEqual(sum(standard.gaps), 24)  # two octaves, low E to high E
+    def test_tunings_are_open_string_pitches(self):
+        self.assertEqual(TUNINGS["guitar standard"].open_strings, (28, 33, 38, 43, 47, 52))
+        self.assertEqual(TUNINGS["guitar drop D"].open_strings[0], pitch("D2"))
+        self.assertEqual(TUNINGS["ukulele standard"].open_strings, (55, 48, 52, 57))  # re-entrant
 
     def test_tunings_know_their_frequency_and_length(self):
         guitar, bass = TUNINGS["guitar standard"], TUNINGS["bass standard"]
-        self.assertAlmostEqual(guitar.hertz, 82.407, places=3)  # E2, from A4 = 440 Hz
-        self.assertAlmostEqual(bass.hertz * 2, guitar.hertz)  # E1, an octave below
+        e2 = guitar.hertz * EqualTemperament().ratio(guitar.open_strings[0])
+        self.assertAlmostEqual(e2, 82.407, places=3)  # from A4 = 440 Hz
+        self.assertEqual(bass.open_strings[0], guitar.open_strings[0] - 12)  # E1
         self.assertEqual((guitar.scale_length, bass.scale_length), (648.0, 864.0))
 
 
-class RootTest(unittest.TestCase):
-    def test_root_is_steps_above_the_first_string(self):
-        standard = TUNINGS["guitar standard"]
-        self.assertEqual([standard.root(note) for note in "EFGABCD"], [0, 1, 3, 5, 7, 8, 10])
+class NoteTest(unittest.TestCase):
+    def test_pitch_classes_count_up_from_c(self):
+        self.assertEqual([pitch_class(note) for note in "CDEFGAB"], [0, 2, 4, 5, 7, 9, 11])
+
+    def test_pitches_count_up_from_c0(self):
+        self.assertEqual((pitch("C0"), pitch("E2"), pitch("A4")), (0, 28, 57))
 
     def test_accidentals(self):
-        standard = TUNINGS["guitar standard"]
-        self.assertEqual(standard.root("F#"), standard.root("Gb"))
-        self.assertEqual(standard.root("Bb"), 6)
-        self.assertEqual(standard.root("Fb"), standard.root("E"))
-        self.assertEqual(standard.root("B##"), standard.root("C#"))
-
-    def test_same_note_in_another_tuning(self):
-        self.assertEqual(TUNINGS["guitar drop D"].root("E"), 2)
-        self.assertEqual(TUNINGS["ukulele standard"].root("C"), 5)
+        self.assertEqual(pitch_class("F#"), pitch_class("Gb"))
+        self.assertEqual(pitch_class("Bb"), 10)
+        self.assertEqual(pitch_class("Fb"), pitch_class("E"))
+        self.assertEqual(pitch_class("B##"), pitch_class("C#") + 12)  # an octave up; mod as needed
 
     def test_rejects_non_notes(self):
         for note in ("", "H", "C+", "do"):
             with self.assertRaises(ValueError, msg=note):
-                TUNINGS["guitar standard"].root(note)
+                pitch_class(note)
 
 
 class CustomCatalogTest(unittest.TestCase):

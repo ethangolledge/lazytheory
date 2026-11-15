@@ -16,8 +16,7 @@ UKULELE = Fretboard.from_tuning(TUNINGS["ukulele standard"], frets=12)
 REACH = STANDARD.fret_distance[4] - STANDARD.fret_distance[1]  # one finger per fret, frets 1-4
 PHRYGIAN = Scale.from_steps((1, 2, 2, 2, 1, 2, 2))
 MAJOR = PitchClassSet((0, 4, 7))
-C = 8  # steps above standard tuning's low E
-E = 0
+C, E = 0, 4  # pitch classes
 
 
 def rows(*voicings: list[int]) -> np.ndarray:
@@ -30,7 +29,9 @@ def contains_row(grid: np.ndarray, row: list[int]) -> bool:
 
 class FretboardTest(unittest.TestCase):
     def test_open_strings_from_gaps(self):
-        self.assertEqual(STANDARD.open_strings.tolist(), [0, 5, 10, 15, 19, 24])
+        self.assertEqual(
+            STANDARD.open_strings.tolist(), [28, 33, 38, 43, 47, 52]
+        )  # E2 A2 D3 G3 B3 E4
 
     def test_open_strings_are_read_only(self):
         with self.assertRaises(ValueError):
@@ -39,24 +40,24 @@ class FretboardTest(unittest.TestCase):
     def test_pitch_grid(self):
         self.assertEqual(STANDARD.pitches.shape, (6, 25))
         self.assertEqual(STANDARD.pitches[0, 5], STANDARD.pitches[1, 0])  # 5th fret = next string
-        self.assertEqual(STANDARD.pitches[0, 12], 12)
+        self.assertEqual(STANDARD.pitches[0, 12], 40)  # E3
 
     def test_intervals_from_any_root(self):
-        self.assertEqual(STANDARD.intervals(root=5)[1, 0], 0)
-        self.assertEqual(STANDARD.intervals(root=5)[0, 0], 7)
+        self.assertEqual(STANDARD.intervals(root=9)[1, 0], 0)  # A is the root
+        self.assertEqual(STANDARD.intervals(root=9)[0, 0], 7)  # E is its fifth
 
     def test_scale_positions(self):
         positions = STANDARD.positions(PHRYGIAN, E)
         self.assertEqual(positions[0, :4].tolist(), [True, True, False, True])
 
     def test_retuning_a_string_shifts_only_that_string(self):
-        # Drop D measures from D, two steps below E, so the same key's root is 2.
-        standard, drop_d = STANDARD.positions(PHRYGIAN, E), DROP_D.positions(PHRYGIAN, 2)
+        # The same key has the same root on any neck; only the dropped string's frets move.
+        standard, drop_d = STANDARD.positions(PHRYGIAN, E), DROP_D.positions(PHRYGIAN, E)
         np.testing.assert_array_equal(drop_d[0, 2:], standard[0, :-2])
         np.testing.assert_array_equal(drop_d[1:], standard[1:])
 
     def test_re_entrant_tuning(self):
-        self.assertEqual(UKULELE.open_strings.tolist(), [0, -7, -3, 2])
+        self.assertEqual(UKULELE.open_strings.tolist(), [55, 48, 52, 57])  # G4 C4 E4 A4
 
     def test_other_temperaments(self):
         tet31 = Fretboard((0, 13, 26, 39, 49, 62), 648.0, 82.41, temperament=EqualTemperament(31))
@@ -132,7 +133,7 @@ class CapoTest(unittest.TestCase):
     CAPO_2 = STANDARD.capo(2)
 
     def test_open_strings_sound_higher(self):
-        self.assertEqual(self.CAPO_2.open_strings.tolist(), [2, 7, 12, 17, 21, 26])
+        self.assertEqual(self.CAPO_2.open_strings.tolist(), [30, 35, 40, 45, 49, 54])  # F#2 .. F#4
         self.assertEqual(self.CAPO_2.frets, 22)
 
     def test_capo_is_a_movable_nut(self):
@@ -166,7 +167,7 @@ class StackTest(unittest.TestCase):
 
     def test_sorted_by_pitch_not_string(self):
         c_major = rows([0, 0, 0, 3])  # G4 C4 E4 C5 on a re-entrant ukulele
-        self.assertEqual(UKULELE.stack(c_major, root=-7)[0].tolist(), [0, 4, 7, 0])
+        self.assertEqual(UKULELE.stack(c_major, root=C)[0].tolist(), [0, 4, 7, 0])
 
 
 if __name__ == "__main__":

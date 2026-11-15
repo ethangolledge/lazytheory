@@ -25,24 +25,20 @@ def barres(frets: Grid) -> Mask:
     last note, a muted string is fine (it isn't played); between its notes, it would sound.
     """
     index = np.arange(frets.shape[1])
-    first, last, string = index[:, None, None], index[None, :, None], index[None, None, :]
-    fret, barre = frets[:, None, None, :], frets[:, :, None, None]  # [voicing, first, last, string]
-    blocks = (string >= first) & (fret < barre) & ((string <= last) | (fret != MUTED))
+    lower = frets[:, None, :] < frets[:, :, None]  # [voicing, first, string] below `first`'s fret
+    lower &= index >= index[:, None]
+    under = np.cumsum(lower, axis=2, dtype=np.int8)  # from `first` up to each (< 128 strings)
+    sounding = np.cumsum(lower & (frets != MUTED)[:, None, :], axis=2, dtype=np.int8)
+    sounding_past = sounding[:, :, -1:] - sounding  # such strings sounding past each string
     same_fret = frets[:, :, None] == frets[:, None, :]
-    barred: Mask = same_fret & (first[..., 0] < last[..., 0]) & ~blocks.any(axis=-1)
+    barred: Mask = same_fret & (index[:, None] < index) & (under == 0) & (sounding_past == 0)
     return barred
-
-
-def _own_finger(frets: Grid) -> Mask:
-    """Fretted notes that need their own finger: those not joining a barre from a lower string."""
-    joins: Mask = barres(frets).any(axis=1)
-    return (frets > 0) & ~joins
 
 
 def fingers(frets: Grid) -> Counts:
     """Fewest fretting fingers each voicing needs: one per note, except notes that join a
     barre."""
-    needed: Counts = _own_finger(frets).sum(axis=1)
+    needed: Counts = ((frets > 0) & ~barres(frets).any(axis=1)).sum(axis=1)
     return needed
 
 
@@ -54,28 +50,38 @@ def placeable(frets: Grid, distance: Floats, spans: Sequence[float]) -> Mask:
     `spans[k - 1]` mm, so `len(spans) + 1` fingers are available. A barre lies along its whole
     fret, so no other finger can share that fret.
     """
-    own = _own_finger(frets)
+    barred = barres(frets)
+    own = (frets > 0) & ~barred.any(axis=1)  # notes not joining a barre from a lower string
     count = own.sum(axis=1)
     fret = np.where(own, frets, MUTED)
-    barre = own & barres(frets).any(axis=2)
+    barre = own & barred.any(axis=2)
     others = ~np.eye(frets.shape[1], dtype=bool)
     shared = (fret[:, :, None] == fret[:, None, :]) & own[:, None, :] & others
     crowded = (barre[:, :, None] & shared).any(axis=(1, 2))
 
     hand = len(spans) + 1
-    in_order = np.sort(np.where(own, frets, len(distance)), axis=1)[:, :hand]
-    position = np.append(distance, np.nan)[in_order]  # mm of each finger's fret, lowest first
+    notes = min(hand, frets.shape[1])
+    in_order = np.sort(np.where(own, frets, len(distance)), axis=1)[:, :notes]
+    position = np.append(distance, np.nan)[in_order]  # mm of each note's fret, lowest first
+    spread = position[:, None, :] - position[:, :, None]  # [voicing, note, note]
     fits = count == 0
-    for used in range(1, hand + 1):
+    for used in range(1, notes + 1):  # each voicing tries only the choices for its own count
         rows = count == used
-        for chosen in combinations(range(hand), used):  # which fingers, index first
-            reach = np.ones(rows.sum(), dtype=bool)
-            for (a, finger_a), (b, finger_b) in combinations(enumerate(chosen), 2):
-                spread = position[rows, b] - position[rows, a]
-                reach &= spread <= spans[finger_b - finger_a - 1]
-            fits[rows] |= reach
+        within_limit = spread[rows, None, :used, :used] <= _finger_limits(spans, used)
+        fits[rows] = within_limit.all(axis=(2, 3)).any(axis=1)
     placed: Mask = fits & ~crowded
     return placed
+
+
+def _finger_limits(spans: Sequence[float], notes: int) -> Floats:
+    """For every choice of fingers, index first, to play `notes` notes in fret order: the most
+    mm each pair of notes may lie apart, as [choice, note, note] (inf: no limit)."""
+    choices = list(combinations(range(len(spans) + 1), notes))
+    limit = np.full((len(choices), notes, notes), np.inf)
+    for index, chosen in enumerate(choices):
+        for (a, finger_a), (b, finger_b) in combinations(enumerate(chosen), 2):
+            limit[index, a, b] = spans[finger_b - finger_a - 1]
+    return limit
 
 
 def contiguous(frets: Grid) -> Mask:
@@ -124,27 +130,37 @@ def motion(previous: Floats, following: Floats) -> Floats:
 def moved(previous: Grid, following: Grid) -> Counts:
     """Steps moved on each string that sounds in both voicings: voice leading, with each string
     a voice. Shape (len(previous), len(following))."""
-    before, after = previous[:, None, :], following[None, :, :]
-    shared = (before != MUTED) & (after != MUTED)
-    steps: Counts = np.where(shared, np.abs(before - after), 0).sum(axis=2)
+    steps: Counts = np.zeros((len(previous), len(following)), dtype=np.int64)
+    for before, after in zip(previous.T[:, :, None], following.T[:, None, :], strict=True):
+        steps += np.where((before != MUTED) & (after != MUTED), np.abs(before - after), 0)
     return steps
 
 
 def strings_changed(previous: Grid, following: Grid) -> Counts:
     """Strings that start or stop sounding between voicings. Shape (len(previous),
     len(following))."""
-    before, after = previous[:, None, :] != MUTED, following[None, :, :] != MUTED
-    changed: Counts = (before != after).sum(axis=2)
+    before, after = _sounding_bits(previous)[:, None], _sounding_bits(following)[None, :]
+    changed: Counts = np.bitwise_count(before ^ after).astype(np.int64)
     return changed
+
+
+def _sounding_bits(frets: Grid) -> NDArray[np.uint64]:
+    """Which strings sound, one bit per string, so comparing two voicings is one XOR."""
+    bit = np.uint64(1) << np.arange(frets.shape[1], dtype=np.uint64)
+    bits: NDArray[np.uint64] = np.where(frets != MUTED, bit, np.uint64(0)).sum(
+        axis=1, dtype=np.uint64
+    )
+    return bits
 
 
 def smoothest(
     options: Sequence[Grid],
     transition: Callable[[Grid, Grid], NDArray[np.floating] | NDArray[np.integer]],
-    cost: Callable[[Grid], NDArray[np.floating] | NDArray[np.integer]] | None = None,
+    costs: Sequence[NDArray[np.floating] | NDArray[np.integer]] | None = None,
 ) -> tuple[Grid, float]:
-    """One voicing per chord, with the lowest total `cost` of each voicing plus `transition`
-    of each change, over the whole progression; and that total.
+    """One voicing per chord, with the lowest total of each voicing's cost (`costs` holds one
+    per option of each chord) plus `transition` of each change, over the whole progression;
+    and that total.
 
     Every path is considered, by keeping only the cheapest way to reach each voicing of each
     chord (the Viterbi algorithm). Pass a single row as a chord's options to fix that voicing.
@@ -152,13 +168,13 @@ def smoothest(
     for index, voicings in enumerate(options):
         if len(voicings) == 0:
             raise ValueError(f"no voicing of chord {index} satisfies the rules")
-    standing = cost or (lambda voicings: np.zeros(len(voicings)))
-    total = np.asarray(standing(options[0]), dtype=np.float64)
+    standing = costs or [np.zeros(len(voicings)) for voicings in options]
+    total = np.asarray(standing[0], dtype=np.float64)
     best_previous = []
-    for previous, following in pairwise(options):
+    for (previous, following), cost in zip(pairwise(options), standing[1:], strict=True):
         reach = total[:, None] + transition(previous, following)
         best_previous.append(reach.argmin(axis=0))
-        total = reach.min(axis=0) + standing(following)
+        total = reach.min(axis=0) + cost
     path = [int(total.argmin())]
     for pointers in reversed(best_previous):
         path.append(int(pointers[path[-1]]))

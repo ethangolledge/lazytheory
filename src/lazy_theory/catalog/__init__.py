@@ -1,12 +1,19 @@
 """Named scales, chords and string tunings, loaded from TOML data files.
 
-Names are convention (docs/theory.md), so they live here as data rather than in core. Pass a
-path to load your own file instead of the bundled one.
+Names are convention (docs/theory.md), so they live here as data rather than in core. Notes
+become one integer frame: pitch is steps above C0 and pitch class is pitch mod the steps per
+period, C being 0 (`pitch`, `pitch_class`). Everything after this layer is intervals in that
+frame. Pass a
+path to load your own file instead of the bundled one. Each file is read once; the results are
+shared, so treat them as read-only.
 """
 
 import tomllib
+from collections.abc import Mapping
+from functools import cache
 from importlib.resources import files
 from importlib.resources.abc import Traversable
+from itertools import accumulate
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -19,7 +26,8 @@ _LETTERS = tuple("CDEFGAB")
 _DIGITS = "0123456789"
 
 
-def load_scales(path: Path | None = None) -> dict[str, Scale]:
+@cache
+def load_scales(path: Path | None = None) -> Mapping[str, Scale]:
     """Every named mode, keyed by name."""
     scales: dict[str, Scale] = {}
     for family, entry in _read(path or _BUNDLED / "scales.toml").items():
@@ -31,7 +39,8 @@ def load_scales(path: Path | None = None) -> dict[str, Scale]:
     return scales
 
 
-def load_chords(path: Path | None = None) -> dict[str, PitchClassSet]:
+@cache
+def load_chords(path: Path | None = None) -> Mapping[str, PitchClassSet]:
     """Every named chord pattern, keyed by name."""
     data = _read(path or _BUNDLED / "chords.toml")
     chords: dict[str, PitchClassSet] = {}
@@ -41,17 +50,13 @@ def load_chords(path: Path | None = None) -> dict[str, PitchClassSet]:
 
 
 class Tuning(NamedTuple):
-    first: str  # first open string with its octave, e.g. "E2"
-    gaps: tuple[int, ...]  # steps between neighbouring open strings
+    open_strings: tuple[int, ...]  # pitch of each open string, steps above C0
     scale_length: float  # millimetres from nut to bridge
-    hertz: float  # frequency of the first open string
-
-    def root(self, note: str) -> int:
-        """Steps from the first open string up to `note`, e.g. 5 for "A" in standard tuning."""
-        return (_pitch_class(note) - _pitch_class(self.first.rstrip(_DIGITS))) % _ionian().size
+    hertz: float  # frequency of pitch 0 (C0), from the file's reference
 
 
-def load_tunings(path: Path | None = None) -> dict[str, Tuning]:
+@cache
+def load_tunings(path: Path | None = None) -> Mapping[str, Tuning]:
     """Every named tuning, keyed by instrument and name, e.g. "guitar standard"."""
     data = _read(path or _BUNDLED / "tunings.toml")
     reference = data.pop("reference")
@@ -59,24 +64,25 @@ def load_tunings(path: Path | None = None) -> dict[str, Tuning]:
     tunings: dict[str, Tuning] = {}
     for instrument, entry in data.items():
         for name, tuning in entry["tunings"].items():
-            steps = _pitch(tuning["first"]) - _pitch(reference["note"])
-            hertz = reference["hertz"] * temperament.ratio(steps)
-            values = Tuning(tuning["first"], tuple(tuning["gaps"]), entry["scale_length"], hertz)
+            hertz = reference["hertz"] * temperament.ratio(-pitch(reference["note"]))
+            gaps = accumulate(tuning["gaps"], initial=pitch(tuning["first"]))
+            values = Tuning(tuple(gaps), entry["scale_length"], hertz)
             _add(tunings, f"{instrument} {name}", values)
     return tunings
 
 
-def _pitch(note: str) -> int:
+def pitch(note: str) -> int:
     """Steps above C0: a note name, then its octave, which starts on C (scientific pitch
-    notation, so A4 is 57)."""
+    notation, so E2 is 28 and A4 is 57)."""
     name = note.rstrip(_DIGITS)
     if name == note:
         raise ValueError(f"no octave in {note!r}")
-    return _ionian().size * int(note[len(name) :]) + _pitch_class(name)
+    return _ionian().size * int(note[len(name) :]) + pitch_class(name)
 
 
-def _pitch_class(note: str) -> int:
-    """C is 0. The letters are the Ionian scale on C; each # raises and each b lowers a step."""
+def pitch_class(note: str) -> int:
+    """Steps above C, so C is 0 and E is 4. The letters are the Ionian scale on C; each #
+    raises and each b lowers a step (B# is 12: reduce it mod the period where needed)."""
     letter, accidentals = note[:1].upper(), note[1:]
     if letter not in _LETTERS or set(accidentals) - {"#", "b"}:
         raise ValueError(f"not a note name: {note!r}")

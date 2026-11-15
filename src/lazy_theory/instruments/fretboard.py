@@ -1,10 +1,12 @@
 """Fretted instruments: every position on the neck as arrays of steps.
 
-Everything is relative. The first open string is pitch 0, and a key's root is a step count from
-that string. Grids have one row per string (in tuning order) and one column per fret (0 = open).
+Pitches are steps above C0 and roots are pitch classes (C = 0), as the catalog defines them, so
+any two necks compare by subtraction. Grids have one row per string (in tuning order) and one
+column per fret (0 = open).
 A voicing grid has one row per voicing and one fret, or MUTED, per string.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import cached_property
 
@@ -18,12 +20,13 @@ from lazy_theory.core.temperament import EqualTemperament
 MUTED = -1
 Grid = NDArray[np.int16]
 Floats = NDArray[np.float64]
+Chords = Sequence[tuple[PitchClassSet, int]]  # (chord, root) in order
 
 
 @dataclass(frozen=True, eq=False)
 class Fretboard:
-    """Open-string pitches on a neck `scale_length` mm long, pitch 0 sounding at `hertz`. Each
-    fret raises a string one step of `temperament`."""
+    """Open-string pitches (steps above C0) on a neck `scale_length` mm long, pitch 0 sounding
+    at `hertz`. Each fret raises a string one step of `temperament`."""
 
     open_strings: Grid
     scale_length: float
@@ -38,15 +41,12 @@ class Fretboard:
 
     @classmethod
     def from_tuning(cls, tuning: Tuning, frets: int = 24) -> Fretboard:
-        """Open strings from the tuning's gaps. Negative gaps are re-entrant strings."""
-        open_strings = np.cumsum([0, *tuning.gaps], dtype=np.int16)
-        return cls(open_strings, tuning.scale_length, tuning.hertz, frets)
+        return cls(np.array(tuning.open_strings), tuning.scale_length, tuning.hertz, frets)
 
     def capo(self, fret: int) -> Fretboard:
         """The neck with a capo at `fret`: a movable nut. The open strings sound `fret` steps
         higher, the vibrating length shrinks to 1/ratio of the scale length, and fret numbers
-        count from the capo, as tab written for a capo does. Pitch 0 stays the uncapoed first
-        open string, so roots don't change."""
+        count from the capo, as tab written for a capo does."""
         if not 0 <= fret < self.frets:
             raise ValueError(f"capo must sit between frets 0 and {self.frets - 1}, not {fret}")
         return Fretboard(
@@ -63,7 +63,7 @@ class Fretboard:
 
     @cached_property
     def pitches(self) -> Grid:
-        """Pitch at every position, in steps above the first open string."""
+        """Pitch at every position, in steps above C0."""
         frets = np.arange(self.frets + 1, dtype=np.int16)
         pitches: Grid = self.open_strings[:, None] + frets
         return pitches
@@ -94,41 +94,57 @@ class Fretboard:
         (open strings are free), so more frets fit in the hand up the neck. Rows are ordered by
         their lowest fretted note, up the neck.
         """
-        playable = self.positions(chord, root)
-        tones = np.array(chord.pitch_classes, dtype=np.int16)
-        return np.concatenate(
-            [
-                self._voicings_from(playable, tones, root, lowest, reach)
-                for lowest in range(self.frets + 1)
-            ]
-        )
-
-    def _voicings_from(
-        self, playable: NDArray[np.bool_], tones: Grid, root: int, lowest: int, reach: float
-    ) -> Grid:
-        """Voicings whose lowest fretted note is at fret `lowest` (0 means open strings only).
-
-        Every combination of each string's options in the window is built as one array, then
-        filtered with vector operations.
-        """
-        fret = np.arange(self.frets + 1)
-        in_hand = (fret >= lowest) & (self.fret_distance <= self.fret_distance[lowest] + reach)
-        window = (fret == 0) | (in_hand & (lowest > 0))
-        options = [np.append(np.flatnonzero(string & window), MUTED) for string in playable]
-        grid = np.stack(np.meshgrid(*options, indexing="ij"), axis=-1)
-        grid = grid.reshape(-1, len(options)).astype(np.int16)
-
-        no_fret = self.frets + 1
-        lowest_fretted = np.where(grid > 0, grid, no_fret).min(axis=1)
-        starts_here = lowest_fretted == (lowest or no_fret)
-
-        sounding = np.where(grid != MUTED, (self.open_strings + grid - root) % self.size, MUTED)
-        every_tone = (sounding[:, :, None] == tones).any(axis=1).all(axis=1)
-        voicings: Grid = grid[starts_here & every_tone]
+        voicings, _ = self.voicings_of([(chord, root)], reach)
         return voicings
 
+    def voicings_of(
+        self, chords: Chords, reach: float, contiguous: bool = False
+    ) -> tuple[Grid, NDArray[np.intp]]:
+        """`voicings` of every chord at once, grouped by chord in order, and which chord each
+        row plays. One pass over the strings serves the whole progression. `contiguous` keeps
+        only voicings whose sounding strings are neighbours (rules.contiguous), never building
+        the rest."""
+        playable = np.stack([self.positions(chord, root) for chord, root in chords])
+        tones = np.zeros((len(chords), self.size), dtype=bool)  # [chord, interval]
+        for index, (chord, _) in enumerate(chords):
+            tones[index, chord.pitch_classes] = True
+        roots = np.array([root for _, root in chords])
+
+        which = np.arange(len(chords))
+        grid = np.zeros((len(chords), 0), dtype=np.int16)
+        lowest = np.full(len(chords), self.frets)  # lowest and highest fretted note so far
+        highest = np.zeros(len(chords), dtype=np.int16)
+        sounded = ended = np.zeros(len(chords), dtype=bool)  # a string sounded; then one muted
+        for string in range(len(self.open_strings)):  # add a string, keep what the hand can span
+            options, valid = _options(playable[:, string])  # [chord, option], up the neck
+            parent = np.repeat(np.arange(len(grid)), options.shape[1])
+            slot = np.tile(np.arange(options.shape[1]), len(grid))
+            fret = options[which[parent], slot]
+            low = np.where(fret > 0, np.minimum(lowest[parent], fret), lowest[parent])
+            high = np.maximum(highest[parent], fret)
+            keep = valid[which[parent], slot]
+            keep &= self.fret_distance[high] <= self.fret_distance[low] + reach
+            sounds = fret != MUTED
+            if contiguous:
+                keep &= ~(sounds & ended[parent])
+            ended = (ended[parent] | (sounded[parent] & ~sounds))[keep]
+            sounded = (sounded[parent] | sounds)[keep]
+            parent, lowest, highest = parent[keep], low[keep], high[keep]
+            grid, which = np.column_stack([grid[parent], fret[keep]]), which[parent]
+
+        row, string = np.nonzero(grid != MUTED)
+        heard = np.zeros((len(grid), self.size), dtype=bool)
+        heard[
+            row, (self.open_strings[string] + grid[row, string] - roots[which[row]]) % self.size
+        ] = True
+        every_tone = ~(tones[which] & ~heard).any(axis=1)
+        start = np.where(highest > 0, lowest, 0)[every_tone]  # open strings only come first
+        grid, which = grid[every_tone], which[every_tone]
+        order = np.lexsort((start, which))
+        return grid[order], which[order]
+
     def notes(self, frets: Grid) -> Floats:
-        """Pitch of each string in each voicing, in steps above the first open string; NaN where
+        """Pitch of each string in each voicing, in steps above C0; NaN where
         muted."""
         notes: Floats = np.where(frets != MUTED, self.open_strings + frets, np.nan)
         return notes
@@ -156,3 +172,14 @@ class Fretboard:
         lowest = np.where(frets > 0, frets, self.frets + 1).min(axis=1)
         hand: Floats = np.append(self.fret_distance, np.nan)[lowest]
         return hand
+
+
+def _options(playable: NDArray[np.bool_]) -> tuple[Grid, NDArray[np.bool_]]:
+    """Each chord's playable frets on one string, lowest first, then MUTED; padded to the chord
+    with the most, with a mask of the real ones. `playable` is [chord, fret]."""
+    count = playable.sum(axis=1)
+    frets = np.argsort(~playable, axis=1, kind="stable")[:, : count.max()]
+    muted = np.full((len(playable), 1), MUTED)
+    options = np.column_stack([frets, muted]).astype(np.int16)
+    valid = np.column_stack([np.arange(frets.shape[1]) < count[:, None], muted == MUTED])
+    return options, valid

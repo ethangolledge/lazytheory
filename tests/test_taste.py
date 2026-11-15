@@ -5,12 +5,12 @@ import numpy as np
 from lazy_theory.catalog import load_tunings
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.fretboard import Fretboard
-from lazy_theory.instruments.rules import placeable, ringing, within
+from lazy_theory.instruments.rules import contiguous, placeable, ringing, within
 from lazy_theory.instruments.taste import Taste
 
 STANDARD = Fretboard.from_tuning(load_tunings()["guitar standard"])
 MINOR, MAJOR = PitchClassSet((0, 3, 7)), PitchClassSet((0, 4, 7))
-E, A, C, G = 0, 5, 8, 3  # steps above standard tuning's low E
+E, A, C, G = 4, 9, 0, 7  # pitch classes
 
 
 class TasteTest(unittest.TestCase):
@@ -20,6 +20,14 @@ class TasteTest(unittest.TestCase):
         rules = within(every, taste.lowest, taste.highest)
         expected = every[rules & placeable(every, STANDARD.fret_distance, taste.spans)]
         np.testing.assert_array_equal(taste.voicings(STANDARD, MAJOR, C), expected)
+
+    def test_building_contiguous_matches_the_rule(self):
+        chords = [(MAJOR, C), (MINOR, E), (PitchClassSet((0, 4, 7, 10)), G)]
+        every, which = STANDARD.voicings_of(chords, Taste().reach)
+        built, built_which = STANDARD.voicings_of(chords, Taste().reach, contiguous=True)
+        keep = contiguous(every)
+        np.testing.assert_array_equal(built, every[keep])
+        np.testing.assert_array_equal(built_which, which[keep])
 
     def test_open_strings_only_near_the_hand(self):
         voicings = Taste(highest=12, open_within=5).voicings(STANDARD, MINOR, E)

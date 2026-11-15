@@ -12,7 +12,7 @@ from lazy_theory.suggest.tunings import key
 X = MUTED
 STANDARD = Fretboard.from_tuning(load_tunings()["guitar standard"])
 MINOR = PitchClassSet((0, 3, 7))
-E, F, A = 0, 1, 5  # steps above standard tuning's low E
+E, F, A = 4, 5, 9  # pitch classes
 E_PHRYGIAN = key(load_scales()["Phrygian"], E)
 
 
@@ -22,8 +22,8 @@ def rows(*voicings: list[int]) -> np.ndarray:
 
 class VoiceMotionTest(unittest.TestCase):
     def test_top_is_the_highest_pitch(self):
-        # C major: E4 on top, 24 steps above low E. Re-entrant order is handled by pitch.
-        np.testing.assert_array_equal(top(STANDARD, rows([X, 3, 2, 0, 1, 0])), [24])
+        # C major: E4 (52 steps above C0) on top.
+        np.testing.assert_array_equal(top(STANDARD, rows([X, 3, 2, 0, 1, 0])), [52])
 
     def test_parallel_fifths_and_octaves(self):
         c5, d5 = rows([X, 3, 5, X, X, X]), rows([X, 5, 7, X, X, X])

@@ -2,18 +2,16 @@
 weights. Every search scores voicings through a Taste, so changing a preference is one edit.
 """
 
-from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from functools import partial
 
 import numpy as np
+from numpy.typing import NDArray
 
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.instruments.acoustics import roughness
-from lazy_theory.instruments.fretboard import Floats, Fretboard, Grid
+from lazy_theory.instruments.acoustics import tempered_roughness
+from lazy_theory.instruments.fretboard import Chords, Floats, Fretboard, Grid
 from lazy_theory.instruments.rules import (
-    contiguous,
-    fingers,
     motion,
     moved,
     open_within,
@@ -25,8 +23,6 @@ from lazy_theory.instruments.rules import (
     within,
 )
 
-Chords = Sequence[tuple[PitchClassSet, int]]  # (chord, root) in order
-
 
 @dataclass(frozen=True)
 class Taste:
@@ -35,7 +31,7 @@ class Taste:
     # mm between fingers 1, 2 and 3 apart: one finger per fret at frets 1-4 of a 648 mm neck,
     # the widest frets, rounded up
     spans: tuple[float, ...] = (34.4, 66.8, 97.4)
-    fingers: int = 4  # at most this many fretting fingers
+    fingers: int = 4  # fretting fingers, index first; at most len(spans) + 1
     lowest: int = 0  # fretted notes between these frets; open strings always allowed
     highest: int = 7
     open_within: int | None = None  # open strings only with fretted notes this low
@@ -54,23 +50,28 @@ class Taste:
 
     def voicings(self, board: Fretboard, chord: PitchClassSet, root: int) -> Grid:
         """Every voicing of `chord` this hand can play and this player allows."""
+        (allowed,) = self.options(board, [(chord, root)])
+        return allowed
+
+    def options(self, board: Fretboard, chords: Chords) -> list[Grid]:
+        """`voicings` of each chord, built and filtered for all of them at once."""
         neck = replace(board, frets=min(board.frets, self.highest))  # never build what's cut
-        voicings = neck.voicings(chord, root, self.reach)
-        keep = (
-            (fingers(voicings) <= self.fingers)
-            & placeable(voicings, neck.fret_distance, self.spans)
-            & within(voicings, self.lowest, self.highest)
-        )
-        if self.contiguous:
-            keep &= contiguous(voicings)
+        voicings, which = neck.voicings_of(chords, self.reach, self.contiguous)
+        keep = within(voicings, self.lowest, self.highest)
         if self.open_within is not None:
             keep &= open_within(voicings, self.open_within)
-        allowed: Grid = voicings[keep]
-        return allowed
+        voicings, which = voicings[keep], which[keep]  # the hand check is costly, so it's last
+        keep = placeable(voicings, neck.fret_distance, self.spans[: self.fingers - 1])
+        return _by_chord(voicings[keep], which[keep], len(chords))
+
+    def costs(self, board: Fretboard, options: list[Grid]) -> list[Floats]:
+        """`standing` of each chord's options, scored together."""
+        every = self.standing(board, np.concatenate(options))
+        return np.split(every, np.cumsum([len(voicings) for voicings in options])[:-1])
 
     def standing(self, board: Fretboard, voicings: Grid) -> Floats:
         """Cost of each voicing on its own."""
-        rough = roughness(board.frequencies(voicings))
+        rough = tempered_roughness(board.notes(voicings), board.hertz, board.temperament)
         reward = self.sounding * sounding(voicings) + self.ringing * ringing(voicings)
         cost: Floats = self.roughness * rough - reward
         return cost
@@ -87,5 +88,10 @@ class Taste:
 
     def path(self, board: Fretboard, chords: Chords) -> tuple[Grid, float]:
         """The cheapest voicing of each chord through the progression, and its total cost."""
-        options = [self.voicings(board, chord, root) for chord, root in chords]
-        return smoothest(options, partial(self.transition, board), partial(self.standing, board))
+        options = self.options(board, chords)
+        return smoothest(options, partial(self.transition, board), self.costs(board, options))
+
+
+def _by_chord(rows: Grid, which: NDArray[np.intp], chords: int) -> list[Grid]:
+    """Rows grouped by chord (already in chord order) into one array per chord."""
+    return np.split(rows, np.cumsum(np.bincount(which, minlength=chords))[:-1])

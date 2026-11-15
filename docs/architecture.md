@@ -28,9 +28,11 @@ on top.
 
 ## Decisions
 
-- **Relative everywhere; one name.** Everything is steps from a root. The only note name is the
-  root, given against a tuning's first string (`tuning.root("A")`). The letters are not a table:
-  they are the Ionian scale on C.
+- **Intervals in one frame.** Everything is steps from a root, and every pitch is measured from
+  one origin: steps above C0 (E2 is 28), so a root is a pitch class with C = 0 on every
+  instrument and any two things compare by subtraction. The origin and the note letters are
+  catalog conventions (`pitch`, `pitch_class`); core only sees integers. The letters are not a
+  table: they are the Ionian scale on C.
 - **Conventions are data.** Mode, chord and tuning names live in `catalog`. Core never imports
   it; `identify` takes its patterns as an argument.
 - **Derived, not listed.** Chords come from stacking a scale; modes from rotation; symmetric
@@ -43,9 +45,11 @@ on top.
   hashable, where tuples are faster. The fretboard works on whole grids and every combination of
   strings, where vectors pay off.
 - **Map every voicing, then work backwards.** `voicings` builds every voicing within reach, so
-  nothing is missed. Rules then remove what a hand can't play and costs rank the rest. Each
-  window starts at a voicing's lowest fretted note and ends `reach` mm up the neck, so each
-  voicing is built once and impossible stretches are never built.
+  nothing is missed. Rules then remove what a hand can't play and costs rank the rest. The grid
+  grows one string at a time over each chord's playable frets, and a row is dropped as soon as
+  its fretted notes span more than `reach` mm (or, if asked, a muted string splits the sounding
+  ones), so impossible stretches are never built. `voicings_of` builds a whole progression in
+  that one pass, with a column saying which chord each row plays.
 - **Physical measures in physical units.** Reach and hand movement are millimetres, from the fret
   positions the temperament and scale length give; roughness is computed from frequencies in
   hertz. So the same rules hold on a bass, a ukulele or a 31-EDO guitar.
@@ -63,12 +67,15 @@ on top.
 - **One taste, many searches.** Rules and weights live in one frozen `Taste`, so every search
   scores voicings the same way and a preference changes in one place. Reach is millimetres, so a
   capo doesn't shrink the hand. The neck is cut at the highest allowed fret before voicings are
-  built, not filtered after.
+  built, not filtered after. A neck's chords are built, filtered and scored together, and
+  roughness reads a table of note pairs computed once per reference pitch.
 - **Suggestions are opt-in.** `suggest` sits on top and nothing imports it: standard tuning stays
   the default. Candidate tunings are generated, not looked up: every string moved within safe
   tension (4 steps down, 2 up), then named afterwards by matching the catalog, shifts included
   ("open D +2"). A screen scores every retuning at every capo at once by how many open strings
-  are chord tones (one array operation); only a shortlist gets the full path search. Retuning
+  are chord tones: each string's count depends only on its own step and the capo, so six small
+  [step, capo] tables are broadcast into the full array, and a partition picks the shortlist
+  without sorting it. Only the shortlist gets the full path search. Retuning
   costs per step, so the base tuning wins unless another clearly sounds better, and the key's
   other chords can be weighed in so a neck isn't chosen for three easy shapes alone.
 - **Features extend, not edit.** Optional features subclass what exists: `MelodicTaste` is a

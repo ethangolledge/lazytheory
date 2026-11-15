@@ -41,12 +41,11 @@ The same checks run on every push (`.github/workflows/checks.yml`).
 ## Example
 
 ```python
-from lazy_theory.catalog import load_chords, load_scales, load_tunings
+from lazy_theory.catalog import load_chords, load_scales, load_tunings, pitch_class
 from lazy_theory.instruments.fretboard import Fretboard
 
-tuning = load_tunings()["guitar open D"]
-board = Fretboard.from_tuning(tuning)
-root = tuning.root("A")
+board = Fretboard.from_tuning(load_tunings()["guitar open D"])
+root = pitch_class("A")  # 9: roots are pitch classes, C = 0, on every instrument
 reach = board.fret_distance[4] - board.fret_distance[1]  # a hand spanning frets 1-4, in mm
 
 board.positions(load_scales()["Phrygian"], root)  # where A Phrygian lives on the neck
@@ -60,7 +59,7 @@ change them.
 ```python
 from lazy_theory.instruments.taste import Taste
 
-chords = [(load_chords()["minor"], tuning.root(note)) for note in "EA"]
+chords = [(load_chords()["minor"], pitch_class(note)) for note in "EA"]
 path, cost = Taste(highest=9, roughness=10.0).path(board, chords)
 [board.stack(v[None], root)[0, 0] for v, (_, root) in zip(path, chords)]  # each bass: the inversion
 ```
@@ -73,12 +72,12 @@ from lazy_theory.suggest.tunings import key, name, suggest
 
 tunings = load_tunings()
 standard = Fretboard.from_tuning(tunings["guitar standard"])
-e = tunings["guitar standard"].root("E")
+e = pitch_class("E")
 chords = [(load_chords()["minor"], e), (load_chords()["minor"], e + 5)]  # Em, Am
 rich = Taste(sounding=1.0, ringing=1.0, open_within=5)  # reward full chords and open strings
 e_minor = key(load_scales()["Aeolian"], e)  # the key's other chords count a little
 best = suggest(standard, chords, rich, context=e_minor)  # retunings and capos, cheapest first
-name(standard.open_strings + best[0].retuning, standard, tunings)  # e.g. "guitar open G"
+name(standard.open_strings + best[0].retuning, tunings)  # e.g. "guitar open G"
 ```
 
 Optionally, harmonise a melody: one note per chord, the note on top, chords chosen from those

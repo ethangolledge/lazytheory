@@ -14,9 +14,9 @@ from typing import NamedTuple
 
 import numpy as np
 
-from lazy_theory.instruments.fretboard import Floats, Fretboard, Grid
+from lazy_theory.instruments.fretboard import Chords, Floats, Fretboard, Grid
 from lazy_theory.instruments.rules import smoothest
-from lazy_theory.instruments.taste import Chords, Taste
+from lazy_theory.instruments.taste import Taste
 
 
 def top(board: Fretboard, voicings: Grid) -> Floats:
@@ -88,14 +88,12 @@ def harmonise(
     """
     options, owners = [], []
     for note, chords in zip(melody, slots, strict=True):
-        grids = [taste.voicings(board, chord, root) for chord, root in chords]
+        grids = taste.options(board, chords)
         if note is not None:
             grids = [grid[top(board, grid) % board.size == note % board.size] for grid in grids]
         options.append(np.concatenate(grids))
         owners.append(np.repeat(np.arange(len(grids)), [len(grid) for grid in grids]))
-    path, cost = smoothest(
-        options, partial(taste.transition, board), partial(taste.standing, board)
-    )
+    path, cost = smoothest(options, partial(taste.transition, board), taste.costs(board, options))
     chosen = tuple(
         int(owner[(voicings == row).all(axis=1).argmax()])
         for owner, voicings, row in zip(owners, options, path, strict=True)
