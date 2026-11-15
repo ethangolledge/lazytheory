@@ -42,6 +42,21 @@ class Fretboard:
         open_strings = np.cumsum([0, *tuning.gaps], dtype=np.int16)
         return cls(open_strings, tuning.scale_length, tuning.hertz, frets)
 
+    def capo(self, fret: int) -> Fretboard:
+        """The neck with a capo at `fret`: a movable nut. The open strings sound `fret` steps
+        higher, the vibrating length shrinks to 1/ratio of the scale length, and fret numbers
+        count from the capo, as tab written for a capo does. Pitch 0 stays the uncapoed first
+        open string, so roots don't change."""
+        if not 0 <= fret < self.frets:
+            raise ValueError(f"capo must sit between frets 0 and {self.frets - 1}, not {fret}")
+        return Fretboard(
+            self.open_strings + fret,
+            self.scale_length / self.temperament.ratio(fret),
+            self.hertz,
+            self.frets - fret,
+            self.temperament,
+        )
+
     @property
     def size(self) -> int:
         return self.temperament.size

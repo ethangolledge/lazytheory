@@ -128,6 +128,33 @@ class VoicingsTest(unittest.TestCase):
                 self.assertEqual(inversions, set(chord), (chord, first))
 
 
+class CapoTest(unittest.TestCase):
+    CAPO_2 = STANDARD.capo(2)
+
+    def test_open_strings_sound_higher(self):
+        self.assertEqual(self.CAPO_2.open_strings.tolist(), [2, 7, 12, 17, 21, 26])
+        self.assertEqual(self.CAPO_2.frets, 22)
+
+    def test_capo_is_a_movable_nut(self):
+        # Fret k above the capo sits where fret 2 + k was, measured from the capo.
+        np.testing.assert_allclose(
+            self.CAPO_2.fret_distance, STANDARD.fret_distance[2:] - STANDARD.fret_distance[2]
+        )
+        np.testing.assert_allclose(
+            self.CAPO_2.frequencies(rows([0, 0, 0, 0, 0, 0], [3, X, X, X, X, 1])),
+            STANDARD.frequencies(rows([2, 2, 2, 2, 2, 2], [5, X, X, X, X, 3])),
+        )
+
+    def test_open_shapes_move_with_the_capo(self):
+        # The open E shape with a capo at 2 is F# major.
+        self.assertTrue(contains_row(self.CAPO_2.voicings(MAJOR, E + 2, REACH), [0, 2, 2, 1, 0, 0]))
+
+    def test_capo_must_be_on_the_neck(self):
+        for fret in (-1, 24):
+            with self.assertRaises(ValueError):
+                STANDARD.capo(fret)
+
+
 class StackTest(unittest.TestCase):
     def test_bass_names_the_inversion(self):
         voicings = rows([X, 3, 2, 0, 1, 0], [0, 3, 2, 0, 1, 0], [3, 3, 2, 0, 1, 0])

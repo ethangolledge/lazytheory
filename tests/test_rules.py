@@ -12,7 +12,11 @@ from lazy_theory.instruments.rules import (
     fingers,
     motion,
     moved,
+    open_within,
+    placeable,
+    ringing,
     smoothest,
+    sounding,
     strings_changed,
     within,
 )
@@ -46,10 +50,16 @@ class FingersTest(unittest.TestCase):
         self.assertEqual(fingers(rows([X, 3, 2, 0, 1, 0], [3, 2, 0, 0, 0, 3])).tolist(), [3, 3])
 
     def test_one_finger_barres_a_fret(self):
-        self.assertEqual(fingers(rows([X, 0, 2, 2, 2, 0])).tolist(), [1])
+        self.assertEqual(fingers(rows([X, 0, 2, 2, 2, X], [1, 3, 3, 2, 1, 1])).tolist(), [1, 4])
 
-    def test_barres_at_any_fret(self):
-        self.assertEqual(fingers(rows([X, 2, 4, 4, 3, 2])).tolist(), [3])
+    def test_a_barre_lies_to_the_highest_string(self):
+        # The finger lies over every string above the barre's first note: an open string there
+        # is damped (A with an open high E needs three fingers), a lower note can't sound
+        # (B minor's ring finger can't barre over the 3rd fret), but a muted one is fine.
+        voicings = rows(
+            [X, 0, 2, 2, 2, 0], [X, 2, 4, 4, 3, 2], [2, 3, 2, 2, 0, 2], [5, 5, 5, X, X, X]
+        )
+        self.assertEqual(fingers(voicings).tolist(), [3, 4, 5, 1])
 
     def test_a_string_below_the_barre_fret_breaks_it(self):
         open_, muted, lower = rows([5, 0, 5, 5, X, X], [3, X, 3, 3, X, X], [5, 4, 5, X, X, X])
@@ -57,6 +67,31 @@ class FingersTest(unittest.TestCase):
 
     def test_too_many_notes(self):
         self.assertEqual(fingers(rows([1, 2, 3, 4, 5, X])).tolist(), [5])
+
+
+class PlaceableTest(unittest.TestCase):
+    spans = (34.4, 66.8, 97.4)  # one finger per fret at the nut
+
+    def placeable(self, board: Fretboard, *voicings: list[int]) -> list[bool]:
+        return placeable(rows(*voicings), board.fret_distance, self.spans).tolist()
+
+    def test_familiar_shapes(self):
+        c, g, a = [X, 3, 2, 0, 1, 0], [3, 2, 0, 0, 0, 3], [X, 0, 2, 2, 2, 0]
+        f, b_minor = [1, 3, 3, 2, 1, 1], [X, 2, 4, 4, 3, 2]
+        self.assertEqual(self.placeable(STANDARD, c, g, a, f, b_minor), [True] * 5)
+
+    def test_stretch_too_far(self):
+        self.assertEqual(self.placeable(STANDARD, [1, X, X, X, X, 6]), [False])
+
+    def test_shapes_checked_by_hand(self):
+        # Capo 5: three fingers on one fret with the pinky three frets on; a barre sharing its
+        # fret with another finger; ring to pinky across two frets.
+        capo_5 = STANDARD.capo(5)
+        awkward = [2, 5, 2, 0, 0, 2], [2, 0, 2, 4, 3, 2], [2, 2, 0, 3, 5, 0]
+        self.assertEqual(self.placeable(capo_5, *awkward), [False, False, False])
+        # No capo, D string raised to E: Em, Am and B7 that fit the hand.
+        fine = [0, 2, 0, 0, 5, 0], [0, 3, 0, 2, 5, 0], [2, 2, 2, 2, 4, 2]
+        self.assertEqual(self.placeable(STANDARD, *fine), [True, True, True])
 
 
 class ShapeRulesTest(unittest.TestCase):
@@ -68,6 +103,16 @@ class ShapeRulesTest(unittest.TestCase):
     def test_within_allows_open_strings(self):
         voicings = rows([X, X, 9, 9, 8, 8], [0, X, 9, 9, 8, 8], [X, X, 9, 9, 8, 12])
         self.assertEqual(within(voicings, 7, 11).tolist(), [True, True, False])
+
+    def test_open_strings_only_near_the_hand(self):
+        voicings = rows([X, X, X, 12, 0, 12], [X, X, X, 4, 0, 5], [X, X, 9, 9, 8, 7])
+        self.assertEqual(open_within(voicings, 5).tolist(), [False, True, True])
+
+    def test_sounding_counts_strings(self):
+        self.assertEqual(sounding(rows([X, 3, 2, 0, 1, 0], [X, X, 9, 9, 8, X])).tolist(), [5, 3])
+
+    def test_ringing_counts_open_strings(self):
+        self.assertEqual(ringing(rows([X, 3, 2, 0, 1, 0], [X, X, 9, 9, 8, 7])).tolist(), [2, 0])
 
 
 class TransitionTest(unittest.TestCase):
@@ -105,7 +150,8 @@ class SmoothestTest(unittest.TestCase):
             + transition(five, one)[None, :, :]
             + cost(one)[None, None, :]
         )
-        path = smoothest([two, five, one], transition, cost)
+        path, total = smoothest([two, five, one], transition, cost)
+        self.assertAlmostEqual(total, every_path.min())
         chosen = sum(cost(path[i : i + 1])[0] for i in range(3)) + sum(
             transition(path[i : i + 1], path[i + 1 : i + 2])[0, 0] for i in range(2)
         )
@@ -114,7 +160,7 @@ class SmoothestTest(unittest.TestCase):
     def test_fixed_starting_voicing(self):
         start = rows([X, X, 10, 10, 10, 10])
         five = STANDARD.voicings(IONIAN.chord(4, 4), C + 7, REACH)
-        path = smoothest([start, five], moved)
+        path, _ = smoothest([start, five], moved)
         np.testing.assert_array_equal(path[0], start[0])
 
     def test_rejects_a_chord_with_no_voicings(self):
@@ -129,7 +175,7 @@ class InversionsFromTheBassTest(unittest.TestCase):
     tonic = rows([X, 3, 2, 0, 1, 0])  # C, bass C3
 
     def inversion(self, chords: list[np.ndarray], middle: int) -> int:
-        path = smoothest(chords, bass_motion)
+        path, _ = smoothest(chords, bass_motion)
         return int(STANDARD.stack(path[1:2], middle)[0, 0])
 
     def test_pedal_six_four(self):
@@ -147,7 +193,7 @@ class InversionsFromTheBassTest(unittest.TestCase):
         # V4/2, seventh F2 in the bass, falls a step to I6 with E2 in the bass.
         dominant_seventh = rows([1, X, 0, 0, 0, 1])
         tonic = playable(STANDARD.voicings(MAJOR, C, REACH), 0, 4)
-        path = smoothest([dominant_seventh, tonic], bass_motion)
+        path, _ = smoothest([dominant_seventh, tonic], bass_motion)
         self.assertEqual(STANDARD.stack(path[1:], C)[0, 0], 4)
 
 
@@ -160,7 +206,7 @@ class TwoFiveOneTest(unittest.TestCase):
             for degree, step in ((1, 2), (4, 7), (0, 0))
         ]
         options = [voicings[contiguous(voicings)] for voicings in options]
-        path = smoothest(options, lambda a, b: moved(a, b) + 5 * strings_changed(a, b))
+        path, _ = smoothest(options, lambda a, b: moved(a, b) + 5 * strings_changed(a, b))
         sounding = path != MUTED
         self.assertTrue((sounding == sounding[0]).all())
         self.assertEqual(path.tolist()[-1], [X, X, 9, 9, 8, 8])
