@@ -292,6 +292,13 @@ length, not a fret count. The span of frets 1–4 on a 648 mm guitar (97 mm) cov
 the 12th, and fewer frets on an 864 mm bass. Touching a string at `L/n` brings out harmonic *n*:
 the 12th fret (1/2), ≈7th fret (1/3), 5th fret (1/4).
 
+**[physics]** *Capo.* A capo clamps every string at one fret: a movable nut. Open strings then
+sound `c` steps higher and vibrate over `L / ratio(c)`, so a capoed neck is just a shorter neck
+tuned higher, and fret distances, reach and frequencies follow from the same formula. **[convention]**
+Tab for a capo counts frets from the capo (the capo is fret 0); some tab counts from the nut
+instead. The code counts from the capo. Partial capos, which clamp only some strings, are not
+modelled.
+
 **[math]** *Every voicing.* A voicing gives each string a fret holding a chord tone, or mutes it,
 so that every chord tone sounds and every fretted note is within the hand's reach. The code
 builds all of them. The ways voicings of one chord differ can all be read off the fret numbers:
@@ -310,9 +317,16 @@ Everything else is a filter or a cost over that full list, so nothing is missed 
 weight: moving the hand along the neck, a wide finger span, and playing far from the middle of
 the neck (Heijink & Meulenbroek 2002). Asked for the easiest fingerings, six professional
 guitarists avoided moving the hand in 29 of 31 cases and spanned four frets in 29. A hand has
-four fretting fingers, placed in fret order. One finger can *barre* notes at one fret across
-the strings between them, unless one of those strings is open, muted or fretted lower: the barre
-would sound over it.
+four fretting fingers, placed in fret order. One finger can *barre* notes at one fret. Fingers
+reach over the neck from the highest string's side, so a barre lies from its first note to that
+edge, and every string under it must be fretted at that fret or higher: an open string would be
+damped and a lower note couldn't sound. So an A chord barred across the D, G and B strings loses
+its open high E, and players either mute it or use three fingers. A muted string past the
+barre's last note is fine, since it isn't played. Fingers are placed index first in fret
+order, so none sits behind a lower-numbered one, and two fingers *k* apart reach at most what one
+finger per fret allows at the nut, the widest frets (34, 67 and 97 mm on a 648 mm neck). A barre
+lies along its whole fret, so no other finger can share that fret. Fingers crossing over each
+other's strings are not modelled yet.
 
 **[convention]** *Thumb over the neck (option, not built).* Some players fret the lowest string or
 two with the thumb, wrapped over the top of the neck, which frees a finger. It belongs to some
@@ -324,6 +338,14 @@ band is wider at low frequencies (§2). That is the reason behind the spacing ru
 intervals at the bottom and close ones at the top (Huron 2001). A model fitted to how Bach
 voiced 370 chorales scores each voicing by roughness alongside voice-leading distance, melody
 motion and parallels (Harrison & Pearce 2020).
+
+**[convention]** *Open strings far below the hand.* An open string is undamped by a finger and
+rings longer than a fretted note, so it stands out, and up the neck its pitch is "left behind"
+the fretted notes. Some styles want exactly that: campanella fingerings let open strings ring
+against high fretted notes, and the open string often becomes the bass of a high voicing. Others
+keep open strings within a few frets of the hand. So it is an opt-in rule with a limit: open
+strings only with fretted notes at or below fret `n` (5 to 7 is a common taste). A capo moves
+where "open" is, so it brings open strings back near a high hand.
 
 **[convention, derived]** *How inversions are used.* The bass and the top voice are the most
 audible lines (Huron 2001), and common practice uses inversions to shape the bass line. Root
@@ -351,6 +373,34 @@ both.
 **[convention]** Rules about which notes to play over which chord ("avoid notes", "chord-scale
 theory") are style guidance. They can be built as optional rule sets on top of the math, never
 inside it.
+
+**[physics, perception]** *Voice leading.* Chords in sequence are heard as several melodic
+lines at once, and the ear follows a line when its notes stay close in pitch. Many part-writing
+rules follow from a few perceptual principles (Huron 2001): keep common tones, move other voices
+by step, and avoid moving two voices in parallel perfect fifths or octaves, because voices that
+far in tune fuse and are heard as one. Contrary motion, the melody against the bass, keeps the
+lines most distinct.
+
+**[math]** *Parsimonious moves.* Two triads sharing two notes are joined by moving the third note
+one step: the neo-Riemannian P, L and R (Cohn 1997). Em to C (B to C) then C to Am (G to A) is
+two such moves. Tymoczko argues the link to voice leading is only approximate, so the code
+measures movement directly rather than naming transformations.
+
+**[convention]** *Melody on top.* On guitar, a chord melody puts the melody in each chord's top
+note and moves the inner voices by step beneath it. Harmonising a melody is then a search: for
+each note, the chords allowed there (one fixed chord, or any chord of the key) and their voicings
+with that note on top, linked by the cheapest path. Modes have signature moves the search finds
+on its own, e.g. Phrygian's flat second falling to the root (F to E in E Phrygian) when a melody
+passes through it.
+
+**[math]** *Extensions.* Stacking a seven-note scale in thirds from any degree gives 1 3 5 7 9 11
+13, and the next third is the root again two octaves up: a 13th chord is the whole scale. Any
+extended chord (add9, 7th, 9th, 11th, 13th) is the root and third, which give its quality, plus
+some of the rest, so extensions need no chord list. Each note is named by its place in the
+stack, flat or sharp against the major scale: Em in E Phrygian stacks 1 b3 5 b7 b9 11 b13, so the
+mode's F is Em's flat 9. **[convention]** Guitar voicings usually drop the 5th first, since the
+root, 3rd and 7th define the chord. Between two chords, extended chords let the next chord's
+notes arrive one or two at a time instead of all at once.
 
 ## 9. Tension and resolution
 
