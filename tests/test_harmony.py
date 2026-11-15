@@ -4,6 +4,7 @@ import unittest
 
 from lazy_theory.catalog import load_chords, load_scales
 from lazy_theory.core.chord import identify
+from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
 from lazy_theory.core.voice_leading import voice_leading
@@ -17,7 +18,7 @@ TONIC = IONIAN.chord(0)
 
 def chord_in_key(scale, degree: int, notes: int = 3) -> PitchClassSet:
     """A stacked chord placed at its position in the key rather than measured from its own root."""
-    return scale.chord(degree, notes).transpose(scale.pitch_classes[degree])
+    return Key(scale, 0).chord(degree, notes).pitch_classes
 
 
 def secondary_dominant(target_root: int) -> PitchClassSet:

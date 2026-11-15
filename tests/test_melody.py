@@ -3,17 +3,19 @@ import unittest
 import numpy as np
 
 from lazy_theory.catalog import load_scales, load_tunings
+from lazy_theory.core.chord import Chord
+from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.instruments.fretboard import MUTED, Fretboard
+from lazy_theory.instruments.arrays import MUTED
+from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.taste import Taste
 from lazy_theory.suggest.melody import MelodicTaste, contrary, harmonise, parallels, top
-from lazy_theory.suggest.tunings import key
 
 X = MUTED
 STANDARD = Fretboard.from_tuning(load_tunings()["guitar standard"])
 MINOR = PitchClassSet((0, 3, 7))
 E, F, A = 4, 5, 9  # pitch classes
-E_PHRYGIAN = key(load_scales()["Phrygian"], E)
+E_PHRYGIAN = Key(load_scales()["Phrygian"], E).chords()
 
 
 def rows(*voicings: list[int]) -> np.ndarray:
@@ -60,14 +62,14 @@ class MelodicTasteTest(unittest.TestCase):
 class HarmoniseTest(unittest.TestCase):
     def test_melody_on_top_and_fixed_chords_kept(self):
         melody = [E, F, E]  # the Phrygian half step on top
-        slots = [[(MINOR, E)], E_PHRYGIAN, [(MINOR, A)]]
+        slots = [[Chord(MINOR, E)], E_PHRYGIAN, [Chord(MINOR, A)]]
         harmony = harmonise(STANDARD, melody, slots, MelodicTaste())
         tops = top(STANDARD, harmony.path) % 12
         self.assertEqual(tops.tolist(), melody)
         self.assertEqual((harmony.chords[0], harmony.chords[-1]), (0, 0))
 
     def test_a_free_melody_is_the_plain_path(self):
-        chords, taste = [(MINOR, E), (MINOR, A)], Taste()
+        chords, taste = [Chord(MINOR, E), Chord(MINOR, A)], Taste()
         harmony = harmonise(STANDARD, [None, None], [[chord] for chord in chords], taste)
         path, cost = taste.path(STANDARD, chords)
         np.testing.assert_array_equal(harmony.path, path)
@@ -75,7 +77,7 @@ class HarmoniseTest(unittest.TestCase):
 
     def test_a_note_outside_every_allowed_chord(self):
         with self.assertRaises(ValueError):
-            harmonise(STANDARD, [F], [[(MINOR, E)]], Taste())
+            harmonise(STANDARD, [F], [[Chord(MINOR, E)]], Taste())
 
 
 if __name__ == "__main__":

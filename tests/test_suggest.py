@@ -4,11 +4,13 @@ from dataclasses import replace
 import numpy as np
 
 from lazy_theory.catalog import load_tunings
+from lazy_theory.core.chord import Chord
+from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.taste import Taste
-from lazy_theory.suggest.tunings import key, name, screen, suggest
+from lazy_theory.suggest.tunings import name, screen, suggest
 
 TUNINGS = load_tunings()
 STANDARD = Fretboard.from_tuning(TUNINGS["guitar standard"])
@@ -19,16 +21,16 @@ D, G, A = 2, 7, 9  # pitch classes
 
 class ScreenTest(unittest.TestCase):
     def test_every_retuning_at_every_capo(self):
-        counts = screen(STANDARD.open_strings, range(-2, 3), range(4), [(MAJOR, D)], 12)
+        counts = screen(STANDARD.open_strings, range(-2, 3), range(4), [Chord(MAJOR, D)], 12)
         self.assertEqual(counts.shape, (5,) * 6 + (4,))
 
     def test_open_strings_in_the_chords(self):
-        counts = screen(STANDARD.open_strings, range(-2, 1), (0,), [(MAJOR, D)], 12)
+        counts = screen(STANDARD.open_strings, range(-2, 1), (0,), [Chord(MAJOR, D)], 12)
         unchanged, open_d = (2,) * 6, tuple(np.add(OPEN_D, 2))
         self.assertEqual((counts[(*unchanged, 0)], counts[(*open_d, 0)]), (2, 6))
 
     def test_matches_counting_each_tuning(self):
-        steps, capos, chords = (-1, 0, 2), (0, 3), [(MAJOR, D), (MAJOR, G)]
+        steps, capos, chords = (-1, 0, 2), (0, 3), [Chord(MAJOR, D), Chord(MAJOR, G)]
         counts = screen(STANDARD.open_strings, steps, capos, chords, 12)
         for index in np.ndindex(counts.shape):
             *choice, capo = index
@@ -40,15 +42,15 @@ class ScreenTest(unittest.TestCase):
 
     def test_a_capo_moves_the_open_strings(self):
         # No open string of standard tuning is in F# major; capo 2 rings F#, C# and F#.
-        counts = screen(STANDARD.open_strings, (0,), (0, 2), [(MAJOR, 6)], 12)
+        counts = screen(STANDARD.open_strings, (0,), (0, 2), [Chord(MAJOR, 6)], 12)
         self.assertEqual(counts[(0,) * 6].tolist(), [0, 3])
 
 
 class KeyAndNameTest(unittest.TestCase):
     def test_key_chords(self):
         major = Scale.from_steps((2, 2, 1, 2, 2, 2, 1))
-        chords = key(major, root=0)  # C
-        roots = [root % 12 for _, root in chords]
+        chords = Key(major, root=0).chords()  # C
+        roots = [root for _, root in chords]
         self.assertEqual(roots, [0, 2, 4, 5, 7, 9, 11])  # C D E F G A B
         self.assertEqual([chord.pitch_classes for chord, _ in chords][:2], [(0, 4, 7), (0, 3, 7)])
 
@@ -62,26 +64,29 @@ class KeyAndNameTest(unittest.TestCase):
 
 class SuggestTest(unittest.TestCase):
     def test_no_retuning_is_the_plain_path(self):
-        chords, taste = [(MAJOR, G), (MAJOR, D)], Taste()
+        chords, taste = [Chord(MAJOR, G), Chord(MAJOR, D)], Taste()
         (only,) = suggest(STANDARD, chords, taste, steps=(0,), capos=(0,))
         path, cost = taste.path(STANDARD, chords)
         self.assertEqual((only.retuning, only.capo, only.cost), ((0,) * 6, 0, cost))
         np.testing.assert_array_equal(only.path, path)
 
     def test_never_worse_than_the_base_tuning(self):
-        chords, taste = [(MAJOR, D), (MAJOR, G), (MAJOR, A)], Taste(sounding=1.0, ringing=1.0)
+        chords, taste = (
+            [Chord(MAJOR, D), Chord(MAJOR, G), Chord(MAJOR, A)],
+            Taste(sounding=1.0, ringing=1.0),
+        )
         best = suggest(STANDARD, chords, taste)[0]
         _, cost = taste.path(STANDARD, chords)
         self.assertLessEqual(best.cost, cost)
 
     def test_costly_retuning_keeps_the_base_tuning(self):
-        chords = [(MAJOR, D), (MAJOR, G), (MAJOR, A)]
+        chords = [Chord(MAJOR, D), Chord(MAJOR, G), Chord(MAJOR, A)]
         best = suggest(STANDARD, chords, Taste(sounding=1.0, ringing=1.0), retune=100.0)[0]
         self.assertEqual(best.retuning, (0,) * 6)
 
     def test_context_chords_add_their_cheapest_voicing(self):
-        chords, taste = [(MAJOR, G), (MAJOR, D)], Taste()
-        context = [(MAJOR, A)]
+        chords, taste = [Chord(MAJOR, G), Chord(MAJOR, D)], Taste()
+        context = [Chord(MAJOR, A)]
         only = {"steps": (0,), "capos": (0,)}
         (plain,) = suggest(STANDARD, chords, taste, **only)
         (keyed,) = suggest(STANDARD, chords, taste, context=context, context_weight=0.5, **only)
@@ -89,7 +94,7 @@ class SuggestTest(unittest.TestCase):
         self.assertAlmostEqual(keyed.cost - plain.cost, 0.5 * cheapest)
 
     def test_each_suggestion_sounds_different(self):
-        found = suggest(STANDARD, [(MAJOR, D), (MAJOR, A)], Taste(sounding=1.0), top=10)
+        found = suggest(STANDARD, [Chord(MAJOR, D), Chord(MAJOR, A)], Taste(sounding=1.0), top=10)
         sounds = {
             replace(STANDARD, open_strings=STANDARD.open_strings + one.retuning)
             .capo(one.capo)
@@ -100,7 +105,7 @@ class SuggestTest(unittest.TestCase):
         self.assertEqual(len(sounds), len(found))
 
     def test_sorted_by_cost(self):
-        found = suggest(STANDARD, [(MAJOR, D), (MAJOR, A)], Taste(ringing=1.0), top=10)
+        found = suggest(STANDARD, [Chord(MAJOR, D), Chord(MAJOR, A)], Taste(ringing=1.0), top=10)
         costs = [suggestion.cost for suggestion in found]
         self.assertEqual(costs, sorted(costs))
 

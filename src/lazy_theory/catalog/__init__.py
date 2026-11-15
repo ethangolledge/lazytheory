@@ -49,6 +49,16 @@ def load_chords(path: Path | None = None) -> Mapping[str, PitchClassSet]:
     return chords
 
 
+@cache
+def load_symbols(path: Path | None = None) -> Mapping[str, str]:
+    """How each named chord is written after its root, e.g. "m7" for "minor 7th"."""
+    data = _read(path or _BUNDLED / "chords.toml")
+    symbols: dict[str, str] = data.get("symbols", {})
+    if unknown := set(symbols) - set(data["chords"]):
+        raise ValueError(f"symbols for unnamed chords: {sorted(unknown)}")
+    return symbols
+
+
 class Tuning(NamedTuple):
     open_strings: tuple[int, ...]  # pitch of each open string, steps above C0
     scale_length: float  # millimetres from nut to bridge

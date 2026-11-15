@@ -6,7 +6,8 @@ from lazy_theory.catalog import load_tunings
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
 from lazy_theory.core.temperament import EqualTemperament
-from lazy_theory.instruments.fretboard import MUTED, Fretboard
+from lazy_theory.instruments.arrays import MUTED
+from lazy_theory.instruments.fretboard import Fretboard
 
 X = MUTED
 TUNINGS = load_tunings()
@@ -64,6 +65,13 @@ class FretboardTest(unittest.TestCase):
         self.assertTrue(tet31.positions(PitchClassSet((0, 10, 18), 31), 0)[0, 0])
         with self.assertRaises(ValueError):
             tet31.positions(MAJOR, 0)
+
+
+class ChromaTest(unittest.TestCase):
+    def test_pitch_classes_each_voicing_sounds(self):
+        chroma = STANDARD.chroma(rows([X, 3, 2, 0, 1, 0], [X, X, X, X, X, X]))
+        self.assertEqual(np.flatnonzero(chroma[0]).tolist(), [0, 4, 7])  # C E G
+        self.assertFalse(chroma[1].any())
 
 
 class PhysicsTest(unittest.TestCase):

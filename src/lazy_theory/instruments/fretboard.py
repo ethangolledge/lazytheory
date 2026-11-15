@@ -6,7 +6,6 @@ column per fret (0 = open).
 A voicing grid has one row per voicing and one fret, or MUTED, per string.
 """
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import cached_property
 
@@ -14,13 +13,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 from lazy_theory.catalog import Tuning
+from lazy_theory.core.chord import Chord, Chords
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.temperament import EqualTemperament
-
-MUTED = -1
-Grid = NDArray[np.int16]
-Floats = NDArray[np.float64]
-Chords = Sequence[tuple[PitchClassSet, int]]  # (chord, root) in order
+from lazy_theory.instruments.arrays import MUTED, Floats, Grid, Mask
 
 
 @dataclass(frozen=True, eq=False)
@@ -94,7 +90,7 @@ class Fretboard:
         (open strings are free), so more frets fit in the hand up the neck. Rows are ordered by
         their lowest fretted note, up the neck.
         """
-        voicings, _ = self.voicings_of([(chord, root)], reach)
+        voicings, _ = self.voicings_of([Chord(chord, root)], reach)
         return voicings
 
     def voicings_of(
@@ -105,10 +101,9 @@ class Fretboard:
         only voicings whose sounding strings are neighbours (rules.contiguous), never building
         the rest."""
         playable = np.stack([self.positions(chord, root) for chord, root in chords])
-        tones = np.zeros((len(chords), self.size), dtype=bool)  # [chord, interval]
-        for index, (chord, _) in enumerate(chords):
-            tones[index, chord.pitch_classes] = True
-        roots = np.array([root for _, root in chords])
+        tones = np.zeros((len(chords), self.size), dtype=bool)  # [chord, pitch class]
+        for index, chord in enumerate(chords):
+            tones[index, list(chord.pitch_classes)] = True
 
         which = np.arange(len(chords))
         grid = np.zeros((len(chords), 0), dtype=np.int16)
@@ -132,22 +127,31 @@ class Fretboard:
             parent, lowest, highest = parent[keep], low[keep], high[keep]
             grid, which = np.column_stack([grid[parent], fret[keep]]), which[parent]
 
-        row, string = np.nonzero(grid != MUTED)
-        heard = np.zeros((len(grid), self.size), dtype=bool)
-        heard[
-            row, (self.open_strings[string] + grid[row, string] - roots[which[row]]) % self.size
-        ] = True
-        every_tone = ~(tones[which] & ~heard).any(axis=1)
+        every_tone = ~(tones[which] & ~self.chroma(grid)).any(axis=1)
         start = np.where(highest > 0, lowest, 0)[every_tone]  # open strings only come first
         grid, which = grid[every_tone], which[every_tone]
         order = np.lexsort((start, which))
         return grid[order], which[order]
+
+    def chroma(self, frets: Grid) -> Mask:
+        """Which pitch classes each voicing sounds, as [voicing, pitch class]: the form every
+        set compares in (a chord, a key or another voicing is one such row)."""
+        row, string = np.nonzero(frets != MUTED)
+        chroma = np.zeros((len(frets), self.size), dtype=bool)
+        chroma[row, (self.open_strings[string] + frets[row, string]) % self.size] = True
+        return chroma
 
     def notes(self, frets: Grid) -> Floats:
         """Pitch of each string in each voicing, in steps above C0; NaN where
         muted."""
         notes: Floats = np.where(frets != MUTED, self.open_strings + frets, np.nan)
         return notes
+
+    def bass(self, frets: Grid) -> Floats:
+        """Lowest pitch of each voicing, the note that names its inversion; NaN if silent."""
+        notes = self.notes(frets)
+        bass: Floats = np.fmin.reduce(notes, axis=1, initial=np.nan)
+        return bass
 
     def frequencies(self, frets: Grid) -> Floats:
         """Frequency of each string in each voicing, in hertz; NaN where muted."""

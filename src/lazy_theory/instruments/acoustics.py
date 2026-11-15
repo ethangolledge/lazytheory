@@ -6,8 +6,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from lazy_theory.core.temperament import EqualTemperament
-
-Floats = NDArray[np.float64]
+from lazy_theory.instruments.arrays import Floats
 
 
 def roughness(frequencies: Floats, harmonics: int = 11) -> Floats:

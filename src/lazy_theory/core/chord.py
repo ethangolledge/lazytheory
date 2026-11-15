@@ -1,13 +1,28 @@
-"""Chord identification: matching a pitch-class set against named patterns.
+"""Chords: a pattern of intervals on a root, and identification against named patterns.
 
-A chord is a PitchClassSet. The names come from whoever calls `identify` (usually the catalog),
-so core never depends on naming conventions.
+The names come from whoever calls `identify` (usually the catalog), so core never depends on
+naming conventions.
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import NamedTuple
 
 from lazy_theory.core.pcset import PitchClassSet
+
+
+class Chord(NamedTuple):
+    """`pattern` (intervals above the root, e.g. (0, 3, 7)) on `root`, a pitch class."""
+
+    pattern: PitchClassSet
+    root: int
+
+    @property
+    def pitch_classes(self) -> PitchClassSet:
+        """The chord's notes as pitch classes, e.g. (4, 7, 11) for E minor."""
+        return self.pattern.transpose(self.root)
+
+
+Chords = Sequence[Chord]  # a progression, in order
 
 
 class ChordMatch(NamedTuple):

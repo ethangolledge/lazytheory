@@ -6,7 +6,8 @@ from lazy_theory.catalog import load_tunings
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
 from lazy_theory.instruments.acoustics import roughness
-from lazy_theory.instruments.fretboard import MUTED, Fretboard
+from lazy_theory.instruments.arrays import MUTED
+from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import (
     contiguous,
     fingers,

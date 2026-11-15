@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 
 from lazy_theory.catalog import load_tunings
+from lazy_theory.core.chord import Chord
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import contiguous, placeable, ringing, within
@@ -22,7 +23,7 @@ class TasteTest(unittest.TestCase):
         np.testing.assert_array_equal(taste.voicings(STANDARD, MAJOR, C), expected)
 
     def test_building_contiguous_matches_the_rule(self):
-        chords = [(MAJOR, C), (MINOR, E), (PitchClassSet((0, 4, 7, 10)), G)]
+        chords = [Chord(MAJOR, C), Chord(MINOR, E), Chord(PitchClassSet((0, 4, 7, 10)), G)]
         every, which = STANDARD.voicings_of(chords, Taste().reach)
         built, built_which = STANDARD.voicings_of(chords, Taste().reach, contiguous=True)
         keep = contiguous(every)
@@ -37,12 +38,12 @@ class TasteTest(unittest.TestCase):
 
     def test_path_total_is_its_costs(self):
         taste, board = Taste(), STANDARD
-        path, total = taste.path(board, [(MINOR, E), (MINOR, A)])
+        path, total = taste.path(board, [Chord(MINOR, E), Chord(MINOR, A)])
         expected = taste.standing(board, path).sum() + taste.transition(board, path[:1], path[1:])
         self.assertAlmostEqual(total, float(expected[0, 0]))
 
     def test_rewarding_ringing_chooses_open_strings(self):
-        chords = [(MAJOR, G), (MAJOR, C), (MAJOR, G)]
+        chords = [Chord(MAJOR, G), Chord(MAJOR, C), Chord(MAJOR, G)]
         plain, _ = Taste().path(STANDARD, chords)
         ringing_path, _ = Taste(ringing=5.0).path(STANDARD, chords)
         self.assertGreater(ringing(ringing_path).sum(), ringing(plain).sum())

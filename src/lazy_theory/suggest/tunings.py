@@ -17,8 +17,9 @@ from typing import NamedTuple
 import numpy as np
 
 from lazy_theory.catalog import Tuning
-from lazy_theory.core.scale import Scale
-from lazy_theory.instruments.fretboard import Chords, Fretboard, Grid
+from lazy_theory.core.chord import Chords
+from lazy_theory.instruments.arrays import Grid
+from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import smoothest
 from lazy_theory.instruments.taste import Taste
 
@@ -33,12 +34,6 @@ class Suggestion(NamedTuple):
     cost: float
 
 
-def key(scale: Scale, root: int, notes: int = 3) -> Chords:
-    """The chord on each degree of `scale` from `root`, stacked in thirds."""
-    degrees = range(len(scale))
-    return [(scale.chord(degree, notes), root + scale.pitch_classes[degree]) for degree in degrees]
-
-
 def screen(
     open_strings: Grid, steps: Sequence[int], capos: Sequence[int], chords: Chords, size: int
 ) -> Grid:
@@ -49,8 +44,8 @@ def screen(
     [step, capo] table and the tables are broadcast together, never enumerated one by one.
     """
     hits = np.zeros(size, dtype=np.int16)  # chords each pitch class belongs to
-    for chord, root in chords:
-        hits[(np.array(chord.pitch_classes) + root) % size] += 1
+    for chord in chords:
+        hits[list(chord.pitch_classes)] += 1
     pitch = np.add.outer(np.add.outer(open_strings, steps), capos) % size  # [string, step, capo]
     return _by_string(hits[pitch])
 

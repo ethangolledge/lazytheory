@@ -11,11 +11,14 @@ Each layer imports only from itself and the layers above it in this table.
 |---|---|---|---|
 | `core` | `temperament` | Steps → frequency ratio and cents | standard library |
 | | `pcset` | `PitchClassSet`: sets mod `size`, built from steps or maximal evenness; rotate, transpose | |
-| | `scale` | `Scale(PitchClassSet)`: always contains its root; stacks chords by stride | |
-| | `chord` | `identify`: names a set against patterns passed in, trying every root | |
+| | `scale` | `Scale(PitchClassSet)`: always contains its root; stacks notes and chords by stride | |
+| | `chord` | `Chord(pattern, root)`; `identify` names a set against patterns passed in, trying every root | |
+| | `key` | `Key(scale, root)`: the key's notes and the chord on each degree | |
 | | `voice_leading` | Smallest total movement between two sets, voice by voice | |
-| `catalog` | | Names as data: scales, chords, tunings with scale length and frequency (TOML). Note names | core |
-| `instruments` | `fretboard` | Positions, every voicing within a hand's reach, and each voicing's pitches, frequencies, stack of intervals and hand position. A capo returns a new, shorter fretboard | core, catalog, NumPy |
+| `catalog` | | Names as data: scales, chords and their symbols, tunings as open-string pitches (TOML). `pitch`, `pitch_class`: note names into the integer frame | core |
+| | `names` | The only way back to words: spelled notes, chord symbols, Roman numerals, tab | |
+| `instruments` | `arrays` | The shared array types: voicing grids, `MUTED`, masks, counts | NumPy |
+| | `fretboard` | Positions, every voicing within a hand's reach, and each voicing's pitches, chroma, frequencies, stack of intervals and hand position. A capo returns a new, shorter fretboard | core, catalog, NumPy |
 | | `acoustics` | Roughness of each voicing from its frequencies | NumPy |
 | | `rules` | Swappable rules over voicing arrays; the cheapest path through a progression | |
 | | `taste` | `Taste`: one player's rules and weights; voicings, costs and the cheapest path on any neck | |
@@ -39,8 +42,14 @@ on top.
   sets from maximal evenness; secondary dominants, tritone substitutes and borrowed chords from
   `chord`, `rotate`, `transpose` and `voice_leading` (see `tests/test_harmony.py`). No chord
   shapes, scale boxes or function tables are stored.
-- **Ints until there is behaviour.** No `Interval` class (a step count) and no `Chord` class (a
-  `PitchClassSet`) until something needs more.
+- **Ints until there is behaviour.** No `Interval` class: an interval is a step count. A chord
+  on a root had three spellings (tuples, `ChordMatch`, root arithmetic repeated per module), so
+  it became `Chord(pattern, root)`, a NamedTuple that still unpacks as `pattern, root`. A scale
+  on a root is `Key`.
+- **Three forms of the same data, one job each.** Pitches are integers (steps above C0) for
+  arithmetic; sets are `PitchClassSet`s in core (hashable, exact) and chroma rows,
+  `bool[voicing, pitch class]`, on the instrument, where thousands compare at once; positions
+  are fret grids. Words appear only in `catalog.names`, at the edge.
 - **NumPy at the instrument, tuples in core.** Core sets hold 3 to 8 numbers and must be
   hashable, where tuples are faster. The fretboard works on whole grids and every combination of
   strings, where vectors pay off.

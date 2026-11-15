@@ -8,9 +8,11 @@ from functools import partial
 import numpy as np
 from numpy.typing import NDArray
 
+from lazy_theory.core.chord import Chord, Chords
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.acoustics import tempered_roughness
-from lazy_theory.instruments.fretboard import Chords, Floats, Fretboard, Grid
+from lazy_theory.instruments.arrays import Floats, Grid
+from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import (
     motion,
     moved,
@@ -50,7 +52,7 @@ class Taste:
 
     def voicings(self, board: Fretboard, chord: PitchClassSet, root: int) -> Grid:
         """Every voicing of `chord` this hand can play and this player allows."""
-        (allowed,) = self.options(board, [(chord, root)])
+        (allowed,) = self.options(board, [Chord(chord, root)])
         return allowed
 
     def options(self, board: Fretboard, chords: Chords) -> list[Grid]:
@@ -78,7 +80,7 @@ class Taste:
 
     def transition(self, board: Fretboard, previous: Grid, following: Grid) -> Floats:
         """Cost of each change from a previous voicing to a following one."""
-        bass = [np.nanmin(board.notes(voicings), axis=1) for voicings in (previous, following)]
+        bass = [board.bass(voicings) for voicings in (previous, following)]
         cost: Floats = (
             self.moved * moved(previous, following)
             + self.strings_changed * strings_changed(previous, following)

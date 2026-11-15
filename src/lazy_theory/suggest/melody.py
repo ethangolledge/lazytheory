@@ -14,7 +14,9 @@ from typing import NamedTuple
 
 import numpy as np
 
-from lazy_theory.instruments.fretboard import Chords, Floats, Fretboard, Grid
+from lazy_theory.core.chord import Chords
+from lazy_theory.instruments.arrays import Floats, Grid
+from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import smoothest
 from lazy_theory.instruments.taste import Taste
 
@@ -45,9 +47,8 @@ def parallels(board: Fretboard, previous: Grid, following: Grid) -> Floats:
 
 def contrary(board: Fretboard, previous: Grid, following: Grid) -> Floats:
     """1 where the top note and the bass move in opposite directions, for each change."""
-    notes = board.notes(previous), board.notes(following)
-    tops = [np.nanmax(n, axis=1) for n in notes]
-    basses = [np.nanmin(n, axis=1) for n in notes]
+    tops = [top(board, voicings) for voicings in (previous, following)]
+    basses = [board.bass(voicings) for voicings in (previous, following)]
     up = np.sign(tops[1][None, :] - tops[0][:, None])
     down = np.sign(basses[1][None, :] - basses[0][:, None])
     opposite: Floats = (up * down < 0).astype(np.float64)

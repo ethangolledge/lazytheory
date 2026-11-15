@@ -42,6 +42,7 @@ The same checks run on every push (`.github/workflows/checks.yml`).
 
 ```python
 from lazy_theory.catalog import load_chords, load_scales, load_tunings, pitch_class
+from lazy_theory.core.chord import Chord
 from lazy_theory.instruments.fretboard import Fretboard
 
 board = Fretboard.from_tuning(load_tunings()["guitar open D"])
@@ -59,23 +60,34 @@ change them.
 ```python
 from lazy_theory.instruments.taste import Taste
 
-chords = [(load_chords()["minor"], pitch_class(note)) for note in "EA"]
+chords = [Chord(load_chords()["minor"], pitch_class(note)) for note in "EA"]
 path, cost = Taste(highest=9, roughness=10.0).path(board, chords)
 [board.stack(v[None], root)[0, 0] for v, (_, root) in zip(path, chords)]  # each bass: the inversion
+```
+
+Back to words, only at the edge:
+
+```python
+from lazy_theory.catalog.names import chord_symbol, tab
+
+basses = board.bass(path) % 12
+titles = [chord_symbol(chord, bass=int(bass)) for chord, bass in zip(chords, basses)]
+print(tab(board.open_strings, path, titles))  # one column per chord, high string on top
 ```
 
 Optionally, suggest a tuning and capo for a progression. Standard tuning stays the default; this
 is a separate layer you opt into:
 
 ```python
-from lazy_theory.suggest.tunings import key, name, suggest
+from lazy_theory.core.key import Key
+from lazy_theory.suggest.tunings import name, suggest
 
 tunings = load_tunings()
 standard = Fretboard.from_tuning(tunings["guitar standard"])
 e = pitch_class("E")
-chords = [(load_chords()["minor"], e), (load_chords()["minor"], e + 5)]  # Em, Am
+chords = [Chord(load_chords()["minor"], e), Chord(load_chords()["minor"], e + 5)]  # Em, Am
 rich = Taste(sounding=1.0, ringing=1.0, open_within=5)  # reward full chords and open strings
-e_minor = key(load_scales()["Aeolian"], e)  # the key's other chords count a little
+e_minor = Key(load_scales()["Aeolian"], e).chords()  # the key's other chords count a little
 best = suggest(standard, chords, rich, context=e_minor)  # retunings and capos, cheapest first
 name(standard.open_strings + best[0].retuning, tunings)  # e.g. "guitar open G"
 ```
@@ -86,7 +98,7 @@ allowed in each slot:
 ```python
 from lazy_theory.suggest.melody import MelodicTaste, harmonise
 
-phrygian = key(load_scales()["Phrygian"], e)  # E Phrygian's chords
+phrygian = Key(load_scales()["Phrygian"], e).chords()  # E Phrygian's chords
 em, am = phrygian[0], phrygian[3]
 melody = [e, e + 1, e, e]  # E F E E
 harmony = harmonise(standard, melody, [[em], phrygian, phrygian, [am]], MelodicTaste())

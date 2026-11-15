@@ -17,3 +17,20 @@ size = 12
 "diminished 7th" = [0, 3, 6, 9]
 "augmented 7th" = [0, 4, 8, 10]
 "augmented major 7th" = [0, 4, 8, 11]
+
+# How each chord is written after its root note, e.g. "m7" for E minor 7th → Em7.
+[symbols]
+"major" = ""
+"minor" = "m"
+"diminished" = "dim"
+"augmented" = "aug"
+"sus2" = "sus2"
+"sus4" = "sus4"
+"major 7th" = "maj7"
+"dominant 7th" = "7"
+"minor 7th" = "m7"
+"minor major 7th" = "m(maj7)"
+"half-diminished 7th" = "m7b5"
+"diminished 7th" = "dim7"
+"augmented 7th" = "aug7"
+"augmented major 7th" = "maj7#5"

@@ -9,10 +9,7 @@ from itertools import combinations, pairwise
 import numpy as np
 from numpy.typing import NDArray
 
-from lazy_theory.instruments.fretboard import MUTED, Floats, Grid
-
-Mask = NDArray[np.bool_]
-Counts = NDArray[np.int64]
+from lazy_theory.instruments.arrays import MUTED, Counts, Floats, Grid, Mask
 
 
 def barres(frets: Grid) -> Mask:
