@@ -1,7 +1,9 @@
 """The array types every instrument module shares.
 
-A voicing grid has one row per voicing and one fret (or MUTED) per string. Rule results are one
-value per voicing, or one per pair of voicings for a change between chords.
+Why: thousands of voicings are judged at once, so they live in arrays, not objects. A voicing
+grid has one row per voicing and one fret (or MUTED) per string; a rule returns one value per
+row, or one per pair of rows for a change between chords. Naming those few shapes once keeps
+every signature readable.
 """
 
 import numpy as np

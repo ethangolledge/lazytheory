@@ -2,7 +2,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lazy_theory.catalog import load_chords, load_scales, load_tunings, pitch, pitch_class
+from lazy_theory.catalog import (
+    accidentals,
+    alteration,
+    chord_names,
+    load_chords,
+    load_scales,
+    load_symbols,
+    load_tunings,
+    pitch,
+    pitch_class,
+)
 from lazy_theory.core.chord import identify
 from lazy_theory.core.temperament import EqualTemperament
 
@@ -36,13 +46,13 @@ class BundledCatalogTest(unittest.TestCase):
             for degree in range(7):
                 for notes in (3, 4):
                     with self.subTest(scale=scale_name, degree=degree, notes=notes):
-                        matches = identify(scale.chord(degree, notes), CHORDS)
-                        self.assertIn(0, [match.root for match in matches])
+                        readings = identify(scale.chord(degree, notes), chord_names())
+                        self.assertIn(0, [chord.root for chord in readings])
 
     def test_every_pentatonic_triad_is_named_from_some_root(self):
         scale = SCALES["Major Pentatonic"]
         for degree in range(len(scale)):
-            self.assertTrue(identify(scale.chord(degree), CHORDS), degree)
+            self.assertTrue(identify(scale.chord(degree), chord_names()), degree)
 
     def test_tunings_are_open_string_pitches(self):
         self.assertEqual(TUNINGS["guitar standard"].open_strings, (28, 33, 38, 43, 47, 52))
@@ -119,6 +129,19 @@ class CustomCatalogTest(unittest.TestCase):
         path = self.write_toml('size = 12\n[chords]\n"major" = [0, 4, 7]\n"big" = [0, 7, 4]\n')
         with self.assertRaises(ValueError):
             load_chords(path)
+
+    def test_every_chord_needs_a_symbol(self):
+        path = self.write_toml(
+            'size = 12\n[chords]\n"major" = [0, 4, 7]\n"minor" = [0, 3, 7]\n'
+            '[symbols]\n"major" = ""\n'
+        )
+        with self.assertRaises(ValueError):
+            load_symbols(path)
+
+    def test_accidentals_read_back(self):
+        for shift in range(-3, 4):
+            self.assertEqual(alteration(accidentals(shift)), shift)
+        self.assertEqual([accidentals(shift) for shift in (-2, 0, 1)], ["bb", "", "#"])
 
 
 if __name__ == "__main__":

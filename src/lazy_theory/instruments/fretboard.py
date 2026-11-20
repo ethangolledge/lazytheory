@@ -1,19 +1,36 @@
 """Fretted instruments: every position on the neck as arrays of steps.
 
+Why: a guitar, a bass and a ukulele are the same object with different numbers: some open
+strings, a scale length, frets that each raise a string one step. Nothing here knows a chord
+shape or a scale box. It maps every way a set of notes can be played, in one pass, and then
+reads any shape back: its pitches, bass, top, which notes it sounds, which chords it could be.
+A capo, a retuning or a 31-step neck is the same code with another number.
+
+Theory it speaks to: Mersenne's law (a fret leaves 1/ratio of the string sounding, so frets
+get closer up the neck and reach is measured in millimetres, not frets), and the two
+directions of harmony on an instrument: voicing (a chord into shapes) and reading (a shape
+back into chords, by `core.chord.identify`).
+
+Could grow into: fingerings (which finger on which note: `rules.placeable` already finds one
+to prove a shape fits), fanned frets and per-string scale lengths, harmonics and bends as
+other ways to raise a string, and keyboards as a one-string neck.
+
 Pitches are steps above C0 and roots are pitch classes (C = 0), as the catalog defines them, so
 any two necks compare by subtraction. Grids have one row per string (in tuning order) and one
-column per fret (0 = open).
-A voicing grid has one row per voicing and one fret, or MUTED, per string.
+column per fret (0 = open). A voicing grid has one row per voicing and one fret, or MUTED, per
+string.
 """
 
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from functools import cached_property
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
 from lazy_theory.catalog import Tuning
-from lazy_theory.core.chord import Chord, Chords
+from lazy_theory.core.chord import Chord, Chords, Rooted, identify
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.temperament import EqualTemperament
 from lazy_theory.instruments.arrays import MUTED, Floats, Grid, Mask
@@ -69,7 +86,7 @@ class Fretboard:
         """Millimetres from the nut to each fret. Frequency is inversely proportional to the
         vibrating length, so a fret leaves 1/ratio of the string sounding and frets get closer
         together up the neck."""
-        ratios = np.array([self.temperament.ratio(fret) for fret in range(self.frets + 1)])
+        ratios = self.temperament.ratio(np.arange(self.frets + 1))
         distance: Floats = self.scale_length * (1 - 1 / ratios)
         return distance
 
@@ -77,20 +94,20 @@ class Fretboard:
         """Pitch class at every position, measured from `root`."""
         return (self.pitches - root) % self.size
 
-    def positions(self, pitch_classes: PitchClassSet, root: int) -> NDArray[np.bool_]:
-        """Where a scale or chord, measured from `root`, can be played."""
-        if pitch_classes.size != self.size:
-            raise ValueError(f"set has {pitch_classes.size} steps per period, not {self.size}")
-        return np.isin(self.intervals(root), pitch_classes.pitch_classes)
+    def positions(self, notes: Rooted[Any]) -> Mask:
+        """Where a chord or a key can be played: its notes at every position."""
+        where: Mask = self._tones([notes])[0][self.intervals(0)]
+        return where
 
-    def voicings(self, chord: PitchClassSet, root: int, reach: float) -> Grid:
-        """Every way to play `chord` on `root` with a hand that reaches `reach` mm.
+    def voicings(self, chord: Chord, reach: float) -> Grid:
+        """Every way to play `chord` with a hand that reaches `reach` mm.
 
         Every chord tone sounds, and every fretted note lies within `reach` mm of the lowest one
-        (open strings are free), so more frets fit in the hand up the neck. Rows are ordered by
+        (open strings are free), so more frets fit in the hand up the neck. A chord written
+        over a bass (C/E) keeps only the voicings with that note lowest. Rows are ordered by
         their lowest fretted note, up the neck.
         """
-        voicings, _ = self.voicings_of([Chord(chord, root)], reach)
+        voicings, _ = self.voicings_of([chord], reach)
         return voicings
 
     def voicings_of(
@@ -100,11 +117,8 @@ class Fretboard:
         row plays. One pass over the strings serves the whole progression. `contiguous` keeps
         only voicings whose sounding strings are neighbours (rules.contiguous), never building
         the rest."""
-        playable = np.stack([self.positions(chord, root) for chord, root in chords])
-        tones = np.zeros((len(chords), self.size), dtype=bool)  # [chord, pitch class]
-        for index, chord in enumerate(chords):
-            tones[index, list(chord.pitch_classes)] = True
-
+        tones = self._tones(chords)  # [chord, pitch class]
+        playable = tones[:, self.intervals(0)]  # [chord, string, fret]
         which = np.arange(len(chords))
         grid = np.zeros((len(chords), 0), dtype=np.int16)
         lowest = np.full(len(chords), self.frets)  # lowest and highest fretted note so far
@@ -127,11 +141,30 @@ class Fretboard:
             parent, lowest, highest = parent[keep], low[keep], high[keep]
             grid, which = np.column_stack([grid[parent], fret[keep]]), which[parent]
 
-        every_tone = ~(tones[which] & ~self.chroma(grid)).any(axis=1)
-        start = np.where(highest > 0, lowest, 0)[every_tone]  # open strings only come first
-        grid, which = grid[every_tone], which[every_tone]
+        keep = ~(tones[which] & ~self.chroma(grid)).any(axis=1)  # every chord tone sounds
+        written = np.array([MUTED if chord.bass is None else chord.bass for chord in chords])
+        keep &= (written[which] == MUTED) | (self.bass(grid) % self.size == written[which])
+        start = np.where(highest > 0, lowest, 0)[keep]  # open strings only come first
+        grid, which = grid[keep], which[keep]
         order = np.lexsort((start, which))
         return grid[order], which[order]
+
+    def readings(self, frets: Grid, patterns: Collection[PitchClassSet]) -> list[list[Chord]]:
+        """Every chord each voicing could be, the inverse of `voicings`: its notes read as
+        each of `patterns` on each of its own notes as root (`core.chord.identify`), with the
+        voicing's lowest note written as the bass unless that is the root. Choosing between
+        readings is the caller's: the one with no bass written sits on its root."""
+        read: dict[tuple[bytes, float], list[Chord]] = {}
+        readings = []
+        for sounded, low in zip(self.chroma(frets), self.bass(frets) % self.size, strict=True):
+            if (sounded.tobytes(), low) not in read and sounded.any():
+                notes = PitchClassSet(tuple(np.flatnonzero(sounded).tolist()), self.size)
+                read[sounded.tobytes(), low] = [
+                    Chord(chord.pattern, chord.root, None if chord.root == low else int(low))
+                    for chord in identify(notes, patterns)
+                ]
+            readings.append(read.get((sounded.tobytes(), low), []))
+        return readings
 
     def chroma(self, frets: Grid) -> Mask:
         """Which pitch classes each voicing sounds, as [voicing, pitch class]: the form every
@@ -153,10 +186,15 @@ class Fretboard:
         bass: Floats = np.fmin.reduce(notes, axis=1, initial=np.nan)
         return bass
 
+    def top(self, frets: Grid) -> Floats:
+        """Highest pitch of each voicing, where a melody is heard; NaN if silent."""
+        notes = self.notes(frets)
+        top: Floats = np.fmax.reduce(notes, axis=1, initial=np.nan)
+        return top
+
     def frequencies(self, frets: Grid) -> Floats:
         """Frequency of each string in each voicing, in hertz; NaN where muted."""
-        period = float(self.temperament.period)
-        frequencies: Floats = self.hertz * period ** (self.notes(frets) / self.size)
+        frequencies: Floats = self.hertz * self.temperament.ratio(self.notes(frets))
         return frequencies
 
     def stack(self, frets: Grid, root: int) -> Grid:
@@ -170,12 +208,15 @@ class Fretboard:
         stack: Grid = intervals.astype(np.int16)
         return stack
 
-    def hand(self, frets: Grid) -> Floats:
-        """Where the hand sits for each voicing: millimetres from the nut to its lowest fretted
-        note, where the index finger goes. NaN when nothing is fretted."""
-        lowest = np.where(frets > 0, frets, self.frets + 1).min(axis=1)
-        hand: Floats = np.append(self.fret_distance, np.nan)[lowest]
-        return hand
+    def _tones(self, sets: Chords | list[Rooted[Any]]) -> Mask:
+        """Which pitch classes each chord or key holds, as [set, pitch class]: the same form
+        as `chroma`, so a voicing is checked against its chord by comparing rows."""
+        tones = np.zeros((len(sets), self.size), dtype=bool)
+        for index, notes in enumerate(sets):
+            if notes.size != self.size:
+                raise ValueError(f"set has {notes.size} steps per period, not {self.size}")
+            tones[index, list(notes.pitch_classes)] = True
+        return tones
 
 
 def _options(playable: NDArray[np.bool_]) -> tuple[Grid, NDArray[np.bool_]]:

@@ -1,4 +1,17 @@
-"""What a voicing sounds like: measures computed from its frequencies."""
+"""What a voicing sounds like: measures computed from its frequencies.
+
+Why: "does this voicing sound good" should not be an opinion in the code. The part of it that
+is physics can be computed: partials of two notes that fall close together beat, and the ear
+hears that as roughness. It is why the same third sounds clear high on the neck and muddy on
+the low strings, and why a voicing, not just a chord, has a sound.
+
+Theory it speaks to: sensory dissonance (Helmholtz; Plomp & Levelt 1965) in the form of
+Hutchinson & Knopoff (1978), with the parameters of Harrison & Pearce (2020), who found
+consonance to be roughness, harmonicity and familiarity together. Only roughness is here.
+
+Could grow into: harmonicity (how well the notes fit one harmonic series), real string
+spectra and inharmonicity in place of ideal 1/n partials, and loudness per string.
+"""
 
 from functools import lru_cache
 
@@ -35,10 +48,10 @@ def tempered_roughness(
     The same values, but the table of pairs covers whole octaves of steps and is kept, so
     every neck tuned from the same pitch reuses it.
     """
-    if steps.size == 0:
-        return np.zeros(len(steps))
     steps = np.sort(steps, axis=1)
     sounding = ~np.isnan(steps)
+    if not sounding.any():
+        return np.zeros(len(steps))
     size = temperament.size
     low = int(np.nanmin(steps)) // size * size
     high = (int(np.nanmax(steps)) // size + 1) * size
@@ -50,8 +63,7 @@ def tempered_roughness(
 def _tempered_beating(
     hertz: float, temperament: EqualTemperament, low: int, high: int, harmonics: int
 ) -> Floats:
-    period = float(temperament.period)
-    table = _beating(hertz * period ** (np.arange(low, high) / temperament.size), harmonics)
+    table = _beating(hertz * temperament.ratio(np.arange(low, high)), harmonics)
     table.flags.writeable = False
     return table
 
@@ -77,5 +89,5 @@ def _total(
     weight = sounding[:, :, None] & sounding[:, None, :]
     pairs = (pair[note[:, :, None], note[:, None, :]] * weight).sum(axis=(1, 2)) / 2
     energy = ((1 / np.arange(1, harmonics + 1)) ** 2).sum()  # per tone, partials at 1/n
-    rough: Floats = pairs / (sounding.sum(axis=1) * energy)
+    rough: Floats = pairs / (np.maximum(sounding.sum(axis=1), 1) * energy)  # silence is smooth
     return rough

@@ -9,7 +9,7 @@ from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.arrays import MUTED
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.taste import Taste
-from lazy_theory.suggest.melody import MelodicTaste, contrary, harmonise, parallels, top
+from lazy_theory.suggest.melody import MelodicTaste, contrary, harmonise, parallels
 
 X = MUTED
 STANDARD = Fretboard.from_tuning(load_tunings()["guitar standard"])
@@ -23,10 +23,6 @@ def rows(*voicings: list[int]) -> np.ndarray:
 
 
 class VoiceMotionTest(unittest.TestCase):
-    def test_top_is_the_highest_pitch(self):
-        # C major: E4 (52 steps above C0) on top.
-        np.testing.assert_array_equal(top(STANDARD, rows([X, 3, 2, 0, 1, 0])), [52])
-
     def test_parallel_fifths_and_octaves(self):
         c5, d5 = rows([X, 3, 5, X, X, X]), rows([X, 5, 7, X, X, X])
         c_octave, d_octave = rows([X, 3, 5, 5, X, X]), rows([X, 5, 7, 7, X, X])
@@ -64,14 +60,14 @@ class HarmoniseTest(unittest.TestCase):
         melody = [E, F, E]  # the Phrygian half step on top
         slots = [[Chord(MINOR, E)], E_PHRYGIAN, [Chord(MINOR, A)]]
         harmony = harmonise(STANDARD, melody, slots, MelodicTaste())
-        tops = top(STANDARD, harmony.path) % 12
+        tops = STANDARD.top(harmony.path) % 12
         self.assertEqual(tops.tolist(), melody)
         self.assertEqual((harmony.chords[0], harmony.chords[-1]), (0, 0))
 
     def test_a_free_melody_is_the_plain_path(self):
         chords, taste = [Chord(MINOR, E), Chord(MINOR, A)], Taste()
         harmony = harmonise(STANDARD, [None, None], [[chord] for chord in chords], taste)
-        path, cost = taste.path(STANDARD, chords)
+        path, cost, *_ = taste.path(STANDARD, chords)
         np.testing.assert_array_equal(harmony.path, path)
         self.assertEqual(harmony.cost, cost)
 

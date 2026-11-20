@@ -1,7 +1,21 @@
 import unittest
+from dataclasses import replace
+from itertools import combinations
 
 from lazy_theory.catalog import load_chords, load_scales, pitch, pitch_class
-from lazy_theory.catalog.names import chord_symbol, note_name, note_names, numeral, pitch_name, tab
+from lazy_theory.catalog.names import (
+    chord_symbol,
+    chord_tone_names,
+    degree_names,
+    note_name,
+    note_names,
+    numeral,
+    parse_chord,
+    pitch_name,
+    quality,
+    step_names,
+    tab,
+)
 from lazy_theory.core.chord import Chord
 from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
@@ -41,15 +55,114 @@ class SpellingTest(unittest.TestCase):
         )  # C4 as the leading note
 
 
+class DegreeNameTest(unittest.TestCase):
+    def test_modes_against_the_major_scale(self):
+        self.assertEqual(" ".join(degree_names(key("Phrygian", "E"))), "1 b2 b3 4 5 b6 b7")
+        self.assertEqual(" ".join(degree_names(key("Lydian", "F"))), "1 2 3 #4 5 6 7")
+        self.assertEqual(" ".join(degree_names(key("Locrian", "B"))), "1 b2 b3 4 b5 b6 b7")
+
+    def test_other_sizes_take_the_nearest_degree(self):
+        self.assertEqual(" ".join(degree_names(key("Minor Pentatonic", "A"))), "1 b3 4 5 b7")
+        self.assertEqual(" ".join(degree_names(key("Whole Tone", "C"))), "1 2 3 b5 b6 b7")
+
+
+class QualityTest(unittest.TestCase):
+    def test_modes_by_the_chord_on_their_first_note(self):
+        expected = {
+            "Ionian": "major",
+            "Dorian": "minor",
+            "Locrian": "diminished",
+            "Harmonic Minor": "minor",
+            "Phrygian Dominant": "major",
+            "Lydian Augmented": "augmented",
+            "Major Pentatonic": "major",
+            "Minor Pentatonic": "minor",
+        }
+        for name, sound in expected.items():
+            self.assertEqual(quality(SCALES[name]), sound, name)
+
+    def test_every_mode_gets_an_answer_or_none(self):
+        for name, scale in SCALES.items():
+            self.assertIn(quality(scale), ("major", "minor", "diminished", "augmented", None), name)
+
+
 class ChordNameTest(unittest.TestCase):
     def test_symbols_and_slash_bass(self):
         e_minor_7 = Chord(CHORDS["minor 7th"], pitch_class("E"))
         self.assertEqual(chord_symbol(e_minor_7), "Em7")
-        self.assertEqual(chord_symbol(e_minor_7, bass=pitch_class("G")), "Em7/G")
-        self.assertEqual(chord_symbol(e_minor_7, bass=pitch_class("E")), "Em7")
+        self.assertEqual(chord_symbol(replace(e_minor_7, bass=pitch_class("G"))), "Em7/G")
+        self.assertEqual(chord_symbol(replace(e_minor_7, bass=pitch_class("E"))), "Em7")
 
-    def test_unnamed_pattern_shows_its_intervals(self):
-        self.assertEqual(chord_symbol(Chord(PitchClassSet((0, 1, 3, 7)), 4)), "E(0 1 3 7)")
+    def test_extended_chords_are_a_named_core_plus_extensions(self):
+        e = pitch_class("E")
+        self.assertEqual(chord_symbol(Chord(PitchClassSet((0, 1, 3, 7)), e)), "Em(b9)")
+        self.assertEqual(chord_symbol(Chord(PitchClassSet((0, 1, 3, 7, 10)), e)), "Em7(b9)")
+        self.assertEqual(chord_symbol(Chord(PitchClassSet((0, 2, 4, 7, 9)), 0)), "C6(9)")
+        self.assertEqual(chord_symbol(Chord(PitchClassSet((0, 3, 5, 7, 10)), e, 7)), "Em7(11)/G")
+
+    def test_every_step_has_a_name_in_the_key(self):
+        d_dorian = Key(load_scales()["Dorian"], pitch_class("D"))
+        self.assertEqual(
+            step_names(d_dorian), ("1", "b2", "2", "b3", "3", "4", "b5", "5", "b6", "6", "b7", "7")
+        )
+        lydian = Key(load_scales()["Lydian"], 0)
+        self.assertEqual(step_names(lydian)[6], "#4")  # the key's own spelling wins
+
+    def test_notes_outside_the_key_are_spelled_by_their_interval(self):
+        d_dorian = Key(load_scales()["Dorian"], pitch_class("D"))
+        self.assertEqual(note_name(pitch_class("A#"), d_dorian), "Bb")  # b6
+        self.assertEqual(note_name(pitch_class("F#"), d_dorian), "F#")  # 3
+        self.assertEqual(note_name(pitch_class("G#"), d_dorian), "Ab")  # b5
+
+    def test_a_sixth_without_a_seventh_is_a_6_chord(self):
+        # the symbol and the chord's own interval names agree: 6, not 13
+        f = pitch_class("F")
+        for pattern, symbol in (((0, 4, 7, 9), "F6"), ((0, 3, 7, 9), "Fm6")):
+            chord = Chord(PitchClassSet(pattern), f)
+            self.assertEqual(chord_symbol(chord), symbol)
+            self.assertIn("6", chord_tone_names(chord.pattern))
+            self.assertEqual(parse_chord(symbol), chord)
+
+    def test_any_leftover_note_has_a_name(self):
+        # the largest named core here is a minor triad; the major 7th is left over
+        self.assertEqual(chord_symbol(Chord(PitchClassSet((0, 3, 7, 11, 2)), 9)), "Am(maj7)(9)")
+        for steps in range(1, 12):
+            chord_symbol(Chord(PitchClassSet((0, 4, 7, steps)), 0))  # never raises
+
+    def test_pattern_with_no_named_core_lists_every_note(self):
+        cluster = Chord(PitchClassSet((0, 1, 2)), 4)
+        self.assertEqual(chord_symbol(cluster), "E(1,b9,2)")
+        self.assertEqual(parse_chord("E(1,b9,2)"), cluster)
+
+    def test_a_symbol_and_its_note_names_agree(self):
+        # what the symbol calls a note is what the note is labelled, for every possible chord
+        for size in range(1, 12):  # all 2,047 patterns on a root
+            for rest in combinations(range(1, 12), size):
+                chord = Chord(PitchClassSet((0, *rest)), 0)
+                symbol, tones = chord_symbol(chord), chord_tone_names(chord.pattern)
+                self.assertEqual(parse_chord(symbol), chord, symbol)
+                if "(" in symbol and not symbol.endswith("(maj7)"):
+                    written = symbol[symbol.rindex("(") + 1 : -1].replace("maj7", "7").split(",")
+                    self.assertLessEqual(set(written), set(tones), symbol)
+
+    def test_reading_forgives_spaces_but_not_a_missing_bass(self):
+        self.assertEqual(parse_chord(" Em7(b9, 11) "), parse_chord("Em7(b9,11)"))
+        with self.assertRaises(ValueError):
+            parse_chord("Em7/")
+
+    def test_power_chords(self):
+        self.assertEqual(chord_symbol(Chord(PitchClassSet((0, 7)), 9)), "A5")
+        self.assertEqual(chord_tone_names(PitchClassSet((0, 7))), ("1", "5"))
+
+    def test_note_names_follow_the_chord_like_its_symbol(self):
+        for name, expected in (
+            ("sus2", ("1", "2", "5")),
+            ("sus4", ("1", "4", "5")),
+            ("augmented 7th", ("1", "3", "#5", "b7")),
+            ("diminished 7th", ("1", "b3", "b5", "bb7")),
+            ("half-diminished 7th", ("1", "b3", "b5", "b7")),
+        ):
+            self.assertEqual(chord_tone_names(CHORDS[name]), expected, name)
 
     def test_roman_numerals_from_the_triads(self):
         self.assertEqual(
@@ -58,6 +171,43 @@ class ChordNameTest(unittest.TestCase):
         )
         self.assertEqual(numeral(key("Phrygian", "E"), 1), "bII")
         self.assertEqual(numeral(key("Harmonic Minor", "A"), 2), "bIII+")
+
+
+class ParseChordTest(unittest.TestCase):
+    def test_every_symbol_reads_back(self):
+        for pattern in CHORDS.values():
+            for root in range(12):
+                for bass in (None, *Chord(pattern, root).pitch_classes):
+                    chord = Chord(pattern, root, bass)
+                    with self.subTest(written=chord_symbol(chord)):
+                        read = parse_chord(chord_symbol(chord))  # a bass on the root isn't written
+                        self.assertEqual(read, Chord(pattern, root, None if bass == root else bass))
+
+    def test_extensions_and_flats(self):
+        parsed = parse_chord("Bbm7(b9)/Db")
+        self.assertEqual(parsed, Chord(PitchClassSet((0, 1, 3, 7, 10)), 10, bass=1))
+
+    def test_numerals_in_a_key(self):
+        e_phrygian = key("Phrygian", "E")
+        self.assertEqual(parse_chord("bII", e_phrygian).root, pitch_class("F"))
+        self.assertEqual(parse_chord("iv", e_phrygian), e_phrygian.chord(3))
+
+    def test_rejects_what_it_cannot_read(self):
+        for text in ("", "Hm7", "Em/F#", "Eblah", "Em(b10)"):
+            with self.assertRaises(ValueError, msg=text):
+                parse_chord(text)
+
+
+class ChordToneTest(unittest.TestCase):
+    def test_labels_follow_the_chord(self):
+        self.assertEqual(chord_tone_names(CHORDS["minor 7th"]), ("1", "b3", "5", "b7"))
+        self.assertEqual(
+            chord_tone_names(PitchClassSet((0, 3, 4, 7, 10))), ("1", "#9", "3", "5", "b7")
+        )
+        self.assertEqual(chord_tone_names(PitchClassSet((0, 4, 7, 9))), ("1", "3", "5", "6"))
+        self.assertEqual(
+            chord_tone_names(PitchClassSet((0, 4, 7, 9, 10))), ("1", "3", "5", "13", "b7")
+        )
 
 
 class TabTest(unittest.TestCase):

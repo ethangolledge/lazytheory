@@ -1,6 +1,6 @@
 import unittest
 
-from lazy_theory.core.pcset import PitchClassSet
+from lazy_theory.core.pcset import PitchClassSet, shortest
 
 IONIAN_STEPS = (2, 2, 1, 2, 2, 2, 1)
 IONIAN = PitchClassSet((0, 2, 4, 5, 7, 9, 11))
@@ -67,6 +67,13 @@ class PitchClassSetTest(unittest.TestCase):
         for notes in (0, 13):
             with self.assertRaises(ValueError, msg=notes):
                 PitchClassSet.maximally_even(notes)
+
+    def test_shortest_way_round(self):
+        self.assertEqual(
+            [shortest(steps, 12) for steps in (0, 1, 5, 6, 7, 11, 13, -1)],
+            [0, 1, 5, 6, -5, -1, 1, -1],
+        )
+        self.assertEqual(shortest(10, 19), -9)
 
 
 if __name__ == "__main__":

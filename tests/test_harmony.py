@@ -2,8 +2,8 @@
 
 import unittest
 
-from lazy_theory.catalog import load_chords, load_scales
-from lazy_theory.core.chord import identify
+from lazy_theory.catalog import chord_names, load_chords, load_scales
+from lazy_theory.core.chord import Chord, identify
 from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
@@ -19,6 +19,11 @@ TONIC = IONIAN.chord(0)
 def chord_in_key(scale, degree: int, notes: int = 3) -> PitchClassSet:
     """A stacked chord placed at its position in the key rather than measured from its own root."""
     return Key(scale, 0).chord(degree, notes).pitch_classes
+
+
+def name(notes: PitchClassSet) -> str:
+    """The catalog's name for the first reading of `notes`."""
+    return chord_names()[identify(notes, chord_names())[0].pattern]
 
 
 def secondary_dominant(target_root: int) -> PitchClassSet:
@@ -45,19 +50,19 @@ class ResolutionTest(unittest.TestCase):
         supertonic = IONIAN.pitch_classes[1]
         five_of_two = secondary_dominant(supertonic)
         self.assertEqual(five_of_two.pitch_classes, (1, 4, 7, 9))
-        self.assertEqual(identify(five_of_two, CHORDS)[0].name, "dominant 7th")
+        self.assertEqual(name(five_of_two), "dominant 7th")
         self.assertEqual(set(five_of_two) - set(IONIAN), {supertonic - 1})
 
     def test_tritone_substitute_keeps_the_tritone(self):
         dominant = secondary_dominant(0)
         substitute = dominant.transpose(6)
-        self.assertEqual(identify(substitute, CHORDS)[0].name, "dominant 7th")
+        self.assertEqual(name(substitute), "dominant 7th")
         self.assertEqual(set(dominant) & set(substitute), {5, 11})
 
     def test_borrowed_chord_comes_from_a_rotation_on_the_same_root(self):
         borrowed_four = chord_in_key(SCALES["Aeolian"], 3)
         self.assertEqual(borrowed_four.pitch_classes, (0, 5, 8))
-        self.assertEqual(identify(borrowed_four, CHORDS)[0], ("minor", 5))
+        self.assertEqual(identify(borrowed_four, chord_names()), [Chord(CHORDS["minor"], 5)])
 
     def test_neo_riemannian_moves_are_the_smallest_triad_changes(self):
         parallel, leading_tone, relative = (

@@ -1,4 +1,16 @@
-"""Scales: pitch-class sets measured from a root, and the chords stacked from them."""
+"""Scales: pitch-class sets measured from a root, and the chords stacked from them.
+
+Why: a scale is the pool of notes a piece draws on, and its chords are not a separate list to
+memorise: take every other note and you have them. One step pattern gives seven modes by
+rotation and seven triads, seven sevenths, and so on by stacking.
+
+Theory it speaks to: modes as rotations of one pattern; tertian harmony as stacked thirds
+(stride 2), quartal harmony as stacked fourths (stride 3). Because the stacking counts scale
+degrees, not semitones, it works unchanged on pentatonic, octatonic or microtonal scales.
+
+Could grow into: scale families found by rotation and reflection, "brightness" orderings of
+modes (the sum of a mode's steps), and chords from any stride on any scale.
+"""
 
 from lazy_theory.core.pcset import PitchClassSet
 

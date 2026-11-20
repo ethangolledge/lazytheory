@@ -5,7 +5,6 @@ import numpy as np
 from lazy_theory.catalog import load_tunings
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
-from lazy_theory.instruments.acoustics import roughness
 from lazy_theory.instruments.arrays import MUTED
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import (
@@ -16,7 +15,6 @@ from lazy_theory.instruments.rules import (
     open_within,
     placeable,
     ringing,
-    smoothest,
     sounding,
     strings_changed,
     within,
@@ -81,6 +79,11 @@ class PlaceableTest(unittest.TestCase):
         f, b_minor = [1, 3, 3, 2, 1, 1], [X, 2, 4, 4, 3, 2]
         self.assertEqual(self.placeable(STANDARD, c, g, a, f, b_minor), [True] * 5)
 
+    def test_separate_fingers_where_a_barre_would_crowd(self):
+        # D/F#: a barre on fret 2 would block the F#, but index, middle and ring on fret 2 and
+        # the pinky on fret 3 (or a thumb on the F#) hold it fine.
+        self.assertEqual(self.placeable(STANDARD, [2, 0, 0, 2, 3, 2]), [True])
+
     def test_stretch_too_far(self):
         self.assertEqual(self.placeable(STANDARD, [1, X, X, X, X, 6]), [False])
 
@@ -127,90 +130,9 @@ class TransitionTest(unittest.TestCase):
         self.assertEqual(strings_changed(self.previous, self.following).tolist(), [[0, 2]])
 
     def test_motion_of_any_value(self):
-        hands = STANDARD.hand(self.previous), STANDARD.hand(rows([0, 0, 0, 0, 0, 0]))
-        np.testing.assert_allclose(motion(*hands), [[0.0]])
+        silent = STANDARD.bass(rows([X] * 6))  # NaN: nothing sounds, so nothing moves
+        np.testing.assert_allclose(motion(STANDARD.bass(self.previous), silent), [[0.0]])
         np.testing.assert_allclose(bass_motion(self.previous, self.following), [[1, 5]])
-
-
-class SmoothestTest(unittest.TestCase):
-    def test_matches_brute_force(self):
-        def transition(previous, following):
-            return moved(previous, following) + 5 * strings_changed(previous, following)
-
-        def cost(voicings):
-            return 10 * roughness(STANDARD.frequencies(voicings))
-
-        two, five, one = [
-            playable(STANDARD.voicings(IONIAN.chord(degree, 4), C + step, REACH), 5, 9)
-            for degree, step in ((1, 2), (4, 7), (0, 0))
-        ]
-        every_path = (
-            cost(two)[:, None, None]
-            + transition(two, five)[:, :, None]
-            + cost(five)[None, :, None]
-            + transition(five, one)[None, :, :]
-            + cost(one)[None, None, :]
-        )
-        path, total = smoothest([two, five, one], transition, [cost(two), cost(five), cost(one)])
-        self.assertAlmostEqual(total, every_path.min())
-        chosen = sum(cost(path[i : i + 1])[0] for i in range(3)) + sum(
-            transition(path[i : i + 1], path[i + 1 : i + 2])[0, 0] for i in range(2)
-        )
-        self.assertAlmostEqual(chosen, every_path.min())
-
-    def test_fixed_starting_voicing(self):
-        start = rows([X, X, 10, 10, 10, 10])
-        five = STANDARD.voicings(IONIAN.chord(4, 4), C + 7, REACH)
-        path, _ = smoothest([start, five], moved)
-        np.testing.assert_array_equal(path[0], start[0])
-
-    def test_rejects_a_chord_with_no_voicings(self):
-        with self.assertRaises(ValueError):
-            smoothest([rows([0, 2, 2, 1, 0, 0]), rows()[:0]], moved)
-
-
-class InversionsFromTheBassTest(unittest.TestCase):
-    """The common-practice uses of inversions follow from one rule: move the bass as little as
-    possible (docs/theory.md section 7)."""
-
-    tonic = rows([X, 3, 2, 0, 1, 0])  # C, bass C3
-
-    def inversion(self, chords: list[np.ndarray], middle: int) -> int:
-        path, _ = smoothest(chords, bass_motion)
-        return int(STANDARD.stack(path[1:2], middle)[0, 0])
-
-    def test_pedal_six_four(self):
-        # I - IV - I over a held bass: IV takes its fifth in the bass.
-        subdominant = playable(STANDARD.voicings(MAJOR, F, REACH), 0, 4)
-        self.assertEqual(self.inversion([self.tonic, subdominant, self.tonic], F), 7)
-
-    def test_passing_six_four(self):
-        # I - V - I6, bass C3 to E3: V takes its fifth, D3, to pass by step.
-        dominant = playable(STANDARD.voicings(MAJOR, G, REACH), 0, 4)
-        tonic_six = rows([X, X, 2, 0, 1, 0])
-        self.assertEqual(self.inversion([self.tonic, dominant, tonic_six], G), 7)
-
-    def test_four_two_resolves_to_six(self):
-        # V4/2, seventh F2 in the bass, falls a step to I6 with E2 in the bass.
-        dominant_seventh = rows([1, X, 0, 0, 0, 1])
-        tonic = playable(STANDARD.voicings(MAJOR, C, REACH), 0, 4)
-        path, _ = smoothest([dominant_seventh, tonic], bass_motion)
-        self.assertEqual(STANDARD.stack(path[1:], C)[0, 0], 4)
-
-
-class TwoFiveOneTest(unittest.TestCase):
-    """ii-V-I in C in one hand position keeps its strings and picks its inversions."""
-
-    def test_stays_on_the_same_strings(self):
-        options = [
-            playable(STANDARD.voicings(IONIAN.chord(degree, 4), C + step, REACH), 7, 11)
-            for degree, step in ((1, 2), (4, 7), (0, 0))
-        ]
-        options = [voicings[contiguous(voicings)] for voicings in options]
-        path, _ = smoothest(options, lambda a, b: moved(a, b) + 5 * strings_changed(a, b))
-        sounding = path != MUTED
-        self.assertTrue((sounding == sounding[0]).all())
-        self.assertEqual(path.tolist()[-1], [X, X, 9, 9, 8, 8])
 
 
 if __name__ == "__main__":

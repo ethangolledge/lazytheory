@@ -1,11 +1,20 @@
 """Named scales, chords and string tunings, loaded from TOML data files.
 
-Names are convention (docs/theory.md), so they live here as data rather than in core. Notes
-become one integer frame: pitch is steps above C0 and pitch class is pitch mod the steps per
-period, C being 0 (`pitch`, `pitch_class`). Everything after this layer is intervals in that
-frame. Pass a
-path to load your own file instead of the bundled one. Each file is read once; the results are
-shared, so treat them as read-only.
+Why: "Dorian", "m7" and "drop D" are conventions, not maths (docs/theory.md), so they are data
+here and never code in core. Swap a file and the library speaks another tradition's names, or
+your own. This is also where note names become numbers, once: pitch is steps above C0 and pitch
+class is pitch mod the steps per period, C being 0 (`pitch`, `pitch_class`). Everything after
+this layer is integers in that one frame, so any two things compare by subtraction.
+
+Theory it speaks to: scientific pitch notation; the letters A to G as the Ionian scale on C
+(so they are read from the scales file, not typed in twice); modes as rotations, so a family
+is one step pattern and a list of names.
+
+Could grow into: more data, with no code: maqam or raga families, other instruments' tunings,
+a different reference pitch (A = 432 or 415), 19- or 31-step scales.
+
+Pass a path to load your own file instead of the bundled one. Each file is read once; the
+results are shared, so treat them as read-only.
 """
 
 import tomllib
@@ -22,7 +31,7 @@ from lazy_theory.core.scale import Scale
 from lazy_theory.core.temperament import EqualTemperament
 
 _BUNDLED = files(__package__)
-_LETTERS = tuple("CDEFGAB")
+LETTERS = tuple("CDEFGAB")  # the Ionian scale on C, in order
 _DIGITS = "0123456789"
 
 
@@ -40,6 +49,14 @@ def load_scales(path: Path | None = None) -> Mapping[str, Scale]:
 
 
 @cache
+def load_scale_families(path: Path | None = None) -> Mapping[str, tuple[str, ...]]:
+    """Each family of modes (a table in the scales file, e.g. "harmonic_minor") with its modes'
+    names in rotation order."""
+    data = _read(path or _BUNDLED / "scales.toml")
+    return {family: tuple(entry["modes"]) for family, entry in data.items()}
+
+
+@cache
 def load_chords(path: Path | None = None) -> Mapping[str, PitchClassSet]:
     """Every named chord pattern, keyed by name."""
     data = _read(path or _BUNDLED / "chords.toml")
@@ -50,12 +67,19 @@ def load_chords(path: Path | None = None) -> Mapping[str, PitchClassSet]:
 
 
 @cache
+def chord_names() -> Mapping[PitchClassSet, str]:
+    """The name of each bundled chord pattern: `load_chords` turned round. It names what
+    `core.chord.identify` finds, and serves as the patterns it looks for."""
+    return {pattern: name for name, pattern in load_chords().items()}
+
+
+@cache
 def load_symbols(path: Path | None = None) -> Mapping[str, str]:
     """How each named chord is written after its root, e.g. "m7" for "minor 7th"."""
     data = _read(path or _BUNDLED / "chords.toml")
     symbols: dict[str, str] = data.get("symbols", {})
-    if unknown := set(symbols) - set(data["chords"]):
-        raise ValueError(f"symbols for unnamed chords: {sorted(unknown)}")
+    if mismatched := set(symbols) ^ set(data["chords"]):  # so every chord can be written
+        raise ValueError(f"chords and symbols differ: {sorted(mismatched)}")
     return symbols
 
 
@@ -70,14 +94,17 @@ def load_tunings(path: Path | None = None) -> Mapping[str, Tuning]:
     """Every named tuning, keyed by instrument and name, e.g. "guitar standard"."""
     data = _read(path or _BUNDLED / "tunings.toml")
     reference = data.pop("reference")
-    temperament = EqualTemperament(_ionian().size)
+    temperament = EqualTemperament(major().size)
+    hertz = reference["hertz"] * temperament.ratio(-pitch(reference["note"]))
     tunings: dict[str, Tuning] = {}
     for instrument, entry in data.items():
         for name, tuning in entry["tunings"].items():
-            hertz = reference["hertz"] * temperament.ratio(-pitch(reference["note"]))
-            gaps = accumulate(tuning["gaps"], initial=pitch(tuning["first"]))
-            values = Tuning(tuple(gaps), entry["scale_length"], hertz)
-            _add(tunings, f"{instrument} {name}", values)
+            strings = accumulate(tuning["gaps"], initial=pitch(tuning["first"]))
+            _add(
+                tunings,
+                f"{instrument} {name}",
+                Tuning(tuple(strings), entry["scale_length"], hertz),
+            )
     return tunings
 
 
@@ -87,21 +114,32 @@ def pitch(note: str) -> int:
     name = note.rstrip(_DIGITS)
     if name == note:
         raise ValueError(f"no octave in {note!r}")
-    return _ionian().size * int(note[len(name) :]) + pitch_class(name)
+    return major().size * int(note[len(name) :]) + pitch_class(name)
 
 
 def pitch_class(note: str) -> int:
     """Steps above C, so C is 0 and E is 4. The letters are the Ionian scale on C; each #
     raises and each b lowers a step (B# is 12: reduce it mod the period where needed)."""
-    letter, accidentals = note[:1].upper(), note[1:]
-    if letter not in _LETTERS or set(accidentals) - {"#", "b"}:
+    letter, altered = note[:1].upper(), note[1:]
+    if letter not in LETTERS or set(altered) - {"#", "b"}:
         raise ValueError(f"not a note name: {note!r}")
-    natural = _ionian().pitch_classes[_LETTERS.index(letter)]
-    return natural + accidentals.count("#") - accidentals.count("b")
+    return major().pitch_classes[LETTERS.index(letter)] + alteration(altered)
 
 
-def _ionian() -> Scale:
+def major() -> Scale:
+    """The scale names are measured against: its notes are the letters C to B, and its degrees
+    the numbers every interval name counts in."""
     return load_scales()["Ionian"]
+
+
+def accidentals(shift: int) -> str:
+    """Sharps that raise a note `shift` steps, or flats that lower it: 1 is "#", -2 is "bb"."""
+    return "#" * shift + "b" * -shift
+
+
+def alteration(text: str) -> int:
+    """`accidentals` read back: steps up for each "#" in `text`, down for each "b"."""
+    return text.count("#") - text.count("b")
 
 
 def _read(path: Path | Traversable) -> dict[str, Any]:

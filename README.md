@@ -43,15 +43,18 @@ The same checks run on every push (`.github/workflows/checks.yml`).
 ```python
 from lazy_theory.catalog import load_chords, load_scales, load_tunings, pitch_class
 from lazy_theory.core.chord import Chord
+from lazy_theory.core.key import Key
 from lazy_theory.instruments.fretboard import Fretboard
 
 board = Fretboard.from_tuning(load_tunings()["guitar open D"])
 root = pitch_class("A")  # 9: roots are pitch classes, C = 0, on every instrument
 reach = board.fret_distance[4] - board.fret_distance[1]  # a hand spanning frets 1-4, in mm
 
-board.positions(load_scales()["Phrygian"], root)  # where A Phrygian lives on the neck
-board.voicings(load_chords()["minor 7th"], root, reach)  # every Am7 in reach, one row each
-board.capo(5).voicings(load_chords()["minor 7th"], root, reach)  # with a capo at 5
+a_minor_7 = Chord(load_chords()["minor 7th"], root)
+board.positions(Key(load_scales()["Phrygian"], root))  # where A Phrygian lives on the neck
+board.voicings(a_minor_7, reach)  # every Am7 in reach, one row each
+board.capo(5).voicings(a_minor_7, reach)  # with a capo at 5
+board.voicings(Chord(a_minor_7.pattern, root, bass=pitch_class("C")), reach)  # Am7/C only
 ```
 
 Choosing inversions for a progression: a `Taste` holds the rules and weights, one place to
@@ -61,25 +64,27 @@ change them.
 from lazy_theory.instruments.taste import Taste
 
 chords = [Chord(load_chords()["minor"], pitch_class(note)) for note in "EA"]
-path, cost = Taste(highest=9, roughness=10.0).path(board, chords)
-[board.stack(v[None], root)[0, 0] for v, (_, root) in zip(path, chords)]  # each bass: the inversion
+taste = Taste(highest=9, roughness=10.0)
+route = taste.path(board, chords)  # route.path: one voicing per chord; route.cost
+[board.stack(v[None], chord.root)[0, 0] for v, chord in zip(route.path, chords)]  # each inversion
+taste.lines(board, chords)  # the best route for each top line about as easy as the best
 ```
 
 Back to words, only at the edge:
 
 ```python
-from lazy_theory.catalog.names import chord_symbol, tab
+from lazy_theory.catalog.names import chord_symbol, parse_chord, tab
+from lazy_theory.suggest.neighbours import named
 
-basses = board.bass(path) % 12
-titles = [chord_symbol(chord, bass=int(bass)) for chord, bass in zip(chords, basses)]
-print(tab(board.open_strings, path, titles))  # one column per chord, high string on top
+titles = [chord_symbol(chord) for chord in named(board, route.path)]  # each shape, read back
+print(tab(board.open_strings, route.path, titles))  # one column per chord, high string on top
+parse_chord("Em7(b9)/G")  # and words back into numbers: a Chord with its bass
 ```
 
 Optionally, suggest a tuning and capo for a progression. Standard tuning stays the default; this
 is a separate layer you opt into:
 
 ```python
-from lazy_theory.core.key import Key
 from lazy_theory.suggest.tunings import name, suggest
 
 tunings = load_tunings()
@@ -107,9 +112,10 @@ harmony.chords, harmony.path  # which chord in each slot (F, the flat II, then A
 
 ## Status
 
-Built: temperament, pitch-class sets, scales and modes, chord stacking and identification,
-voice leading, and a NumPy fretboard for any tuning that maps every voicing of a chord,
-measures its roughness and picks playable inversions for a progression, with or without a
-capo; optionally, suggests tunings and capos, harmonises melodies and walks between chords
-through extensions derived from the key. Next: rhythm, then
-export for the web app.
+Built: temperament, pitch-class sets, scales and modes, chords and keys as patterns on a root,
+chord identification, exact voice leading, melodic attraction, and a NumPy fretboard for any
+tuning that maps every voicing of a chord, reads any shape back as chords, measures roughness
+and answers every question about a progression as one shortest-path search: the smoothest
+inversions, the best route for each top or bass line, a repeated chord kept on one shape.
+Optionally: tunings and capos, harmonised melodies, chords one finger away, passing chords,
+held notes, and extensions derived from the key. Next: rhythm.

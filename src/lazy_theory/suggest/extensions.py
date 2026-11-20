@@ -1,5 +1,12 @@
 """Extended chords, derived from the key rather than listed.
 
+Why: add9, 11th and 13th chords look like a long list to learn, but they are one idea: keep
+stacking thirds past the seventh. Derived from the key, each one automatically has the right
+notes for where it sits (the ninth on E in E Phrygian is flat, because F is in the key).
+
+Could grow into: quartal and other stacks (`stride` on `Scale.stacked`), upper-structure
+triads (three neighbouring notes of the stack), and which extensions a melody note allows.
+
 Stacking a seven-note scale in thirds from any degree gives 1 3 5 7 9 11 13; the 13th chord is
 the whole scale. An extended chord keeps a core, the root and third that give its quality, and
 adds any of the rest: every add9, seventh, ninth, eleventh and thirteenth is one of those.
@@ -19,7 +26,7 @@ def extended(key: Key, degree: int, core: int = 2, most: int = 5) -> list[Chord]
     order = key.scale.stacked(degree, len(key.scale))
     root = key.chord(degree).root
     return [
-        Chord(PitchClassSet((*order[:core], *extra), key.scale.size), root)
+        Chord(PitchClassSet((*order[:core], *extra), key.size), root)
         for count in range(most - core + 1)
         for extra in combinations(order[core:], count)
     ]

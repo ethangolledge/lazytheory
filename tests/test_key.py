@@ -6,17 +6,7 @@ from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
 
 SCALES = load_scales()
-E, F, A = 4, 5, 9
-
-
-class ChordTest(unittest.TestCase):
-    def test_pattern_on_a_root(self):
-        e_minor = Chord(PitchClassSet((0, 3, 7)), E)
-        self.assertEqual(e_minor.pitch_classes.pitch_classes, (4, 7, 11))
-
-    def test_unpacks_as_pattern_then_root(self):
-        pattern, root = Chord(PitchClassSet((0, 4, 7)), A)
-        self.assertEqual((pattern.pitch_classes, root), ((0, 4, 7), A))
+E, F = 4, 5
 
 
 class KeyTest(unittest.TestCase):
@@ -30,6 +20,13 @@ class KeyTest(unittest.TestCase):
         key = Key(SCALES["Dorian"], 2)
         for chord in key.chords(notes=4):
             self.assertLessEqual(set(chord.pitch_classes), set(key.pitch_classes))
+
+    def test_a_key_is_its_scale_on_a_root(self):
+        key = Key(SCALES["Dorian"], 14)
+        self.assertEqual((key.root, key.scale), (2, SCALES["Dorian"]))
+        self.assertIn(11, key)  # B, the note that makes D Dorian
+        self.assertNotIn(10, key)
+        self.assertNotEqual(key, Chord(SCALES["Dorian"], 2))  # same notes, not the same thing
 
     def test_stacking_in_thirds_reaches_the_thirteenth(self):
         self.assertEqual(SCALES["Ionian"].stacked(0, 7), (0, 4, 7, 11, 2, 5, 9))

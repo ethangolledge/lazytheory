@@ -24,15 +24,14 @@ class StackTest(unittest.TestCase):
 class ExtendedTest(unittest.TestCase):
     def test_core_plus_any_of_the_rest(self):
         chords = extended(Key(PHRYGIAN, 4), degree=0)  # E Phrygian
-        sets = {chord.pitch_classes for chord, _ in chords}
+        sets = {chord.pattern.pitch_classes for chord in chords}
         self.assertEqual(len(chords), 1 + 5 + 10 + 10)  # up to 3 of 5, 5 notes at most
         self.assertIn((0, 3, 7), sets)  # Em itself
         self.assertIn((0, 1, 3, 7), sets)  # Em(b9): the Phrygian F as a colour
         self.assertTrue(all({0, 3} <= set(chord) for chord in sets))
 
     def test_rooted_on_the_degree(self):
-        (_, root), *_ = extended(Key(PHRYGIAN, 4), degree=1)
-        self.assertEqual(root, 5)  # F in E Phrygian
+        self.assertEqual(extended(Key(PHRYGIAN, 4), degree=1)[0].root, 5)  # F in E Phrygian
 
 
 if __name__ == "__main__":

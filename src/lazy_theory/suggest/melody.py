@@ -1,14 +1,25 @@
 """Harmonise a melody: one chord per melody note, the note on top, the chords chosen from those
 allowed in each slot (one fixed chord, or any chord of a key), with smooth voice leading.
 
+Why: chord-melody playing, a tune and its harmony from one instrument, is the hardest thing to
+work out by hand: every melody note limits the voicings, and every voicing limits the next. As
+a search it is the usual graph with one more rule: the top note of each chord is given.
+
+Theory it speaks to: the outer voices carry a texture (the top is heard as the tune, the bass
+as the foundation), and independence between them: contrary motion keeps two lines distinct,
+while voices moving in parallel perfect fifths or octaves fuse into one (Huron, "Tone and
+Voice", 2001). Avoiding parallels is classical taste: on guitar, where a barre shape slid up
+the neck is all parallel fifths, it is a choice, which is why it lives in a Taste subclass.
+
+Could grow into: a bass line given the same way, melodies with passing notes between chords,
+and a rhythm that lets one chord carry several melody notes.
+
 Optional, like the rest of this layer. A MelodicTaste is a Taste that also listens to how the
 voices move against each other; everything else it inherits.
 """
 
-import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from functools import partial
 from itertools import combinations
 from typing import NamedTuple
 
@@ -17,14 +28,7 @@ import numpy as np
 from lazy_theory.core.chord import Chords
 from lazy_theory.instruments.arrays import Floats, Grid
 from lazy_theory.instruments.fretboard import Fretboard
-from lazy_theory.instruments.rules import smoothest
 from lazy_theory.instruments.taste import Taste
-
-
-def top(board: Fretboard, voicings: Grid) -> Floats:
-    """Highest pitch of each voicing, where the melody is heard."""
-    highest: Floats = np.nanmax(board.notes(voicings), axis=1)
-    return highest
 
 
 def parallels(board: Fretboard, previous: Grid, following: Grid) -> Floats:
@@ -32,7 +36,7 @@ def parallels(board: Fretboard, previous: Grid, following: Grid) -> Floats:
     to the same interval, for each change. Shape (len(previous), len(following)).
 
     Voices in parallel perfect intervals fuse and are heard as one (Huron 2001)."""
-    fifth = round(board.size * math.log(1.5, float(board.temperament.period)))
+    fifth = round(board.temperament.steps(3 / 2))
     before, after = board.notes(previous)[:, None, :], board.notes(following)[None, :, :]
     direction = np.sign(after - before)  # NaN where either is silent
     count = np.zeros((len(previous), len(following)))
@@ -47,7 +51,7 @@ def parallels(board: Fretboard, previous: Grid, following: Grid) -> Floats:
 
 def contrary(board: Fretboard, previous: Grid, following: Grid) -> Floats:
     """1 where the top note and the bass move in opposite directions, for each change."""
-    tops = [top(board, voicings) for voicings in (previous, following)]
+    tops = [board.top(voicings) for voicings in (previous, following)]
     basses = [board.bass(voicings) for voicings in (previous, following)]
     up = np.sign(tops[1][None, :] - tops[0][:, None])
     down = np.sign(basses[1][None, :] - basses[0][:, None])
@@ -91,12 +95,9 @@ def harmonise(
     for note, chords in zip(melody, slots, strict=True):
         grids = taste.options(board, chords)
         if note is not None:
-            grids = [grid[top(board, grid) % board.size == note % board.size] for grid in grids]
+            grids = [grid[board.top(grid) % board.size == note % board.size] for grid in grids]
         options.append(np.concatenate(grids))
         owners.append(np.repeat(np.arange(len(grids)), [len(grid) for grid in grids]))
-    path, cost = smoothest(options, partial(taste.transition, board), taste.costs(board, options))
-    chosen = tuple(
-        int(owner[(voicings == row).all(axis=1).argmax()])
-        for owner, voicings, row in zip(owners, options, path, strict=True)
-    )
-    return Harmony(chosen, path, cost)
+    route = taste.trellis(board, options).shortest()
+    chosen = tuple(int(owner[pick]) for owner, pick in zip(owners, route.picks, strict=True))
+    return Harmony(chosen, route.path, route.cost)

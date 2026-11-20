@@ -51,6 +51,13 @@ class EqualTemperamentTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             EqualTemperament(12, Fraction(1))
 
+    def test_steps_is_the_inverse_of_ratio(self):
+        for system in (EqualTemperament(), EqualTemperament(19), EqualTemperament(13, Fraction(3))):
+            for step in (-7, 0, 1, 7, 30):
+                self.assertAlmostEqual(system.steps(system.ratio(step)), step)
+        self.assertEqual(round(EqualTemperament().steps(3 / 2)), 7)
+        self.assertEqual(round(EqualTemperament(19).steps(3 / 2)), 11)
+
 
 if __name__ == "__main__":
     unittest.main()

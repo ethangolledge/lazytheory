@@ -3,6 +3,8 @@ import unittest
 import numpy as np
 
 from lazy_theory.catalog import load_tunings
+from lazy_theory.core.chord import Chord
+from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.scale import Scale
 from lazy_theory.core.temperament import EqualTemperament
@@ -48,12 +50,15 @@ class FretboardTest(unittest.TestCase):
         self.assertEqual(STANDARD.intervals(root=9)[0, 0], 7)  # E is its fifth
 
     def test_scale_positions(self):
-        positions = STANDARD.positions(PHRYGIAN, E)
+        positions = STANDARD.positions(Key(PHRYGIAN, E))
         self.assertEqual(positions[0, :4].tolist(), [True, True, False, True])
 
     def test_retuning_a_string_shifts_only_that_string(self):
         # The same key has the same root on any neck; only the dropped string's frets move.
-        standard, drop_d = STANDARD.positions(PHRYGIAN, E), DROP_D.positions(PHRYGIAN, E)
+        standard, drop_d = (
+            STANDARD.positions(Key(PHRYGIAN, E)),
+            DROP_D.positions(Key(PHRYGIAN, E)),
+        )
         np.testing.assert_array_equal(drop_d[0, 2:], standard[0, :-2])
         np.testing.assert_array_equal(drop_d[1:], standard[1:])
 
@@ -62,9 +67,9 @@ class FretboardTest(unittest.TestCase):
 
     def test_other_temperaments(self):
         tet31 = Fretboard((0, 13, 26, 39, 49, 62), 648.0, 82.41, temperament=EqualTemperament(31))
-        self.assertTrue(tet31.positions(PitchClassSet((0, 10, 18), 31), 0)[0, 0])
+        self.assertTrue(tet31.positions(Chord(PitchClassSet((0, 10, 18), 31), 0))[0, 0])
         with self.assertRaises(ValueError):
-            tet31.positions(MAJOR, 0)
+            tet31.positions(Chord(MAJOR, 0))
 
 
 class ChromaTest(unittest.TestCase):
@@ -89,32 +94,25 @@ class PhysicsTest(unittest.TestCase):
         self.assertAlmostEqual(open_strings[1], 110.0)  # A2
         self.assertTrue(np.isnan(STANDARD.frequencies(rows([X, 0, 0, 0, 0, 0]))[0, 0]))
 
-    def test_hand_sits_at_the_lowest_fretted_note(self):
-        hand = STANDARD.hand(rows([X, 3, 2, 0, 1, 0], [0, 0, 0, 0, 0, 0]))
-        self.assertAlmostEqual(hand[0], STANDARD.fret_distance[1])
-        self.assertTrue(np.isnan(hand[1]))
-
-
-class VoicingsTest(unittest.TestCase):
     def test_familiar_shapes_are_found(self):
-        self.assertTrue(contains_row(STANDARD.voicings(MAJOR, C, REACH), [X, 3, 2, 0, 1, 0]))
-        self.assertTrue(contains_row(STANDARD.voicings(MAJOR, E, REACH), [0, 2, 2, 1, 0, 0]))
+        self.assertTrue(contains_row(STANDARD.voicings(Chord(MAJOR, C), REACH), [X, 3, 2, 0, 1, 0]))
+        self.assertTrue(contains_row(STANDARD.voicings(Chord(MAJOR, E), REACH), [0, 2, 2, 1, 0, 0]))
 
     def test_every_voicing_sounds_every_tone_and_only_chord_tones(self):
-        voicings = STANDARD.voicings(MAJOR, C, REACH)
+        voicings = STANDARD.voicings(Chord(MAJOR, C), REACH)
         for frets in voicings:
             sounding = frets != MUTED
             tones = set(((STANDARD.open_strings + frets - C) % 12)[sounding].tolist())
             self.assertEqual(tones, set(MAJOR))
 
     def test_fretted_notes_stay_within_reach(self):
-        voicings = STANDARD.voicings(MAJOR, C, REACH)
+        voicings = STANDARD.voicings(Chord(MAJOR, C), REACH)
         fretted = np.where(voicings > 0, STANDARD.fret_distance[voicings], np.nan)
         spans = np.nanmax(fretted, axis=1) - np.nanmin(fretted, axis=1)
         self.assertLessEqual(np.nanmax(spans), REACH)
 
     def test_the_same_reach_spans_more_frets_up_the_neck(self):
-        voicings = STANDARD.voicings(MAJOR, C, REACH)
+        voicings = STANDARD.voicings(Chord(MAJOR, C), REACH)
         fretted = np.where(voicings > 0, voicings, np.nan)
         lowest = np.nanmin(fretted, axis=1)
         spans = np.nanmax(fretted, axis=1) - lowest
@@ -122,13 +120,13 @@ class VoicingsTest(unittest.TestCase):
         self.assertGreater(np.nanmax(spans[lowest >= 12]), 4)
 
     def test_no_duplicates(self):
-        voicings = STANDARD.voicings(MAJOR, C, REACH)
+        voicings = STANDARD.voicings(Chord(MAJOR, C), REACH)
         self.assertEqual(len(np.unique(voicings, axis=0)), len(voicings))
 
     def test_every_inversion_on_every_set_of_adjacent_strings(self):
         # Triads on 3 strings, seventh chords on 4: every chord tone in the bass on every set.
         for chord in (MAJOR, PitchClassSet((0, 4, 7, 11))):
-            voicings = STANDARD.voicings(chord, C, REACH)
+            voicings = STANDARD.voicings(Chord(chord, C), REACH)
             notes = len(chord)
             for first in range(7 - notes):
                 strings = (np.arange(6) >= first) & (np.arange(6) < first + notes)
@@ -156,7 +154,9 @@ class CapoTest(unittest.TestCase):
 
     def test_open_shapes_move_with_the_capo(self):
         # The open E shape with a capo at 2 is F# major.
-        self.assertTrue(contains_row(self.CAPO_2.voicings(MAJOR, E + 2, REACH), [0, 2, 2, 1, 0, 0]))
+        self.assertTrue(
+            contains_row(self.CAPO_2.voicings(Chord(MAJOR, E + 2), REACH), [0, 2, 2, 1, 0, 0])
+        )
 
     def test_capo_must_be_on_the_neck(self):
         for fret in (-1, 24):
@@ -164,10 +164,36 @@ class CapoTest(unittest.TestCase):
                 STANDARD.capo(fret)
 
 
+class ReadingsTest(unittest.TestCase):
+    PATTERNS = {MAJOR, PitchClassSet((0, 3, 7, 10)), PitchClassSet((0, 4, 7, 9))}
+
+    def test_every_reading_with_the_bass_written(self):
+        # C E G A over A: A minor 7th on its root, or C major 6th over A
+        (found,) = STANDARD.readings(rows([X, 0, 2, 0, 1, 0]), self.PATTERNS)
+        a, c = 9, 0
+        self.assertEqual(
+            found,
+            [Chord(PitchClassSet((0, 4, 7, 9)), c, bass=a), Chord(PitchClassSet((0, 3, 7, 10)), a)],
+        )
+
+    def test_reads_back_what_voicings_builds(self):
+        shapes = STANDARD.voicings(Chord(MAJOR, C, bass=E), REACH)[:50]
+        for found in STANDARD.readings(shapes, self.PATTERNS):
+            self.assertIn(Chord(MAJOR, C, bass=E), found)
+
+    def test_nothing_to_read(self):
+        silent_and_unknown = rows([X] * 6, [X, X, X, X, 1, 0])
+        self.assertEqual(STANDARD.readings(silent_and_unknown, self.PATTERNS), [[], []])
+
+
 class StackTest(unittest.TestCase):
     def test_bass_names_the_inversion(self):
         voicings = rows([X, 3, 2, 0, 1, 0], [0, 3, 2, 0, 1, 0], [3, 3, 2, 0, 1, 0])
         self.assertEqual(STANDARD.stack(voicings, C)[:, 0].tolist(), [0, 4, 7])
+
+    def test_top_is_the_highest_pitch(self):
+        # C major: E4 (52 steps above C0) on top; nothing sounds in the second.
+        np.testing.assert_array_equal(STANDARD.top(rows([X, 3, 2, 0, 1, 0], [X] * 6)), [52, np.nan])
 
     def test_lowest_pitch_first_then_muted(self):
         stack = STANDARD.stack(rows([X, 3, 2, 0, 1, 0]), C)

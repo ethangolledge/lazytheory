@@ -1,10 +1,24 @@
-"""Rules for choosing voicings. Each takes voicing grids (one row per voicing, one fret or MUTED
-per string) and returns a value per row, or per pair of rows for a change between chords.
-Combine them with `&` and `+`; swap any of them out.
+"""Rules for judging voicings: small measures on fret grids, one job each.
+
+Why: "playable" and "good" are not one thing. A voicing may fit the hand but skip a string;
+sound full but need a stretch. So each property is its own function over a whole grid of
+voicings (one row per voicing, one fret or MUTED per string), returning one value per row, or
+one per pair of rows for a change between two chords. A player's taste is then a choice of
+rules and weights (`taste.Taste`), and a new idea is a new ten-line rule, not a new search.
+
+Theory it speaks to: the mechanics of the fretting hand (a barre is one finger across a fret;
+fingers go in fret order and reach a measured span, in millimetres, so the same rule holds on
+a bass or a ukulele), and voice leading on an instrument, where each string is a voice:
+`moved` is the taxicab distance of core.voice_leading with real pitches, `strings_changed`
+counts voices entering and leaving.
+
+Could grow into: thumb-over-the-neck bass notes, partial barres under other fingers, rules
+for the picking hand (string skips), and voice-leading measures that weight the outer voices.
+Combine masks with `&` and costs with `+`; swap any of them out.
 """
 
-from collections.abc import Callable, Sequence
-from itertools import combinations, pairwise
+from collections.abc import Sequence
+from itertools import combinations
 
 import numpy as np
 from numpy.typing import NDArray
@@ -44,30 +58,36 @@ def placeable(frets: Grid, distance: Floats, spans: Sequence[float]) -> Mask:
 
     Fingers go index first in fret order, one per note or barre, so a finger never sits behind
     a lower-numbered one; any of them may be skipped. Two fingers `k` apart reach at most
-    `spans[k - 1]` mm, so `len(spans) + 1` fingers are available. A barre lies along its whole
-    fret, so no other finger can share that fret.
+    `spans[k - 1]` mm, so `len(spans) + 1` fingers are available. A shape fits if it can be
+    held either way: with barres where notes allow one (a barre lies along its whole fret, so
+    no other finger can share that fret), or with one finger per note (D/F#, 2 0 0 2 3 2).
     """
     barred = barres(frets)
     own = (frets > 0) & ~barred.any(axis=1)  # notes not joining a barre from a lower string
-    count = own.sum(axis=1)
     fret = np.where(own, frets, MUTED)
     barre = own & barred.any(axis=2)
     others = ~np.eye(frets.shape[1], dtype=bool)
     shared = (fret[:, :, None] == fret[:, None, :]) & own[:, None, :] & others
     crowded = (barre[:, :, None] & shared).any(axis=(1, 2))
+    with_barres = _fits(frets, own, distance, spans) & ~crowded
+    placed: Mask = with_barres | _fits(frets, frets > 0, distance, spans)
+    return placed
 
+
+def _fits(frets: Grid, own: Mask, distance: Floats, spans: Sequence[float]) -> Mask:
+    """Whether the notes in `own`, one finger each in fret order, fit the hand's spans."""
+    count = own.sum(axis=1)
     hand = len(spans) + 1
     notes = min(hand, frets.shape[1])
     in_order = np.sort(np.where(own, frets, len(distance)), axis=1)[:, :notes]
     position = np.append(distance, np.nan)[in_order]  # mm of each note's fret, lowest first
     spread = position[:, None, :] - position[:, :, None]  # [voicing, note, note]
-    fits = count == 0
+    fits: Mask = count == 0
     for used in range(1, notes + 1):  # each voicing tries only the choices for its own count
         rows = count == used
         within_limit = spread[rows, None, :used, :used] <= _finger_limits(spans, used)
         fits[rows] = within_limit.all(axis=(2, 3)).any(axis=1)
-    placed: Mask = fits & ~crowded
-    return placed
+    return fits
 
 
 def _finger_limits(spans: Sequence[float], notes: int) -> Floats:
@@ -148,33 +168,3 @@ def _sounding_bits(frets: Grid) -> NDArray[np.uint64]:
         axis=1, dtype=np.uint64
     )
     return bits
-
-
-def smoothest(
-    options: Sequence[Grid],
-    transition: Callable[[Grid, Grid], NDArray[np.floating] | NDArray[np.integer]],
-    costs: Sequence[NDArray[np.floating] | NDArray[np.integer]] | None = None,
-) -> tuple[Grid, float]:
-    """One voicing per chord, with the lowest total of each voicing's cost (`costs` holds one
-    per option of each chord) plus `transition` of each change, over the whole progression;
-    and that total.
-
-    Every path is considered, by keeping only the cheapest way to reach each voicing of each
-    chord (the Viterbi algorithm). Pass a single row as a chord's options to fix that voicing.
-    """
-    for index, voicings in enumerate(options):
-        if len(voicings) == 0:
-            raise ValueError(f"no voicing of chord {index} satisfies the rules")
-    standing = costs or [np.zeros(len(voicings)) for voicings in options]
-    total = np.asarray(standing[0], dtype=np.float64)
-    best_previous = []
-    for (previous, following), cost in zip(pairwise(options), standing[1:], strict=True):
-        reach = total[:, None] + transition(previous, following)
-        best_previous.append(reach.argmin(axis=0))
-        total = reach.min(axis=0) + cost
-    path = [int(total.argmin())]
-    for pointers in reversed(best_previous):
-        path.append(int(pointers[path[-1]]))
-    path.reverse()
-    chosen: Grid = np.stack([voicings[row] for voicings, row in zip(options, path, strict=True)])
-    return chosen, float(total.min())
