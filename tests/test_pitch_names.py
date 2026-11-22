@@ -193,6 +193,11 @@ class ParseChordTest(unittest.TestCase):
         parsed = parse_chord("Bbm7(b9)/Db")
         self.assertEqual(parsed, Chord(PitchClassSet((0, 1, 3, 7, 10)), 10, bass=1))
 
+    def test_without_a_key_a_chord_is_spelled_in_its_own(self):
+        self.assertEqual(chord_symbol(parse_chord("A#m7b5")), "Bbm7b5")  # Bb minor: 5 flats
+        self.assertEqual(chord_symbol(parse_chord("G#maj7(#5)/C")), "Abmaj7#5/C")
+        self.assertEqual(chord_symbol(parse_chord("Dbm")), "C#m")  # C# minor: 4 sharps, not 8 flats
+
     def test_a_bracketed_chord_tone_alters_it(self):
         self.assertEqual(parse_chord("Bbm7(b5)"), parse_chord("Bbm7b5"))
         self.assertEqual(parse_chord("C7(#5)").pattern, PitchClassSet((0, 4, 8, 10)))

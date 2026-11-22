@@ -29,6 +29,7 @@ from lazy_theory.pitch.catalog import (
     alteration,
     chord_names,
     load_chords,
+    load_scales,
     load_symbols,
     major,
     pitch_class,
@@ -129,11 +130,23 @@ def chord_symbol(chord: Chord, key: Key | None = None) -> str:
     """The chord as written over a staff: "Em7", or "Em7/G" with a bass that isn't its root.
     A pattern the catalog doesn't name is its largest named core plus its other notes as
     `chord_tone_names` calls them, "Em7(b9)" (a major seventh is written "maj7" there, since
-    "(7)" would read as the flat one); with no named core at all, every note, "E(1,b9,9)"."""
-    symbol = note_name(chord.root, key) + _suffix(chord.pattern)
+    "(7)" would read as the flat one); with no named core at all, every note, "E(1,b9,9)".
+    Without a `key`, the chord is spelled in its own: the major or minor key on its root with
+    the fewest accidentals, so Bb minor is "Bbm", not "A#m", and its bass follows."""
+    spelling = key if key is not None else _own_key(chord)
+    symbol = note_name(chord.root, spelling) + _suffix(chord.pattern)
     if chord.bass is not None and chord.bass != chord.root:
-        symbol += "/" + note_name(chord.bass, key)
+        symbol += "/" + note_name(chord.bass, spelling)
     return symbol
+
+
+def _own_key(chord: Chord) -> Key | None:
+    """The key a chord is spelled in when none is given: minor on its root with a minor third
+    and no major one, otherwise major. None outside twelve steps, where notes are numbers."""
+    if chord.size != 12:
+        return None
+    minor = 3 in chord.pattern and 4 not in chord.pattern
+    return Key(load_scales()["Aeolian" if minor else "Ionian"], chord.root)
 
 
 def parse_chord(text: str, key: Key | None = None) -> Chord:
