@@ -11,16 +11,29 @@ from functools import cache
 from importlib.resources import files
 from importlib.resources.abc import Traversable
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 
 @cache
 def read(package: str, bundled: str, path: Path | None = None) -> Mapping[str, Any]:
     """The TOML file at `path`, or else the file `bundled` with `package`: parsed once and shared
-    by every loader that reads it, so treat it as read-only."""
+    by every loader that reads it, so it is frozen (tables read-only, lists tuples) and no
+    caller can change what the next one reads."""
     source: Path | Traversable = path or files(package) / bundled
     with source.open("rb") as file:
-        return tomllib.load(file)
+        frozen: Mapping[str, Any] = _frozen(tomllib.load(file))
+        return frozen
+
+
+def _frozen(value: Any) -> Any:
+    """`value` with every table made a read-only mapping and every list a tuple, all the way
+    down."""
+    if isinstance(value, dict):
+        return MappingProxyType({key: _frozen(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return tuple(_frozen(item) for item in value)
+    return value
 
 
 def add[T](named: dict[str, T], name: str, value: T) -> None:
