@@ -2,8 +2,9 @@
 
 Why: a tapped rhythm carries its feel in its timing: a note a little early, swing, a push. An
 onset set or a phrase can only hold whole pulses, so storing taps in one would round them to a
-grid and lose that for good. A Performance keeps every onset at the time it was played, in
-counts from the cycle's first count, and nothing in the library changes it. Reading it onto a
+grid and lose that for good. A Performance keeps every onset at the time it was played within
+the cycle, in counts from its first count: only the lap a tap fell in and the order taps were
+made are dropped (the cycle repeats, so they say nothing about the rhythm). Reading it onto a
 grid (`placed`) is a separate, explicit step that returns a new value beside it, with how far
 each onset was from its grid point, so the reading can always be redone with another grid or
 another swing and the playing is never lost.
@@ -41,8 +42,9 @@ class Placement(NamedTuple):
 @dataclass(frozen=True)
 class Performance:
     """Onsets as played: `times` in counts from the cycle's first count, over a cycle of
-    `counts` counts. A time from a later lap is folded into the cycle, and times are kept in
-    the order they sound. No onsets at all is a performance of silence."""
+    `counts` counts. A time from another lap is folded into the cycle and times are sorted, so
+    they are kept in the order they sound within it, not the order they were tapped. No onsets
+    at all is a performance of silence."""
 
     times: tuple[float, ...]
     counts: int

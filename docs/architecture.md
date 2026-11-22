@@ -52,7 +52,7 @@ of one), so they are sections of the app over `pitch`, `instruments` and `sugges
 |---|---|---|---|
 | `core` | `pcset` | `PitchClassSet`: points on a circle of `size` steps, built from steps or maximal evenness; rotate, transpose, `necklace`, `in`; `shortest` (the signed short way round); `group_starts` (where each of a run of lengths starts). A scale and a rhythm are both this type | standard library |
 | | `temperament` | Steps → frequency ratio, ratio → steps, cents. Every frequency and fret distance comes from here | |
-| `data.py` | | `read` (each TOML file parsed once and frozen) and `add` (no repeated name or value): shared by every catalog | standard library |
+| `data.py` | | `read` (bundled TOML parsed once, your own files afresh; all frozen), `bundled_once` for loaders and `add` (no repeated name or value): shared by every catalog | standard library |
 | `pitch` | `scale` | `Scale(PitchClassSet)`: always contains its root; stacks notes and chords by stride | core, data |
 | | `chord` | `Rooted`: a pattern on a root. `Chord(Rooted)` with an optional bass and `with_note`; `identify` reads a set as every chord it could be | |
 | | `key` | `Key(Rooted)`: a scale on a root, and the chord on each degree | |
@@ -198,9 +198,10 @@ Three rules keep it clean:
   the default. Candidate tunings are generated, not looked up: every string moved within safe
   tension (4 steps down, 2 up), then named afterwards by matching the catalog, shifts included
   ("open D +2"). A screen scores every retuning at every capo at once by how many open strings
-  are chord tones: each string's count depends only on its own step and the capo, so six small
-  [step, capo] tables are broadcast into the full array, and a partition picks the shortlist
-  without sorting it. Only the shortlist gets the full path search. Retuning
+  are chord tones: each string's count depends only on its own step and the capo, so the
+  shortlist is merged string by string, keeping only the best `shortlist` partial choices at
+  each (exact, since a best choice's prefix is always among the best prefixes). Memory grows
+  with the string count, not exponentially. Only the shortlist gets the full path search. Retuning
   costs per step, so the base tuning wins unless another clearly sounds better, and the key's
   other chords can be weighed in so a neck isn't chosen for three easy shapes alone.
 - **Features extend, not edit.** Optional features subclass what exists: `MelodicTaste` is a

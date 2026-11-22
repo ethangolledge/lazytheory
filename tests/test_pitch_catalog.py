@@ -5,6 +5,8 @@ from pathlib import Path
 from fixtures import SCALES
 
 from lazy_theory.pitch.catalog import (
+    LETTERS,
+    TWELVE,
     accidentals,
     alteration,
     chord_names,
@@ -12,6 +14,7 @@ from lazy_theory.pitch.catalog import (
     load_chords,
     load_scales,
     load_symbols,
+    major,
     pitch,
     pitch_class,
 )
@@ -32,6 +35,9 @@ class BundledCatalogTest(unittest.TestCase):
         }
         for name, pitch_classes in expected.items():
             self.assertEqual(SCALES[name].pitch_classes, pitch_classes, name)
+
+    def test_the_letters_name_the_bundled_major_scale(self):
+        self.assertEqual((major().size, len(major())), (TWELVE, len(LETTERS)))
 
     def test_minor_pentatonic_is_a_mode_of_major_pentatonic(self):
         self.assertEqual(SCALES["Major Pentatonic"].rotate(4), SCALES["Minor Pentatonic"])

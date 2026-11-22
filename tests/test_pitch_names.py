@@ -94,7 +94,8 @@ class ChordNameTest(unittest.TestCase):
         e_minor_7 = Chord(CHORDS["minor 7th"], pitch_class("E"))
         self.assertEqual(chord_symbol(e_minor_7), "Em7")
         self.assertEqual(chord_symbol(replace(e_minor_7, bass=pitch_class("G"))), "Em7/G")
-        self.assertEqual(chord_symbol(replace(e_minor_7, bass=pitch_class("E"))), "Em7")
+        root_position = replace(e_minor_7, bass=pitch_class("E"))  # the root asked for in the bass
+        self.assertEqual(chord_symbol(root_position), "Em7/E")
 
     def test_extended_chords_are_a_named_core_plus_extensions(self):
         e = pitch_class("E")
@@ -186,8 +187,7 @@ class ParseChordTest(unittest.TestCase):
                 for bass in (None, *Chord(pattern, root).pitch_classes):
                     chord = Chord(pattern, root, bass)
                     with self.subTest(written=chord_symbol(chord)):
-                        read = parse_chord(chord_symbol(chord))  # a bass on the root isn't written
-                        self.assertEqual(read, Chord(pattern, root, None if bass == root else bass))
+                        self.assertEqual(parse_chord(chord_symbol(chord)), chord)
 
     def test_extensions_and_flats(self):
         parsed = parse_chord("Bbm7(b9)/Db")
@@ -297,6 +297,41 @@ class ParseErrorTest(unittest.TestCase):
         for text in ("C(no)", "C(nox)", "c", "Cmaj7(#)"):
             with self.subTest(text=text), self.assertRaises(ValueError):
                 parse_chord(text)
+
+
+class CrampedKeyTest(unittest.TestCase):
+    """A seven-note key whose notes can't each take a letter: spelled as no key is, no
+    numerals, never a crash or a "bbbbb7"."""
+
+    cramped = Key(Scale.from_steps((1, 1, 1, 1, 1, 1, 6)), 0)  # C C# D D# E F F#
+
+    def test_spelled_and_named_plainly(self):
+        self.assertEqual(note_names(self.cramped), ("C", "C#", "D", "D#", "E", "F", "F#"))
+        self.assertEqual(degree_names(self.cramped), ("1", "b2", "2", "b3", "3", "4", "b5"))
+        self.assertTrue(all(chord_symbol(chord, self.cramped) for chord in self.cramped.chords()))
+
+    def test_no_numerals(self):
+        with self.assertRaises(ValueError):
+            numeral(self.cramped, 0)
+
+    def test_every_seven_note_key_spells(self):
+        for rest in combinations(range(1, 12), 6):
+            key_ = Key(Scale((0, *rest)), 0)
+            with self.subTest(scale=rest):
+                self.assertEqual(len(set(note_names(key_))), 7)
+
+
+class OmissionTest(unittest.TestCase):
+    def test_only_a_seventh_chords_own_third_or_fifth(self):
+        self.assertEqual(parse_chord("C7(no3)").pattern, PitchClassSet((0, 7, 10)))
+        for text in ("Cm7(no1)", "C7(no7)", "C5(no5)", "C(no3)", "C7(13,13)"):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                parse_chord(text)
+
+    def test_a_key_of_another_size_is_refused(self):
+        nineteen = Key(Scale.from_steps((3, 3, 2, 3, 3, 3, 2)), 0)
+        with self.assertRaises(ValueError):
+            chord_symbol(Chord(CHORDS["major"], 0), nineteen)
 
 
 if __name__ == "__main__":

@@ -138,5 +138,13 @@ class MoveTest(unittest.TestCase):
             takita.yati((4,))
 
 
+class CycleTest(unittest.TestCase):
+    def test_a_cycle_of_no_pulses_is_refused(self):
+        phrase = Phrase.notes(PitchClassSet((0, 2), 4))
+        with self.assertRaises(ValueError):
+            phrase.onsets(size=0)
+        self.assertEqual(phrase.onsets(size=8), PitchClassSet((0, 2), 8))
+
+
 if __name__ == "__main__":
     unittest.main()

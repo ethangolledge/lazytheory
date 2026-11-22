@@ -129,5 +129,13 @@ class FromAnotherSetTest(unittest.TestCase):
             PitchClassSet(nineteen)  # 12 by default: 17 would quietly become 5
 
 
+class MemberTypeTest(unittest.TestCase):
+    def test_members_are_whole_steps(self):
+        with self.assertRaises(TypeError):
+            PitchClassSet((0.5, 1.7))  # type: ignore[arg-type]
+        with self.assertRaises(ValueError):
+            shortest(3, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

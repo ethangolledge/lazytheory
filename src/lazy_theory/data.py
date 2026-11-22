@@ -10,25 +10,52 @@ the bundled files: to change how chords or syllables are written, edit the bundl
 """
 
 import tomllib
-from collections.abc import Mapping
-from functools import cache
+from collections.abc import Callable, Mapping
+from functools import cache, wraps
 from importlib.resources import files
 from importlib.resources.abc import Traversable
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any
+from typing import Any, Protocol
+
+
+def read(module: str, bundled: str, path: Path | None = None) -> Mapping[str, Any]:
+    """The TOML file at `path`, read afresh each time so an edited file is seen, or else the
+    file `bundled` beside `module` (the caller's `__name__`), parsed once and shared by every
+    loader that reads it. Either way it is frozen (tables read-only, lists tuples), so no
+    caller can change what the next one reads."""
+    if path is not None:
+        return _parsed(path)
+    return _bundled(module.rpartition(".")[0], bundled)
 
 
 @cache
-def read(module: str, bundled: str, path: Path | None = None) -> Mapping[str, Any]:
-    """The TOML file at `path`, or else the file `bundled` beside `module` (the caller's
-    `__name__`), in its package: parsed once and shared
-    by every loader that reads it, so it is frozen (tables read-only, lists tuples) and no
-    caller can change what the next one reads."""
-    source: Path | Traversable = path or files(module.rpartition(".")[0]) / bundled
+def _bundled(package: str, name: str) -> Mapping[str, Any]:
+    return _parsed(files(package) / name)
+
+
+def _parsed(source: Path | Traversable) -> Mapping[str, Any]:
     with source.open("rb") as file:
         frozen: Mapping[str, Any] = _frozen(tomllib.load(file))
         return frozen
+
+
+class Loader[T](Protocol):
+    """A catalog loader: the bundled file's values, or those of the file at `path`."""
+
+    def __call__(self, path: Path | None = None) -> T: ...
+
+
+def bundled_once[T](load: Callable[[Path | None], T]) -> Loader[T]:
+    """A catalog loader that runs once for the bundled file and every time for a file of your
+    own (`path`), so an edited file is read again."""
+    once = cache(load)
+
+    @wraps(load)
+    def loader(path: Path | None = None) -> T:
+        return once(None) if path is None else load(path)
+
+    return loader
 
 
 def _frozen(value: Any) -> Any:

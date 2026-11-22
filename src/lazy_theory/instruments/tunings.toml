@@ -1,7 +1,8 @@
 # Fretted instruments: scale length (nut to bridge, mm), then each tuning as its first open
 # string (letter, accidentals, octave) and the gaps in steps between neighbouring open strings.
 # Negative gaps are re-entrant strings (lower than the one before). Frequencies are measured
-# from `reference`.
+# from `reference`. An instrument in another temperament gives `steps` per octave and its
+# `first` string in steps above C0.
 
 reference = { note = "A4", hertz = 440.0 }
 

@@ -20,15 +20,17 @@ from functools import cache
 from pathlib import Path
 
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.data import add, read
+from lazy_theory.data import add, bundled_once, read
 from lazy_theory.pitch.scale import Scale
 
 LETTERS = tuple("CDEFGAB")  # the Ionian scale on C, in order
+TWELVE = 12  # steps per period the letters, accidentals and octave numbers name; other
+# sizes are written as numbers. The bundled Ionian scale is in twelve (tests check it).
 
 _DIGITS = "0123456789"
 
 
-@cache
+@bundled_once
 def load_scales(path: Path | None = None) -> Mapping[str, Scale]:
     """Every named mode, keyed by name."""
     scales: dict[str, Scale] = {}
@@ -41,7 +43,7 @@ def load_scales(path: Path | None = None) -> Mapping[str, Scale]:
     return scales
 
 
-@cache
+@bundled_once
 def load_chords(path: Path | None = None) -> Mapping[str, PitchClassSet]:
     """Every named chord pattern, keyed by name."""
     data = read(__name__, "chords.toml", path)
@@ -58,7 +60,7 @@ def chord_names() -> Mapping[PitchClassSet, str]:
     return {pattern: name for name, pattern in load_chords().items()}
 
 
-@cache
+@bundled_once
 def load_symbols(path: Path | None = None) -> Mapping[str, str]:
     """How each named chord is written after its root, e.g. "m7" for "minor 7th"."""
     data = read(__name__, "chords.toml", path)
@@ -68,7 +70,7 @@ def load_symbols(path: Path | None = None) -> Mapping[str, str]:
     return symbols
 
 
-@cache
+@bundled_once
 def load_aliases(path: Path | None = None) -> Mapping[str, str]:
     """Other ways each chord symbol is written, read but never written: "M7" for "maj7"."""
     data = read(__name__, "chords.toml", path)
@@ -87,7 +89,7 @@ def pitch(note: str) -> int:
     name = note.rstrip(_DIGITS)
     if name == note:
         raise ValueError(f"no octave in {note!r}")
-    return major().size * int(note[len(name) :]) + pitch_class(name)
+    return TWELVE * int(note[len(name) :]) + pitch_class(name)
 
 
 def pitch_class(note: str) -> int:

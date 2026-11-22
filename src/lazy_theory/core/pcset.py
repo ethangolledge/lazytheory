@@ -19,12 +19,15 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from itertools import accumulate
 from numbers import Integral
+from operator import index
 from typing import Self, overload
 
 
 def shortest[N: (int, float)](steps: N, size: int) -> N:
     """`steps` round a circle of `size` taken the shorter way, so signed: 11 up in 12 is -1.
     Half way round counts as up. Works for times too: 7.5 pulses on a cycle of 8 is -0.5."""
+    if size < 1:
+        raise ValueError(f"a circle has at least one step, got {size}")
     steps %= size
     return steps - size if steps > size / 2 else steps
 
@@ -55,7 +58,7 @@ class PitchClassSet:
             raise ValueError(  # reducing mod another size would make a different set
                 f"a {self.pitch_classes.size}-step set given size {self.size}: pass its size"
             )
-        normalised = tuple(sorted({pc % self.size for pc in self.pitch_classes}))
+        normalised = tuple(sorted({index(pc) % self.size for pc in self.pitch_classes}))
         object.__setattr__(self, "pitch_classes", normalised)
 
     @classmethod

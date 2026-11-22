@@ -34,5 +34,11 @@ class ExtendedTest(unittest.TestCase):
         self.assertEqual(extended(Key(PHRYGIAN, 4), degree=1)[0].root, 5)  # F in E Phrygian
 
 
+class CoreSizeTest(unittest.TestCase):
+    def test_a_core_of_no_notes_is_refused(self):
+        with self.assertRaises(ValueError):
+            extended(Key(SCALES["Ionian"], 0), 0, core=0)
+
+
 if __name__ == "__main__":
     unittest.main()

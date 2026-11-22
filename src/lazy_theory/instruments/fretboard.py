@@ -41,6 +41,7 @@ class Tuning(NamedTuple):
     open_strings: tuple[int, ...]  # pitch of each open string, steps above C0
     scale_length: float  # millimetres from nut to bridge
     hertz: float  # frequency of pitch 0 (C0), from the file's reference
+    temperament: EqualTemperament = EqualTemperament()  # the steps its pitches count
 
 
 @dataclass(frozen=True, eq=False)
@@ -64,7 +65,13 @@ class Fretboard:
     @classmethod
     def from_tuning(cls, tuning: Tuning, frets: int = 24) -> Fretboard:
         """The neck a catalog tuning describes."""
-        return cls(np.array(tuning.open_strings), tuning.scale_length, tuning.hertz, frets)
+        return cls(
+            np.array(tuning.open_strings),
+            tuning.scale_length,
+            tuning.hertz,
+            frets,
+            tuning.temperament,
+        )
 
     def capo(self, fret: int) -> Fretboard:
         """The neck with a capo at `fret`: a movable nut. The open strings sound `fret` steps

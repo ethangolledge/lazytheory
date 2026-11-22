@@ -52,13 +52,46 @@ def screen(
     at every capo: shape (len(steps),) * strings + (len(capos),).
 
     A string's count depends only on its own step and the capo, so each string gets a small
-    [step, capo] table and the tables are broadcast together, never enumerated one by one.
+    [step, capo] table and the tables are broadcast together, never enumerated one by one. The
+    whole table has len(steps) ** strings cells per capo: `suggest` reads its best cells
+    without building it (`_best`).
     """
-    hits = np.zeros(size, dtype=np.int16)  # chords each pitch class belongs to
+    return _by_string(_tables(open_strings, steps, capos, chords, size))
+
+
+def _tables(
+    open_strings: Grid, steps: Sequence[int], capos: Sequence[int], chords: Chords, size: int
+) -> Grid:
+    """Each string's open-string chord tones, as [string, step, capo]."""
+    hits = np.zeros(size, dtype=np.int64)  # chords each pitch class belongs to
     for chord in chords:
         hits[list(chord.pitch_classes)] += 1
     pitch = np.add.outer(np.add.outer(open_strings, steps), capos) % size  # [string, step, capo]
-    return _by_string(hits[pitch])
+    tables: Grid = hits[pitch]
+    return tables
+
+
+def _best(costs: Grid, count: int) -> list[tuple[tuple[int, ...], int]]:
+    """The `count` cheapest (step per string, capo) choices, where a choice costs the sum of
+    its strings' `costs` [string, step, capo]; cheapest first, ties in index order. Exact, as
+    a choice's prefix is among the `count` best prefixes whenever the choice is among the best
+    (swap in a better prefix and the whole is better), so each string keeps only `count`."""
+    found = []
+    for capo in range(costs.shape[2]):
+        total, prefix = np.zeros(1, dtype=np.int64), np.zeros((1, 0), dtype=np.int64)
+        for table in costs[:, :, capo]:
+            total = (total[:, None] + table[None, :]).ravel()
+            prefix = np.column_stack(
+                [np.repeat(prefix, len(table), axis=0), np.tile(np.arange(len(table)), len(prefix))]
+            )
+            keep = np.lexsort((*prefix.T[::-1], total))[:count]  # by cost, then index order
+            total, prefix = total[keep], prefix[keep]
+        found += [
+            (int(cost), tuple(choice.tolist()), capo)
+            for cost, choice in zip(total, prefix, strict=True)
+        ]
+    found.sort()  # by cost, then strings, then capo: the dense table's index order
+    return [(choice, capo) for _, choice, capo in found[:count]]
 
 
 def _by_string(tables: Grid) -> Grid:
@@ -96,20 +129,16 @@ def suggest(
     pitches as a better one is dropped.
     """
     strings, step = len(base.open_strings), np.array(steps, dtype=np.int16)
-    score = screen(base.open_strings, steps, capos, chords, base.size).astype(np.int32)
-    effort = _by_string(np.broadcast_to(np.abs(step)[:, None], (strings, len(step), 1)))
-    rank = ((score.max() - score) * (effort.max() + 1) + effort).ravel()  # tones, then effort
-    kth = min(shortlist, rank.size) - 1
-    tied = np.flatnonzero(rank <= np.partition(rank, kth)[kth])  # in order, as a stable sort
-    shortlisted = tied[np.argsort(rank[tied], kind="stable")][:shortlist].tolist()
+    tones = _tables(base.open_strings, steps, capos, chords, base.size)
+    effort = np.abs(step).astype(np.int64)[None, :, None]  # per string, the same for each
+    rank = effort - tones * (strings * int(effort.max()) + 1)  # most tones, then least effort
+    shortlisted = _best(rank, shortlist)
     if 0 in steps and 0 in capos:
-        unchanged = (*(list(steps).index(0),) * strings, list(capos).index(0))
-        shortlisted.insert(0, int(np.ravel_multi_index(unchanged, score.shape)))
+        shortlisted.insert(0, ((list(steps).index(0),) * strings, list(capos).index(0)))
 
     found = []
-    for index in dict.fromkeys(shortlisted):
-        *choice, capo_index = np.unravel_index(index, score.shape)
-        move, fret = step[choice], int(capos[capo_index])
+    for choice, capo_index in dict.fromkeys(shortlisted):
+        move, fret = step[list(choice)], int(capos[capo_index])
         board = replace(base, open_strings=base.open_strings + move).capo(fret)
         options = taste.options(board, [*chords, *context])
         if any(len(voicings) == 0 for voicings in options[: len(chords)]):

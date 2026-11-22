@@ -1,8 +1,10 @@
 import unittest
 
+from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.pitch.attraction import anchoring, attraction
 from lazy_theory.pitch.catalog import load_scales, pitch
 from lazy_theory.pitch.key import Key
+from lazy_theory.pitch.scale import Scale
 
 C_MAJOR = Key(load_scales()["Ionian"], 0)
 
@@ -29,6 +31,14 @@ class AttractionTest(unittest.TestCase):
         a_minor = Key(load_scales()["Aeolian"], 9)
         self.assertEqual(anchoring(a_minor)[9], 4)
         self.assertEqual(anchoring(a_minor)[0], 3)  # C is the minor third of A minor
+
+
+class SmallKeyTest(unittest.TestCase):
+    def test_keys_too_small_for_a_triad(self):
+        stable = anchoring(Key(Scale(PitchClassSet((0, 7))), 0))  # thirds repeat at once
+        self.assertEqual((stable[0], stable[7], stable[1]), (4, 2, 1))
+        stable = anchoring(Key(Scale(PitchClassSet((0, 3, 6, 9))), 0))  # 0 6 0: two notes
+        self.assertEqual((stable[0], stable[6], stable[3]), (4, 3, 2))
 
 
 if __name__ == "__main__":

@@ -12,12 +12,11 @@ Your own files load as `lazy_theory.data` describes.
 """
 
 from collections.abc import Mapping
-from functools import cache
 from pathlib import Path
 from typing import NamedTuple
 
 from lazy_theory.core.pcset import PitchClassSet, group_starts
-from lazy_theory.data import add, read
+from lazy_theory.data import add, bundled_once, read
 from lazy_theory.rhythm.meter import CLAP, NONE, WAVE, Meter
 from lazy_theory.rhythm.phrase import Phrase
 from lazy_theory.rhythm.stroke import Stroke
@@ -38,7 +37,7 @@ class Spoken(NamedTuple):
     khali: Mapping[str, str]  # each bol without its bass
 
 
-@cache
+@bundled_once
 def load_spoken(path: Path | None = None) -> Spoken:
     """The words and syllables of spoken rhythm: konnakol words, Takadimi positions, tabla bols
     with their strokes."""
@@ -89,7 +88,7 @@ def syllable_id(name: str, path: Path | None = None) -> int:
 _GESTURES = {"clap": CLAP, "wave": WAVE}
 
 
-@cache
+@bundled_once
 def load_talas(path: Path | None = None) -> Mapping[str, Meter]:
     """The 35 suladi talas, keyed "<jati> <family>" ("chatusra triputa" is Adi tala), each a
     meter of one beat per pulse in three levels: the cycle, its angas, its beats. A laghu
@@ -118,7 +117,7 @@ class Tal(NamedTuple):
     theka: Phrase | None  # the bols that mark it, one word per beat, if the file gives them
 
 
-@cache
+@bundled_once
 def load_tals(path: Path | None = None) -> Mapping[str, Tal]:
     """Every named Hindustani tal and Carnatic chapu, keyed by name. Section marks become
     gestures on each section's first beat (X or a number a clap, 0 a wave); a chapu lists the
@@ -153,7 +152,7 @@ def _cycle(sections: list[int], hands: list[int]) -> Meter:
     return Meter(levels, len(levels) - 1, tuple(hands))
 
 
-@cache
+@bundled_once
 def load_timelines(path: Path | None = None) -> Mapping[str, PitchClassSet]:
     """Every named timeline (bell or clave pattern), keyed by name, as onsets on its cycle."""
     timelines: dict[str, PitchClassSet] = {}

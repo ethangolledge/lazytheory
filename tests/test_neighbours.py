@@ -4,7 +4,7 @@ import numpy as np
 from fixtures import CHORDS, STANDARD, X
 
 from lazy_theory.instruments.taste import Taste
-from lazy_theory.pitch.catalog import load_scales
+from lazy_theory.pitch.catalog import chord_names, load_scales
 from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
 from lazy_theory.suggest.drones import drones
@@ -22,7 +22,7 @@ class NamedTest(unittest.TestCase):
     def test_reads_the_chord_on_its_bass(self):
         # C E G A is C6 or Am7: the A in the bass makes it Am7; C/E is C with its bass written
         shapes = np.stack([row(X, 3, 2, 0, 1, 0), row(X, 0, 2, 0, 1, 0), row(0, 3, 2, 0, 1, 0)])
-        c, a_minor_7, c_over_e = named(STANDARD, shapes)
+        c, a_minor_7, c_over_e = named(STANDARD, shapes, chord_names())
         self.assertEqual(c, Chord(CHORDS["major"], C))
         self.assertEqual(a_minor_7, Chord(CHORDS["minor 7th"], A))
         self.assertEqual(c_over_e, Chord(CHORDS["major"], C, bass=4))
@@ -30,17 +30,17 @@ class NamedTest(unittest.TestCase):
     def test_without_a_reading_on_the_bass_the_key_decides(self):
         # F A B D over F: Bm7b5 or Dm6, neither on F; in D Dorian, D is the steadier root
         d_dorian = Key(load_scales()["Dorian"], 2)
-        (chord,) = named(STANDARD, row(1, 2, 0, 2, 3, X)[None], key=d_dorian)
+        (chord,) = named(STANDARD, row(1, 2, 0, 2, 3, X)[None], chord_names(), d_dorian)
         self.assertEqual(chord, Chord(CHORDS["minor 6th"], 2, bass=F))
 
     def test_none_without_a_pattern(self):
         shapes = np.stack([row(X, X, X, X, 1, 0), row(*[X] * 6)])  # a bare third; silence
-        self.assertEqual(named(STANDARD, shapes), [None, None])
+        self.assertEqual(named(STANDARD, shapes, chord_names()), [None, None])
 
 
 class OneFingerTest(unittest.TestCase):
     def test_from_open_c(self):
-        found = one_finger(STANDARD, OPEN, row(X, 3, 2, 0, 1, 0))
+        found = one_finger(STANDARD, OPEN, row(X, 3, 2, 0, 1, 0), chord_names())
         shapes = [one.frets.tolist() for one in found]
         self.assertIn([X, 3, 2, 0, 0, 0], shapes)  # Cmaj7: the B string lifts
         self.assertIn([X, 0, 2, 0, 1, 0], shapes)  # Am7: the bass moves to the open A
@@ -53,13 +53,16 @@ class OneFingerTest(unittest.TestCase):
         self.assertEqual([one.steps for one in found], sorted(one.steps for one in found))
 
     def test_line_cliche_from_a_minor(self):
-        shapes = [one.frets.tolist() for one in one_finger(STANDARD, OPEN, row(X, 0, 2, 2, 1, 0))]
+        shapes = [
+            one.frets.tolist()
+            for one in one_finger(STANDARD, OPEN, row(X, 0, 2, 2, 1, 0), chord_names())
+        ]
         self.assertIn([X, 0, 2, 1, 1, 0], shapes)  # Am(maj7): the A falls a semitone
 
 
 class PassingTest(unittest.TestCase):
     def test_c_to_a_minor(self):
-        found = passing(STANDARD, OPEN, row(X, 3, 2, 0, 1, 0), row(X, 0, 2, 2, 1, 0))
+        found = passing(STANDARD, OPEN, row(X, 3, 2, 0, 1, 0), row(X, 0, 2, 2, 1, 0), chord_names())
         shapes = [one.frets.tolist() for one in found]
         self.assertIn([X, 0, 2, 0, 1, 0], shapes)  # bass moves first: Am7
         self.assertIn([X, 3, 2, 2, 1, 0], shapes)  # G moves first: Am/C
@@ -69,7 +72,9 @@ class PassingTest(unittest.TestCase):
             )
 
     def test_nothing_between_neighbours(self):
-        self.assertEqual(passing(STANDARD, OPEN, row(X, 3, 2, 0, 1, 0), row(X, 3, 2, 0, 0, 0)), [])
+        self.assertEqual(
+            passing(STANDARD, OPEN, row(X, 3, 2, 0, 1, 0), row(X, 3, 2, 0, 0, 0), chord_names()), []
+        )
 
 
 class DronesTest(unittest.TestCase):

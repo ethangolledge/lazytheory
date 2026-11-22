@@ -81,10 +81,13 @@ Back to words, only at the edge:
 
 ```python
 from lazy_theory.instruments.names import tab
+from lazy_theory.pitch.catalog import chord_names
 from lazy_theory.pitch.names import chord_symbol, parse_chord
 from lazy_theory.suggest.neighbours import named
 
-titles = [chord_symbol(chord) for chord in named(board, route.path)]  # each shape, read back
+titles = [
+    chord_symbol(chord) for chord in named(board, route.path, chord_names())
+]  # each shape, read back
 print(tab(board.open_strings, route.path, titles))  # one column per chord, high string on top
 parse_chord("Em7(b9)/G")  # and words back into numbers: a Chord with its bass
 ```

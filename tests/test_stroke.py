@@ -41,5 +41,11 @@ class VoicingTest(unittest.TestCase):
         self.assertEqual(strokes[4], SILENCE)
 
 
+class AccentSizeTest(unittest.TestCase):
+    def test_accents_on_another_cycle_are_refused(self):
+        with self.assertRaises(ValueError):
+            voicing(PitchClassSet((0, 2), 4), Meter.of((4,)), PitchClassSet((1,), 3))
+
+
 if __name__ == "__main__":
     unittest.main()

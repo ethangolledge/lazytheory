@@ -3,8 +3,9 @@
 from collections.abc import Mapping, Sequence
 
 from lazy_theory.instruments.fretboard import Tuning
+from lazy_theory.pitch.catalog import TWELVE
 from lazy_theory.pitch.key import Key
-from lazy_theory.pitch.names import TWELVE, note_name
+from lazy_theory.pitch.names import note_name
 
 
 def tab(
@@ -17,7 +18,9 @@ def tab(
     """Voicings as guitar tab: one line per string, the highest string on top, labelled with
     its open note (as `note_name` writes it, so a neck of other than twelve steps per period,
     `size`, is labelled in numbers); one column per voicing under its title. A negative fret
-    is a muted "x"."""
+    is a muted "x". Raises ValueError unless every voicing has a fret for each string."""
+    if len(open_strings) == 0 or any(len(voicing) != len(open_strings) for voicing in voicings):
+        raise ValueError(f"give a fret for each of the {len(open_strings)} strings, at least one")
     columns = [[str(fret) if fret >= 0 else "x" for fret in voicing] for voicing in voicings]
     titles = list(titles) + [""] * (len(columns) - len(titles))
     widths = [
@@ -35,8 +38,9 @@ def tab(
 
 
 def tuning_name(open_strings: Sequence[int], tunings: Mapping[str, Tuning]) -> str | None:
-    """The name of these open strings among `tunings`, or of a named tuning moved by whole
-    steps, e.g. "guitar open D +2"; the smallest move wins. None if no tuning fits."""
+    """The name of these open strings among `tunings`, or of a named tuning with every string
+    moved by the same number of steps, e.g. "guitar open D +2" (two steps up); the smallest
+    move wins. None if no tuning fits."""
     moved = {}
     for name, tuning in tunings.items():
         if len(tuning.open_strings) == len(open_strings):

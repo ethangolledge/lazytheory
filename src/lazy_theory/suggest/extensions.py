@@ -23,6 +23,8 @@ from lazy_theory.pitch.key import Key
 def extended(key: Key, degree: int, core: int = 2, most: int = 5) -> list[Chord]:
     """Every chord on `degree` of `key`: the first `core` notes of its stack of thirds plus any
     of the rest, at most `most` notes in all."""
+    if not 1 <= core <= len(key.scale):
+        raise ValueError(f"a core of 1 to {len(key.scale)} notes, not {core}")
     order = key.scale.stacked(degree, len(key.scale))
     root = key.chord(degree).root
     return [

@@ -52,6 +52,8 @@ def voicing(
     point. So a five felt 2+3 sounds 2+3, and sixteenths are lighter than eighths."""
     notes = meter.to_grid(onsets)  # raises for a note off the grid
     if accents is not None:
+        if accents.size != onsets.size:
+            raise ValueError(f"accents on a cycle of {accents.size}, notes of {onsets.size}")
         return tuple(
             (BOTH if pulse in accents else HIGH) if point in notes else SILENCE
             for point, pulse in enumerate(meter.starts(-1))

@@ -17,16 +17,17 @@ first search over `one_finger`), two-finger neighbours, and the same idea per vo
 keyboard. Optional, like the rest of this layer: names come from the catalog's chord patterns.
 """
 
+from collections.abc import Collection
 from itertools import combinations
 from typing import NamedTuple
 
 import numpy as np
 
+from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.arrays import MUTED, Grid
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.attraction import anchoring
-from lazy_theory.pitch.catalog import chord_names
 from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
 
@@ -39,14 +40,17 @@ class Neighbour(NamedTuple):
     steps: int  # steps of the temperament moved in all, from the shape it was found from
 
 
-def named(board: Fretboard, voicings: Grid, key: Key | None = None) -> list[Chord | None]:
-    """The chord each voicing plays, read from the catalog's patterns; None where no pattern
-    fits. Of several readings (F A B D is Bm7b5 or Dm6), the one rooted on the bass; failing
-    that, with `key`, the one whose root is steadiest in the key (`pitch.attraction.anchoring`:
-    tonic, then the rest of the home chord, then the scale); else the first."""
+def named(
+    board: Fretboard, voicings: Grid, patterns: Collection[PitchClassSet], key: Key | None = None
+) -> list[Chord | None]:
+    """The chord each voicing plays, read as one of `patterns` (`pitch.catalog.chord_names()`
+    for the catalog's); None where no pattern fits. Of several readings (F A B D is Bm7b5 or
+    Dm6), the one rooted on the bass; failing that, with `key`, the one whose root is steadiest
+    in the key (`pitch.attraction.anchoring`: tonic, then the rest of the home chord, then the
+    scale); else the first."""
     steady = anchoring(key) if key else None
     chords: list[Chord | None] = []
-    for found in board.readings(voicings, chord_names()):
+    for found in board.readings(voicings, patterns):
         on_bass = next((chord for chord in found if chord.bass is None), None)
         if on_bass or not found:
             chords.append(on_bass)
@@ -56,7 +60,11 @@ def named(board: Fretboard, voicings: Grid, key: Key | None = None) -> list[Chor
 
 
 def one_finger(
-    board: Fretboard, taste: Taste, frets: Grid, key: Key | None = None
+    board: Fretboard,
+    taste: Taste,
+    frets: Grid,
+    patterns: Collection[PitchClassSet],
+    key: Key | None = None,
 ) -> list[Neighbour]:
     """Every other chord or inversion this hand reaches from the shape `frets` by moving one
     finger along its string, to an open string or another fret in reach, while every other
@@ -66,12 +74,18 @@ def one_finger(
     fret = np.tile(np.arange(board.frets + 1, dtype=frets.dtype), len(strings))
     rows = np.repeat(frets[None, :], len(string), axis=0)
     rows[np.arange(len(rows)), string] = fret
-    found = _neighbours(board, taste, rows, np.abs(fret - frets[string]), key, frets[None, :])
+    moved = np.abs(fret - frets[string])
+    found = _neighbours(board, taste, rows, moved, patterns, key, frets[None, :])
     return sorted(found, key=lambda one: one.steps)  # stable: lowest string first
 
 
 def passing(
-    board: Fretboard, taste: Taste, before: Grid, after: Grid, key: Key | None = None
+    board: Fretboard,
+    taste: Taste,
+    before: Grid,
+    after: Grid,
+    patterns: Collection[PitchClassSet],
+    key: Key | None = None,
 ) -> list[Neighbour]:
     """The shapes on the way from `before` to `after` that play a third chord or inversion:
     each string either already at its new fret or still at its old one. Fewest strings moved
@@ -86,13 +100,20 @@ def passing(
             rows.append(row)
             steps.append(np.abs(after[moved] - before[moved])[both[moved]].sum())
     grid = np.array(rows, dtype=before.dtype).reshape(-1, len(before))
-    return _neighbours(board, taste, grid, np.array(steps), key, np.stack([before, after]))
+    known = np.stack([before, after])
+    return _neighbours(board, taste, grid, np.array(steps), patterns, key, known)
 
 
 def _neighbours(
-    board: Fretboard, taste: Taste, rows: Grid, steps: Grid, key: Key | None, known: Grid
+    board: Fretboard,
+    taste: Taste,
+    rows: Grid,
+    steps: Grid,
+    patterns: Collection[PitchClassSet],
+    key: Key | None,
+    known: Grid,
 ) -> list[Neighbour]:
-    """The rows this hand allows that play a named chord, other than what the `known` shapes
+    """The rows this hand allows that play one of `patterns`, other than what the `known` shapes
     already sound (the same notes over the same bass)."""
 
     def sound(grid: Grid) -> Grid:  # what a symbol shows: [row, pitch classes then bass]
@@ -103,7 +124,7 @@ def _neighbours(
     return [
         Neighbour(row, chord, int(step))
         for row, chord, step in zip(
-            rows[keep], named(board, rows[keep], key), steps[keep], strict=True
+            rows[keep], named(board, rows[keep], patterns, key), steps[keep], strict=True
         )
         if chord is not None
     ]

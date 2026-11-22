@@ -55,8 +55,7 @@ class LayerTest(unittest.TestCase):
                     continue
                 for parts in library(path):
                     with self.subTest(file=f"{package}/{path.name}", imports=".".join(parts)):
-                        same_package = parts[0] == package
-                        self.assertFalse(same_package and parts[-1] in WORDS)
+                        self.assertNotIn(parts[-1], WORDS)  # any package's words
 
     def test_the_data_reader_imports_nothing_of_the_library(self):
         self.assertEqual(library(PACKAGE / "data.py"), [])

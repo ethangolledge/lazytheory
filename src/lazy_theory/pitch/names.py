@@ -26,6 +26,7 @@ from typing import NamedTuple
 from lazy_theory.core.pcset import PitchClassSet, shortest
 from lazy_theory.pitch.catalog import (
     LETTERS,
+    TWELVE,
     accidentals,
     alteration,
     chord_names,
@@ -40,8 +41,6 @@ from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
 from lazy_theory.pitch.scale import Scale
 
-TWELVE = major().size  # the steps names are for: the major scale's in the scales file. Other
-# sizes are written as numbers.
 _NUMERALS = ("I", "II", "III", "IV", "V", "VI", "VII")
 
 
@@ -56,17 +55,28 @@ def interval_name(step: int, number: int) -> str:
 def step_names(key: Key) -> tuple[str, ...]:
     """Every step above the tonic as an interval: the key's own notes numbered in order (in a
     seven-note key, so Lydian's fourth is "#4"), every other step flat against the major scale
-    (b2 b3 b5 b6 b7). What a note is in the key, wherever a chord puts it."""
+    (b2 b3 b5 b6 b7). What a note is in the key, wherever a chord puts it. A seven-note key
+    whose notes can't be numbered 1 to 7 with at most two accidentals each (C C# D D# E F F#)
+    is named as the steps of no key are."""
     if key.size != TWELVE:
         return tuple(map(str, range(key.size)))
     names = [  # each step on the first major-scale note at or above it, so flat
         interval_name(step, next(n for n in range(1, 8) if _natural(n) >= step))
         for step in range(TWELVE)
     ]
-    if len(key.scale) == 7:
+    if _numbered(key):
         for degree, step in enumerate(key.scale):
             names[step] = interval_name(step, degree + 1)
     return tuple(names)
+
+
+def _numbered(key: Key) -> bool:
+    """Whether a twelve-step key's notes can be numbered 1 to 7 in order, each at most two
+    steps from its major-scale degree: what degree names, spelling and numerals need."""
+    return len(key.scale) == 7 and all(
+        abs(shortest(step - _natural(degree + 1), TWELVE)) <= 2
+        for degree, step in enumerate(key.scale)
+    )
 
 
 def degree_names(key: Key) -> tuple[str, ...]:
@@ -136,15 +146,18 @@ def chord_tone_names(pattern: PitchClassSet) -> tuple[str, ...]:
 
 
 def chord_symbol(chord: Chord, key: Key | None = None) -> str:
-    """The chord as written over a staff: "Em7", or "Em7/G" with a bass that isn't its root.
-    A pattern the catalog doesn't name is its largest named core plus its other notes as
-    `chord_tone_names` calls them, "Em7(b9)" (a major seventh is written "maj7" there, since
-    "(7)" would read as the flat one); with no named core at all, every note, "E(1,b9,9)".
-    Without a `key`, the chord is spelled in its own: the major or minor key on its root with
-    the fewest accidentals, so Bb minor is "Bbm", not "A#m", and its bass follows."""
+    """The chord as written over a staff: "Em7", or "Em7/G" with a bass ("Em7/E" asks for the root
+    in the bass, where "Em7" leaves the inversion free). A pattern the catalog doesn't name is its
+    largest named core plus its other notes as `chord_tone_names` calls them, "Em7(b9)" (a major
+    seventh is written "maj7" there, since "(7)" would read as the flat one); with no named core at
+    all, every note, "E(1,b9,9)". Without a `key`, the chord is spelled in its own: the major or
+    minor key on its root with the fewest accidentals, so Bb minor is "Bbm", not "A#m", and its bass
+    follows."""
+    if key is not None and key.size != chord.size:
+        raise ValueError(f"a {chord.size}-step chord in a {key.size}-step key")
     spelling = key if key is not None else _own_key(chord)
     symbol = note_name(chord.root, spelling, chord.size) + _suffix(chord.pattern)
-    if chord.bass is not None and chord.bass != chord.root:
+    if chord.bass is not None:  # on its own root too: "C/C" asks for root position
         symbol += "/" + note_name(chord.bass, spelling, chord.size)
     return symbol
 
@@ -164,7 +177,7 @@ def parse_chord(text: str, key: Key | None = None) -> Chord:
     aliases). With a seven-note `key`, its numerals ("bII", "iv") work too. Raises ValueError
     saying what's wrong."""
     text = text.strip()
-    if key is not None and key.size == TWELVE and len(key.scale) == 7:
+    if key is not None and key.size == TWELVE and _numbered(key):
         for degree in range(7):
             if text == numeral(key, degree):
                 return key.chord(degree)
@@ -200,8 +213,8 @@ def numeral(key: Key, degree: int) -> str:
     """The Roman numeral of the triad on `degree` (0-based): upper case with a major third,
     lower case with a minor one, ° diminished, + augmented, flat or sharp as the degree is.
     E Phrygian's second degree is "bII". Degrees wrap, as `Key.chord`'s do."""
-    if key.size != TWELVE or len(key.scale) != 7:
-        raise ValueError("Roman numerals need a seven-note key in twelve steps")
+    if key.size != TWELVE or not _numbered(key):
+        raise ValueError("Roman numerals need a seven-note key in twelve steps, numbered 1 to 7")
     degree %= 7
     triad = key.scale.chord(degree)
     text = degree_names(key)[degree][:-1] + _NUMERALS[degree]
@@ -229,22 +242,30 @@ def _natural(number: int) -> int:
 
 def _interval_step(name: str) -> int:
     """`interval_name` read back: "b3" is 3, "#11" is 6; "maj7" is how a symbol writes 7."""
-    name = name.strip().removeprefix("maj")
-    number = name.lstrip("b#")
-    if number not in ("1", "2", "3", "4", "5", "6", "7", "9", "11", "13"):
+    number = _number(name)
+    if number not in (1, 2, 3, 4, 5, 6, 7, 9, 11, 13):
         raise ValueError(f"unknown extension {name!r}")
-    return (_natural(int(number)) + alteration(name)) % TWELVE
+    return (_natural(number) + alteration(name)) % TWELVE
 
 
 @cache
 def _spelling(key: Key | None) -> tuple[str, ...]:
-    """The name of each of the twelve pitch classes, as `key` spells them."""
-    if key is None or len(key.scale) != 7:  # natural, or the sharp of the letter below
-        return tuple(
-            _spelled([letter for letter in LETTERS if pitch_class(letter) <= note][-1], note)
-            for note in range(TWELVE)
-        )
-    numbers = [int(name.lstrip("b#")) for name in step_names(key)]
+    """The name of each of the twelve pitch classes, as `key` spells them. A seven-note key
+    whose notes can't each take their own letter with at most two accidentals (C C# D D# E F F#
+    can't) is spelled as no key is."""
+    if key is not None and _numbered(key) and (spellings := _key_spellings(key)):
+        by_step = min(spellings)[-1]
+        return tuple(by_step[key.interval(note)] for note in range(TWELVE))
+    return tuple(  # natural, or the sharp of the letter below
+        _spelled([letter for letter in LETTERS if pitch_class(letter) <= note][-1], note)
+        for note in range(TWELVE)
+    )
+
+
+def _key_spellings(key: Key) -> list[tuple[int, int, int, list[str]]]:
+    """Each way to give a seven-note key's notes a letter each, with at most two accidentals
+    on any note, ranked for `_spelling` (fewest accidentals, then on the tonic, then flats)."""
+    numbers = [_number(name) for name in step_names(key)]
     spellings = []
     for tonic in range(7):  # each letter the tonic could take; the rest follow in order
         names = [
@@ -255,8 +276,7 @@ def _spelling(key: Key | None) -> tuple[str, ...]:
         if max(altered) <= 2:
             sharps = sum(names[step].count("#") for step in key.scale)
             spellings.append((sum(altered), altered[0], -sharps, names))
-    by_step = min(spellings)[-1]
-    return tuple(by_step[key.interval(note)] for note in range(TWELVE))
+    return spellings
 
 
 def _spelled(letter: str, pitch: int) -> str:
@@ -323,7 +343,7 @@ def _core(core: PitchClassSet, pattern: PitchClassSet, tones: dict[int, str]) ->
 def _written_order(tone: str) -> tuple[bool, int, int]:
     """Extensions as symbols list them: 9ths, 11ths and 13ths rising, then the rest; flats
     before naturals before sharps."""
-    number = int(tone.lstrip("b#"))
+    number = _number(tone)
     return number < 8, number, alteration(tone)
 
 
@@ -347,8 +367,13 @@ def _pattern(text: str) -> PitchClassSet:
             raise ValueError(f"unknown chord type {core!r}")
     if not core and "1" in labels:  # "(1,b9,9)": every note is listed, there is no core
         return PitchClassSet(tuple(map(_interval_step, labels)), TWELVE)
+    if len(set(labels)) < len(labels):
+        raise ValueError(f"a note is written twice in {text!r}")
     pattern = types[core]
     omitted = {_number(label[2:]) for label in labels if label.startswith("no")}
+    own = {_number(name) for name in chord_tone_names(pattern)}
+    if omitted and (omitted - OMITTABLE or omitted - own or 7 not in own):
+        raise ValueError(f"only a seventh chord's own 3rd or 5th is left out, not {text!r}")
     notes = [label for label in labels if not label.startswith("no")]
     altered = {_number(label) for label in notes} | omitted
     kept = [

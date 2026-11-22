@@ -124,9 +124,10 @@ class Phrase:
 
     def onsets(self, start: int = 0, size: int | None = None) -> PitchClassSet:
         """Where the phrase's sounding tokens start, placed from pulse `start` on a cycle of
-        `size` pulses (its own length by default): the onset set every measure works on."""
+        `size` pulses (its own length by default): the onset set every measure works on. A
+        phrase longer than its cycle wraps round, as a tihai crossing the cycle onto sam does."""
         struck = [start + p for p, s in zip(self.positions, self.sounds, strict=True) if s != REST]
-        return PitchClassSet(tuple(struck), size or self.pulses)
+        return PitchClassSet(tuple(struck), self._cycle(size))
 
     def starts(self, level: int = -1) -> tuple[int, ...]:
         """The pulse each group of `level` starts on (-1: the words)."""
@@ -142,7 +143,15 @@ class Phrase:
             for token, pulse in zip(tokens, self.starts(level), strict=True)
             if self.sounds[token] != REST
         ]
-        return PitchClassSet(tuple(heard), size or self.pulses)
+        return PitchClassSet(tuple(heard), self._cycle(size))
+
+    def _cycle(self, size: int | None) -> int:
+        """The cycle a phrase is placed on: its own length, or `size` pulses."""
+        if size is None:
+            return self.pulses
+        if size < 1:
+            raise ValueError(f"a cycle has at least one pulse, got {size}")
+        return size
 
     # Moves: each a pure function, named as players name them.
 

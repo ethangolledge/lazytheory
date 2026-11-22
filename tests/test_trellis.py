@@ -257,5 +257,14 @@ class CostArrayTest(unittest.TestCase):
         self.assertEqual(trellis.shortest().picks, (0, 1))
 
 
+class MaskShapeTest(unittest.TestCase):
+    def test_a_mask_must_cover_every_voicing(self):
+        two = rows([0, 2, 2, 1, 0, 0], [0, 2, 2, 0, 0, 0])
+        trellis = Trellis.build([two, two], moved)
+        for bad in (np.array([True]), np.ones((2, 2, 2), dtype=bool)):
+            with self.subTest(shape=bad.shape), self.assertRaises(ValueError):
+                trellis.shortest([bad, None])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -6,6 +6,7 @@ from fixtures import TUNINGS
 
 from lazy_theory.core.temperament import EqualTemperament
 from lazy_theory.instruments.catalog import load_tunings
+from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.pitch.catalog import (
     pitch,
 )
@@ -38,6 +39,25 @@ class TuningCatalogTest(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             load_tunings(path)
+
+    def test_another_temperament_from_data(self):
+        reference = 'reference = { note = "A4", hertz = 440.0 }\n'
+        path = self.write_toml(
+            reference + "[guitar19]\nscale_length = 648.0\nsteps = 19\n"
+            "tunings.fourths = { first = 44, gaps = [8, 8] }\n"
+        )
+        tuning = load_tunings(path)["guitar19 fourths"]
+        self.assertEqual(
+            (tuning.open_strings, tuning.temperament), ((44, 52, 60), EqualTemperament(19))
+        )
+        self.assertEqual(Fretboard.from_tuning(tuning).size, 19)
+        self.assertEqual(TUNINGS["guitar standard"].hertz, tuning.hertz)  # C0 is C0 in any
+        named = self.write_toml(
+            reference + "[guitar19]\nscale_length = 648.0\nsteps = 19\n"
+            'tunings.fourths = { first = "E2", gaps = [8, 8] }\n'
+        )
+        with self.assertRaises(ValueError):  # note names are for twelve steps
+            load_tunings(named)
 
 
 if __name__ == "__main__":

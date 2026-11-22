@@ -8,7 +8,7 @@ from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.names import tuning_name
 from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.chord import Chord
-from lazy_theory.suggest.tunings import screen, suggest
+from lazy_theory.suggest.tunings import _best, _by_string, screen, suggest
 
 OPEN_D = (-2, 0, 0, -1, -2, -2)  # D A D F# A D from E A D G B E
 D, G, A = 2, 7, 9  # pitch classes
@@ -111,6 +111,20 @@ class SuggestTest(unittest.TestCase):
         found = suggest(STANDARD, [Chord(MAJOR, D), Chord(MAJOR, A)], Taste(ringing=1.0), top=10)
         costs = [suggestion.cost for suggestion in found]
         self.assertEqual(costs, sorted(costs))
+
+
+class ShortlistTest(unittest.TestCase):
+    def test_matches_ranking_the_whole_table(self):
+        rng = np.random.default_rng(1)
+        for _ in range(200):
+            strings, steps, capos = rng.integers(1, 6), rng.integers(1, 5), rng.integers(1, 4)
+            costs = rng.integers(-3, 4, (strings, steps, capos))
+            count = int(rng.integers(1, 12))
+            shape = (steps,) * strings + (capos,)
+            order = np.argsort(_by_string(costs).ravel(), kind="stable")[:count]
+            whole = [np.unravel_index(index, shape) for index in order]
+            expected = [(tuple(map(int, at[:-1])), int(at[-1])) for at in whole]
+            self.assertEqual(_best(costs, count), expected)
 
 
 if __name__ == "__main__":

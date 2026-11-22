@@ -90,6 +90,17 @@ class Trellis:
         if len(allowed) != len(self.options):
             raise ValueError(f"one mask per chord ({len(self.options)}), got {len(allowed)}")
         searches = max((len(mask) for mask in allowed if mask is not None), default=1)
+        for chord, mask in enumerate(allowed):
+            if mask is not None and (
+                mask.ndim != 2
+                or mask.shape[1] != len(self.options[chord])
+                or len(mask) > 1
+                and len(mask) != searches
+            ):
+                raise ValueError(
+                    f"chord {chord}'s mask must be [1 or {searches} searches, "
+                    f"{len(self.options[chord])} voicings], got {mask.shape}"
+                )
         batch = max(1, _CELLS // max((step.size for step in self.steps), default=1))
         found = [
             self._search([_rows(mask, start, start + batch) for mask in allowed])
