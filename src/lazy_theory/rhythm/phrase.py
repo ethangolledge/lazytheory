@@ -258,7 +258,7 @@ def _spans(points: PitchClassSet) -> tuple[tuple[int, ...], tuple[int, ...]]:
     """The silence before the first point (empty if it is on 0), then the pulses from each point
     to the next, the last running to the end of the cycle rather than round to the first. With
     no points, the whole cycle is silence."""
-    if not points.pitch_classes:
+    if not points:
         return (points.size,), ()
-    first = points.pitch_classes[0]
+    first = points[0]
     return (first,) if first else (), tuple(b - a for a, b in pairwise((*points, points.size)))

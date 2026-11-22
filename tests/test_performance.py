@@ -56,9 +56,9 @@ class PlacedTest(unittest.TestCase):
     def test_a_beat_split_differently_is_read_in_its_own_points(self):
         meter = Meter.of((2, 2), (2, 5, 2, 2))  # a quintuplet on beat two
         placed = Performance((1.4,), 4).placed(meter)
-        grid = meter.starts(-1).pitch_classes
+        grid = tuple(meter.starts(-1))
         self.assertEqual(
-            meter.to_grid(PitchClassSet(placed.points, meter.pulses)).pitch_classes,
+            tuple(meter.to_grid(PitchClassSet(placed.points, meter.pulses))),
             (grid.index(placed.points[0]),),
         )
         self.assertAlmostEqual(placed.offsets[0], 0.0)  # 1.4 is the third quintuplet

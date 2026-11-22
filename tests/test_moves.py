@@ -64,12 +64,12 @@ class JamTest(unittest.TestCase):
     def test_gaps_land_on_the_next_accent(self):
         spine = PitchClassSet((0, 3), 4)  # accents on counts 1 and 4: gaps of 3 and 1
         notes = filled(spine, 4, 3)  # 16ths in 3s
-        self.assertEqual(notes.pitch_classes, (0, 3, 6, 9, 12, 14))  # 3+3+3+3, then 2+2
+        self.assertEqual(tuple(notes), (0, 3, 6, 9, 12, 14))  # 3+3+3+3, then 2+2
         self.assertIn(12, notes)  # the second accent sounds
 
     def test_one_idea_varies_with_the_gaps(self):
         notes = filled(PitchClassSet((0, 2), 4), 4, 3)  # two gaps of 2 counts: 8 points each
-        self.assertEqual(notes.pitch_classes, (0, 3, 6, 8, 11, 14))  # 3+3+2 twice
+        self.assertEqual(tuple(notes), (0, 3, 6, 8, 11, 14))  # 3+3+2 twice
 
     def test_a_single_point_gap_has_no_fill(self):
         self.assertIsNone(filled(PitchClassSet((0,), 1), 1, 2))  # no StopIteration

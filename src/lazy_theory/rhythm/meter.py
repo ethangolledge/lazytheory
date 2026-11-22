@@ -148,14 +148,14 @@ class Meter:
     def to_grid(self, onsets: PitchClassSet) -> PitchClassSet:
         """`onsets` counted in grid points instead of pulses: on a shared grid (a quintuplet
         among sixteenths) the grid is what a player counts and speaks."""
-        grid = self.starts(-1).pitch_classes
+        grid = tuple(self.starts(-1))
         if onsets.size != self.pulses or not set(onsets) <= set(grid):
             raise ValueError("every onset must be on the meter's grid")
         return PitchClassSet(tuple(map(grid.index, onsets)), len(grid))
 
     def from_grid(self, points: PitchClassSet) -> PitchClassSet:
         """`to_grid` undone: grid points back to pulses."""
-        grid = self.starts(-1).pitch_classes
+        grid = tuple(self.starts(-1))
         if points.size != len(grid):
             raise ValueError(f"{points.size} grid points for a meter of {len(grid)}")
         return PitchClassSet(tuple(grid[point] for point in points), self.pulses)
@@ -238,7 +238,7 @@ def count(total: int, parts: Collection[int]) -> int:
 def gaps(onsets: PitchClassSet) -> tuple[int, ...]:
     """Pulses from each onset to the next, from the first onset round to it again: the
     inverse of `PitchClassSet.from_steps`."""
-    points = onsets.pitch_classes
+    points = tuple(onsets)
     if not points:
         return ()
     return tuple(b - a for a, b in pairwise((*points, points[0] + onsets.size)))
@@ -292,7 +292,7 @@ def unevenness(onsets: PitchClassSet) -> int:
     """How far from maximally even: for each number of onsets spanned, how much further apart
     its largest and smallest spans are than 1. 0 exactly for the maximally even (Euclidean)
     rhythms (Clough & Douthett: every span comes in one size or two consecutive sizes)."""
-    points, size = onsets.pitch_classes, onsets.size
+    points, size = tuple(onsets), onsets.size
     total = 0
     for spanned in range(1, len(points)):
         spans = [

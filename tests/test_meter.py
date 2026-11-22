@@ -67,13 +67,13 @@ class MeterTest(unittest.TestCase):
 
     def test_beats(self):
         self.assertEqual(
-            FOUR_FOUR_SIXTEENTHS.starts(FOUR_FOUR_SIXTEENTHS.beat).pitch_classes, (0, 4, 8, 12)
+            tuple(FOUR_FOUR_SIXTEENTHS.starts(FOUR_FOUR_SIXTEENTHS.beat)), (0, 4, 8, 12)
         )
 
     def test_mixed_divisions_share_a_grid_of_their_lcm(self):
         meter = Meter.of((2, 2), (4, 5, 4, 4))  # a quintuplet on beat two
         self.assertEqual(meter.pulses, 80)
-        grid = meter.starts(-1).pitch_classes
+        grid = tuple(meter.starts(-1))
         self.assertEqual(grid[4:9], (20, 24, 28, 32, 36))
         self.assertEqual(len(grid), 17)
         self.assertEqual(meter.weights()[1], 0)  # between grid points
@@ -252,11 +252,11 @@ class RhythmAsSetTest(unittest.TestCase):
         self.assertGreater(unevenness(rhythm(3, 3, 4, 2, 4)), 0)
 
     def test_guest_repeats_and_cuts(self):
-        self.assertEqual(guest((3,), 16).pitch_classes, (0, 3, 6, 9, 12, 15))
-        self.assertEqual(guest((3,), 16, 1).pitch_classes, (1, 4, 7, 10, 13))
-        self.assertEqual(guest((3,), 16, 2).pitch_classes, (2, 5, 8, 11, 14))
+        self.assertEqual(tuple(guest((3,), 16)), (0, 3, 6, 9, 12, 15))
+        self.assertEqual(tuple(guest((3,), 16, 1)), (1, 4, 7, 10, 13))
+        self.assertEqual(tuple(guest((3,), 16, 2)), (2, 5, 8, 11, 14))
         self.assertEqual(guest((3, 3, 2), 8), rhythm(3, 3, 2))
-        self.assertEqual(guest((2, 1), 6, 4).pitch_classes, (0, 1, 3, 4))
+        self.assertEqual(tuple(guest((2, 1), 6, 4)), (0, 1, 3, 4))
 
 
 class TimelineTest(unittest.TestCase):

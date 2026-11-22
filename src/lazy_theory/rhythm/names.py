@@ -192,8 +192,8 @@ def _word(size: int) -> tuple[str, ...]:
 def _places(meter: Meter) -> list[tuple[int, int, int]]:
     """For each grid point: its count, how many points that count is split into, and which
     of them it is."""
-    grid = meter.starts(-1).pitch_classes
-    counts = (*meter.starts(meter.beat).pitch_classes, meter.pulses)
+    grid = tuple(meter.starts(-1))
+    counts = (*meter.starts(meter.beat), meter.pulses)
     places = []
     for count, (start, end) in enumerate(pairwise(counts)):
         split = sum(1 for point in grid if start <= point < end)

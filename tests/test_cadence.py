@@ -114,8 +114,8 @@ class CadenceTest(unittest.TestCase):
     def test_every_pulse_of_sixteen(self):
         found = cadences(PitchClassSet(tuple(range(16)), 16))
         self.assertEqual([(p, g) for p, g, _ in found], [(4, 2), (2, 5)])
-        self.assertEqual(found[0][2].pitch_classes, (0, 1, 2, 3, 6, 7, 8, 9, 12, 13, 14, 15))
-        self.assertEqual(found[1][2].pitch_classes, (0, 1, 7, 8, 14, 15))
+        self.assertEqual(tuple(found[0][2]), (0, 1, 2, 3, 6, 7, 8, 9, 12, 13, 14, 15))
+        self.assertEqual(tuple(found[1][2]), (0, 1, 7, 8, 14, 15))
 
     def test_each_lands_on_the_next_cycle(self):
         for size in range(3, 25):

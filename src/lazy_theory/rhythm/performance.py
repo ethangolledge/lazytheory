@@ -59,11 +59,11 @@ class Performance:
         played with `swing` (`Meter.timing`), the shorter way round the cycle, and how far off
         it was. The meter must have one beat per count; a beat split differently from the
         others (a quintuplet among sixteenths) is measured in its own points."""
-        beats = (*meter.starts(meter.beat).pitch_classes, meter.pulses)
+        beats: tuple[int, ...] = (*meter.starts(meter.beat), meter.pulses)
         if len(beats) - 1 != self.counts:
             raise ValueError(f"the meter has {len(beats) - 1} beats, the cycle {self.counts}")
         sounds = meter.timing(swing)
-        grid = meter.starts(-1).pitch_classes
+        grid = tuple(meter.starts(-1))
 
         def pulses(time: float) -> float:  # counts into pulses, beat by beat
             count = int(time)

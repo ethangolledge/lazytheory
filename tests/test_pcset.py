@@ -20,6 +20,10 @@ class PitchClassSetTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             PitchClassSet((0,), 0)
 
+    def test_reads_like_its_sorted_members(self):
+        tresillo = PitchClassSet((6, 0, 3), 8)
+        self.assertEqual((tresillo[0], tresillo[-1], tresillo[1:]), (0, 6, (3, 6)))
+
     def test_the_empty_set_is_silence(self):
         silence = PitchClassSet((), 16)
         self.assertEqual(len(silence), 0)

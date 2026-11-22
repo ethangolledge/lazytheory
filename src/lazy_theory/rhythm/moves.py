@@ -57,7 +57,7 @@ def split(points: PitchClassSet) -> list[PitchClassSet]:
 
 def merged(points: PitchClassSet) -> list[PitchClassSet]:
     """Each note but the first taken out, joining the gaps either side of it."""
-    found = [_with(points, point, None) for point in points.pitch_classes[1:]]
+    found = [_with(points, point, None) for point in points[1:]]
     return _unique(points, found)
 
 
@@ -70,10 +70,10 @@ def even(points: PitchClassSet) -> list[PitchClassSet]:
     """The maximally even rhythm with as many notes closest to this one: started on its first
     note, in whichever rotation keeps the most of its notes. Nothing if it is already even
     (silence included)."""
-    if not points.pitch_classes:
+    if not points:
         return []
     spread = PitchClassSet.maximally_even(len(points), points.size)
-    first = points.pitch_classes[0]
+    first = points[0]
     placed = [spread.rotate(degree).transpose(first) for degree in range(len(spread))]
     return _unique(points, [max(placed, key=lambda rhythm: len(set(rhythm) & set(points)))])
 

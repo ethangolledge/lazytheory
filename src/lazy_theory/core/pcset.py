@@ -19,7 +19,7 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from itertools import accumulate
 from numbers import Integral
-from typing import Self
+from typing import Self, overload
 
 
 def shortest[N: (int, float)](steps: N, size: int) -> N:
@@ -114,6 +114,15 @@ class PitchClassSet:
 
     def __len__(self) -> int:
         return len(self.pitch_classes)
+
+    @overload
+    def __getitem__(self, index: int) -> int: ...
+    @overload
+    def __getitem__(self, index: slice) -> tuple[int, ...]: ...
+    def __getitem__(self, index: int | slice) -> int | tuple[int, ...]:
+        """Members in rising order, so a set reads like the sorted sequence it is: the first
+        onset of a rhythm is `onsets[0]`."""
+        return self.pitch_classes[index]
 
     def __iter__(self) -> Iterator[int]:
         return iter(self.pitch_classes)
