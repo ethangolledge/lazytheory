@@ -91,8 +91,11 @@ def harmonise(
     """The cheapest chord and voicing for each melody note, with that note on top.
 
     `melody` holds one pitch class per slot, measured like roots (None leaves the top free);
-    `slots` holds the chords allowed under each note. Raises ValueError if some note has no
-    allowed voicing.
+    `slots` holds the chords allowed under each note. A pitch class, not a pitch, because a
+    melody is usually sung or played an octave from where a chord shape puts it: the octave
+    is left to the search, whose movement costs keep the top line smooth. To fix the octave,
+    filter `taste.options` by `board.top` yourself and build the trellis. Raises ValueError if
+    some note has no allowed voicing.
     """
     options, owners = [], []
     for index, (note, chords) in enumerate(zip(melody, slots, strict=True)):

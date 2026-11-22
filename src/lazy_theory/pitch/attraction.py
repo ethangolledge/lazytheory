@@ -17,7 +17,6 @@ tonic, by passing a Key built on that chord's root.
 """
 
 from functools import lru_cache
-from math import gcd
 
 from lazy_theory.pitch.key import Key
 
@@ -28,8 +27,7 @@ def anchoring(key: Key) -> tuple[int, ...]:
     without its fifths level. 4 the tonic, 3 the rest of the tonic triad, 2 the rest of the
     scale, 1 any other note. In a key too small to stack three notes in thirds (a scale of
     two or four notes), the tonic chord is the notes stacked before one repeats."""
-    notes = len(key.scale) // gcd(len(key.scale), 2)  # distinct notes stacked in thirds
-    tonic = key.chord(0, min(3, notes))
+    tonic = key.chord(0, min(3, len(key.scale.stack(0))))
     return tuple(
         4 if note == key.root else 3 if note in tonic else 2 if note in key else 1
         for note in range(key.size)

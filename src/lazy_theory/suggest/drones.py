@@ -98,7 +98,7 @@ def _holding(
         return np.stack([w[i] if a <= i <= b else ~with_note[i] for (a, b), w in searches])
 
     picks, totals = trellis.search([allowed(i) for i in places])
-    free = dict(zip(runs, totals, strict=False))
+    free = dict(zip(runs, totals[: len(runs)], strict=True))  # the free searches come first
     found = []
     results = zip(held, picks[len(runs) :], totals[len(runs) :], strict=True)
     for ((first, last), _), pick, total in results:

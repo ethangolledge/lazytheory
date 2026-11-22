@@ -60,5 +60,18 @@ class TuningCatalogTest(unittest.TestCase):
             load_tunings(named)
 
 
+class PeriodTest(unittest.TestCase):
+    def test_a_tuning_may_give_its_period(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        path = Path(directory.name) / "tunings.toml"
+        path.write_text(
+            'reference = { note = "A4", hertz = 440.0 }\n'
+            "[bp]\nscale_length = 648.0\nsteps = 13\nperiod = 3\n"
+            "tunings.one = { first = 40, gaps = [3, 3] }\n"
+        )
+        self.assertEqual(load_tunings(path)["bp one"].temperament, EqualTemperament(13, 3))
+
+
 if __name__ == "__main__":
     unittest.main()

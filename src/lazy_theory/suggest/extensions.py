@@ -22,11 +22,14 @@ from lazy_theory.pitch.key import Key
 
 def extended(key: Key, degree: int, core: int = 2, most: int = 5) -> list[Chord]:
     """Every chord on `degree` of `key`: the first `core` notes of its stack of thirds plus any
-    of the rest, at most `most` notes in all."""
-    if not 1 <= core <= len(key.scale):
-        raise ValueError(f"a core of 1 to {len(key.scale)} notes, not {core}")
-    order = key.scale.stacked(degree, len(key.scale))
-    root = key.chord(degree).root
+    of the rest, at most `most` notes in all. The stack is every note before one repeats
+    (`Scale.stack`), so a whole-tone scale stacks three."""
+    if core < 1:
+        raise ValueError(f"a core of at least one note, not {core}")
+    order = key.scale.stack(degree)
+    if core > len(order):
+        raise ValueError(f"thirds on degree {degree} stack {len(order)} notes, not {core}")
+    root = key.root + key.scale[degree]
     return [
         Chord(PitchClassSet((*order[:core], *extra), key.size), root)
         for count in range(most - core + 1)

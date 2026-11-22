@@ -12,6 +12,8 @@ Could grow into: scale families found by rotation and reflection, "brightness" o
 modes (the sum of a mode's steps), and chords from any stride on any scale.
 """
 
+from math import gcd
+
 from lazy_theory.core.pcset import PitchClassSet
 
 
@@ -37,6 +39,12 @@ class Scale(PitchClassSet):
                 f"in this {len(self)}-note scale"
             )
         return tuple((member - members[0]) % self.size for member in members)
+
+    def stack(self, degree: int, stride: int = 2) -> tuple[int, ...]:
+        """Every note `stacked` from `degree` before one repeats: all seven of a seven-note
+        scale in thirds, but three of the six-note whole-tone scale (C E G#) and four of an
+        eight-note diminished scale."""
+        return self.stacked(degree, len(self) // gcd(len(self), stride), stride)
 
     def chord(self, degree: int, notes: int = 3, stride: int = 2) -> PitchClassSet:
         """The `stacked` notes as a set, measured from the chord's own root."""

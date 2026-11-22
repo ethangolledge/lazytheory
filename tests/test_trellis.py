@@ -297,5 +297,13 @@ class LabelShapeTest(unittest.TestCase):
             trellis.search([np.zeros((0, 2), dtype=bool), None])
 
 
+class SlackTest(unittest.TestCase):
+    def test_slack_is_zero_or_more(self):
+        one = rows([0, 2, 2, 1, 0, 0])
+        for slack in (-1.0, float("nan")):
+            with self.subTest(slack=slack), self.assertRaises(ValueError):
+                Trellis.build([one, one], moved).each([np.zeros(1)] * 2, slack)
+
+
 if __name__ == "__main__":
     unittest.main()

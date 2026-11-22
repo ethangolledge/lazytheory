@@ -224,7 +224,8 @@ class Phrase:
 
     def tihai(self, gap: int, times: int = 3, hold: bool = False) -> Phrase:
         """The phrase `times` times with `gap` pulses after each but the last, each statement a
-        group: a tihai (mora). The gap is a rest, or with `hold` the last syllable held.
+        group: a tihai (mora). The gap is a rest, or with `hold` the last token held longer
+        (a syllable sustained; if the phrase ends on a rest, that rest).
         `rhythm.cadence.tihais` gives the lengths that land."""
         if gap < 0 or times < 1:
             raise ValueError(f"need a gap of 0 or more and 1 or more times, got {gap}, {times}")

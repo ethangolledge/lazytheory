@@ -232,5 +232,12 @@ class NeckInputTest(unittest.TestCase):
                 replace(STANDARD, **change)
 
 
+class ReachTest(unittest.TestCase):
+    def test_a_hand_reaches_zero_or_more(self):
+        for reach in (-1.0, float("nan")):
+            with self.subTest(reach=reach), self.assertRaises(ValueError):
+                STANDARD.voicings(Chord(MAJOR, 0), reach)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -20,22 +20,24 @@ from collections.abc import Collection, Sequence
 from dataclasses import dataclass, replace
 from functools import cached_property
 from numbers import Integral
+from operator import index
 
 from lazy_theory.core.pcset import PitchClassSet
 
 
 @dataclass(frozen=True)
 class Rooted[Pattern: PitchClassSet]:
-    """`pattern` (intervals above the root, e.g. (0, 3, 7)) on `root`, a pitch class. The root
-    is reduced mod the pattern's size, so equal things compare equal."""
+    """`pattern` (intervals above the root, e.g. (0, 3, 7)) on `root`, a pitch class. The
+    pattern holds its root, 0: a chord is named from a note it has. The root is a whole step
+    reduced mod the pattern's size, so equal things compare equal."""
 
     pattern: Pattern
     root: int
 
     def __post_init__(self) -> None:
-        if not self.pattern.pitch_classes:
-            raise ValueError(f"a {type(self).__name__} needs at least one note")
-        object.__setattr__(self, "root", self.root % self.size)
+        if 0 not in self.pattern.pitch_classes:
+            raise ValueError(f"a {type(self).__name__}'s pattern holds its root, 0: {self.pattern}")
+        object.__setattr__(self, "root", index(self.root) % self.size)
 
     @property
     def size(self) -> int:
@@ -67,7 +69,7 @@ class Chord(Rooted[PitchClassSet]):
     def __post_init__(self) -> None:
         super().__post_init__()
         if self.bass is not None:
-            object.__setattr__(self, "bass", self.bass % self.size)
+            object.__setattr__(self, "bass", index(self.bass) % self.size)
             if self.bass not in self:
                 raise ValueError(f"bass {self.bass} is not a note of the chord")
 

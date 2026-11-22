@@ -107,6 +107,8 @@ def suggest(
     include 0. Equal costs rank the smaller retuning first, and a path playing the same
     pitches as a better one is dropped.
     """
+    if not len(steps) or not len(capos):
+        raise ValueError("give at least one retuning step and one capo")
     strings, step = len(base.open_strings), np.array(steps, dtype=np.int16)
     tones = open_tones(base.open_strings, steps, capos, chords, base.size)
     effort = np.abs(step).astype(np.int64)[None, :, None]  # per string, the same for each

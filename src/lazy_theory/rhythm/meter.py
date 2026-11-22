@@ -141,6 +141,8 @@ class Meter:
 
     def starts(self, level: int) -> PitchClassSet:
         """Where the groups of `level` start: -1 is the finest grid, `self.beat` the beats."""
+        if not -len(self.levels) <= level < len(self.levels):
+            raise ValueError(f"this meter has levels 0 to {len(self.levels) - 1}, not {level}")
         return PitchClassSet(group_starts(self.levels[level]), self.pulses)
 
     def weights(self) -> tuple[int, ...]:

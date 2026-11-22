@@ -40,5 +40,12 @@ class CoreSizeTest(unittest.TestCase):
             extended(Key(SCALES["Ionian"], 0), 0, core=0)
 
 
+class OtherScaleTest(unittest.TestCase):
+    def test_a_whole_tone_key_stacks_three(self):
+        found = extended(Key(SCALES["Whole Tone"], 0), 0)
+        self.assertEqual(max(len(chord.pattern) for chord in found), 3)
+        self.assertTrue(all(chord.root == 0 for chord in found))
+
+
 if __name__ == "__main__":
     unittest.main()

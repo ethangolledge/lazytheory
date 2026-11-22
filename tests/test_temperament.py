@@ -59,5 +59,11 @@ class EqualTemperamentTest(unittest.TestCase):
         self.assertEqual(round(EqualTemperament(19).steps(3 / 2)), 11)
 
 
+class WholeStepsTest(unittest.TestCase):
+    def test_steps_per_period_are_whole(self):
+        with self.assertRaises(TypeError):
+            EqualTemperament(12.5)  # type: ignore[arg-type]
+
+
 if __name__ == "__main__":
     unittest.main()

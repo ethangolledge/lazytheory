@@ -12,7 +12,7 @@ from functools import cache, reduce
 from itertools import pairwise
 from operator import add
 
-from lazy_theory.core.pcset import PitchClassSet, group_starts
+from lazy_theory.core.pcset import group_starts
 from lazy_theory.rhythm.catalog import load_spoken, syllable_id
 from lazy_theory.rhythm.layers import Dissonance
 from lazy_theory.rhythm.meter import CLAP, WAVE, Meter, grouping
@@ -76,10 +76,7 @@ def spell(phrase: Phrase, system: str, meter: Meter | None = None) -> Phrase:
                 chosen[token] = spoken.takadimi[split][index]
         else:
             bols = {stroke: bol for bol, stroke in reversed(list(spoken.strokes.items()))}
-            try:
-                accents: PitchClassSet | None = meter.from_grid(phrase.accents())
-            except ValueError:
-                accents = None
+            accents = meter.from_grid(phrase.accents())  # the grid has the phrase's pulses
             strokes = voicing(meter.from_grid(phrase.onsets()), meter, accents)
             for token, position in enumerate(positions):
                 if sounds[token] != REST:

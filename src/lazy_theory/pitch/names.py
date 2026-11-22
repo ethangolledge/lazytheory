@@ -227,12 +227,20 @@ def numeral(key: Key, degree: int) -> str:
 def stack_spelling(scale: Scale, degree: int, pattern: PitchClassSet) -> str:
     """The pattern's notes by their place in the stack of thirds on `degree`, in stack order:
     "1 b3 5 b9" for E minor with E Phrygian's F. Unlike `chord_tone_names`, the number is the
-    note's place in the scale's own stack, whatever else the chord holds. Outside twelve
-    steps each note is its number of steps above the root."""
+    note's place in the scale's own stack, whatever else the chord holds; in a scale of other
+    than seven notes, where a place isn't a number, each note is named as `chord_tone_names`
+    names it. Outside twelve steps each note is its number of steps above the root."""
+    if pattern.size != scale.size:
+        raise ValueError(f"a {pattern.size}-step chord in a {scale.size}-step scale")
+    stack = scale.stack(degree)
     if scale.size != TWELVE:
-        return " ".join(str(note) for note in scale.stacked(degree, len(scale)) if note in pattern)
-    stack = enumerate(scale.stacked(degree, len(scale)))
-    return " ".join(interval_name(note, 2 * place + 1) for place, note in stack if note in pattern)
+        return " ".join(str(note) for note in stack if note in pattern)
+    if len(scale) != 7:  # thirds aren't scale steps two apart: name each as a chord tone
+        names = dict(zip(pattern, chord_tone_names(pattern), strict=True))
+        return " ".join(names[note] for note in stack if note in pattern)
+    return " ".join(
+        interval_name(note, 2 * place + 1) for place, note in enumerate(stack) if note in pattern
+    )
 
 
 def _natural(number: int) -> int:
@@ -318,6 +326,7 @@ def _suffix(pattern: PitchClassSet) -> str:
     return f"{symbols[best.core]}({','.join(labels)})"
 
 
+_WRITTEN = re.compile(r"(?:bb|b|#)?\d+|maj7|no\d+")  # a bracketed tone, as `_suffix` writes one
 OMITTABLE = {3, 5}  # the tones a lead sheet leaves out of a seventh chord: "7(no3)", "m7(no5)"
 
 
@@ -373,7 +382,7 @@ def _pattern(text: str) -> PitchClassSet:
         core, _, added = text[:-1].rpartition("(")
     if text.endswith("()"):
         raise ValueError(f"empty brackets in {text!r}")
-    labels = added.split(",") if added else []
+    labels = [label.strip() for label in added.split(",")] if added else []
     if core not in types:  # alterations written straight after the type: "7#9", "maj7#11"
         for end in range(len(core) - 1, -1, -1):
             if core[:end] in types and re.fullmatch(r"(?:[b#]\d+)+", core[end:]):
@@ -383,6 +392,8 @@ def _pattern(text: str) -> PitchClassSet:
             raise ValueError(f"unknown chord type {core!r}")
     if len(set(labels)) < len(labels):
         raise ValueError(f"a note is written twice in {text!r}")
+    if bad := [label for label in labels if not _WRITTEN.fullmatch(label)]:
+        raise ValueError(f"not a chord tone: {', '.join(bad)} in {text!r}")
     if not core and "1" in labels:  # "(1,b9,9)": every note is listed, there is no core
         return PitchClassSet(tuple(map(_interval_step, labels)), TWELVE)
     if "1" in labels:
@@ -393,13 +404,18 @@ def _pattern(text: str) -> PitchClassSet:
     if omitted and (omitted - OMITTABLE or omitted - own or 7 not in own):
         raise ValueError(f"only a seventh chord's own 3rd or 5th is left out, not {text!r}")
     notes = [label for label in labels if not label.startswith("no")]
+    if omitted & {_number(label) for label in notes}:
+        raise ValueError(f"a degree both left out and written in {text!r}")
     altered = {_number(label) for label in notes} | omitted
     kept = [
         step
         for step, name in zip(pattern, chord_tone_names(pattern), strict=True)
         if _number(name) not in altered
     ]
-    return PitchClassSet((*kept, *map(_interval_step, notes)), TWELVE)
+    written = [_interval_step(label) for label in notes]
+    if len(set(written)) < len(written) or set(written) & set(kept):  # "C(##9)" is the C's own 3rd
+        raise ValueError(f"a written tone is a note the chord already has: {text!r}")
+    return PitchClassSet((*kept, *written), TWELVE)
 
 
 def _number(name: str) -> int:

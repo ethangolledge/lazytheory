@@ -8,6 +8,7 @@ Your own files load as `lazy_theory.data` describes.
 """
 
 from collections.abc import Mapping
+from fractions import Fraction
 from itertools import accumulate
 from pathlib import Path
 
@@ -20,8 +21,9 @@ from lazy_theory.pitch.catalog import TWELVE, pitch
 @bundled_once
 def load_tunings(path: Path | None = None) -> Mapping[str, Tuning]:
     """Every named tuning, keyed by instrument and name, e.g. "guitar standard". An
-    instrument's `steps` (per octave, twelve if not given) is its temperament; outside twelve,
-    `first` is steps above C0, since note names are for twelve."""
+    instrument's `steps` per `period` (twelve to the octave, 2, if not given) is its
+    temperament; outside twelve to the octave, `first` is steps above C0, since note names are
+    for twelve."""
     data = read(__name__, "tunings.toml", path)
     reference = data["reference"]  # a note name, so in twelve steps
     hertz = reference["hertz"] * EqualTemperament(TWELVE).ratio(-pitch(reference["note"]))
@@ -29,10 +31,10 @@ def load_tunings(path: Path | None = None) -> Mapping[str, Tuning]:
     for instrument, entry in data.items():
         if instrument == "reference":
             continue
-        temperament = EqualTemperament(entry.get("steps", TWELVE))
+        temperament = EqualTemperament(entry.get("steps", TWELVE), Fraction(entry.get("period", 2)))
         for name, tuning in entry["tunings"].items():
             first = tuning["first"]
-            if temperament.size != TWELVE and not isinstance(first, int):
+            if temperament != EqualTemperament(TWELVE) and not isinstance(first, int):
                 raise ValueError(f"{instrument} {name}: give `first` in steps above C0")
             start = first if isinstance(first, int) else pitch(first)
             strings = tuple(accumulate(tuning["gaps"], initial=start))

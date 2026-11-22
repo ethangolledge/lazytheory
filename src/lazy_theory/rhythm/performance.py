@@ -20,6 +20,7 @@ habitual lead or lag subtracted before reading, and tempo drift across laps.
 
 from dataclasses import dataclass
 from math import isfinite
+from operator import index
 from typing import NamedTuple
 
 from lazy_theory.core.pcset import PitchClassSet, shortest
@@ -50,7 +51,7 @@ class Performance:
     counts: int
 
     def __post_init__(self) -> None:
-        if self.counts < 1:
+        if index(self.counts) < 1:
             raise ValueError(f"a cycle needs at least one count, got {self.counts}")
         if not all(isfinite(time) for time in self.times):
             raise ValueError(f"times must be finite, got {self.times}")

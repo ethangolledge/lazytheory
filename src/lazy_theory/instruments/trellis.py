@@ -135,6 +135,8 @@ class Trellis:
         finish = [np.zeros(len(self.options[-1]))]  # cheapest way on from each voicing
         for step, cost in zip(reversed(self.steps), reversed(self.costs[1:]), strict=True):
             finish.insert(0, (step + cost + finish[0]).min(axis=1))
+        if not slack >= 0:  # NaN too
+            raise ValueError(f"slack is a cost of zero or more, got {slack}")
         budget = float((self.costs[0] + finish[0]).min()) + slack + 1e-9
         kinds = [np.unique(chord_labels) for chord_labels in labels]
         routes: list[Route] = []

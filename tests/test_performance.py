@@ -73,5 +73,11 @@ class PlacedTest(unittest.TestCase):
             Performance((0.0,), 3).placed(EIGHTHS)
 
 
+class WholeCountsTest(unittest.TestCase):
+    def test_counts_are_whole(self):
+        with self.assertRaises(TypeError):
+            Performance((0.5,), 2.5)  # type: ignore[arg-type]
+
+
 if __name__ == "__main__":
     unittest.main()

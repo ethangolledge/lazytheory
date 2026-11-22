@@ -5,6 +5,7 @@ from itertools import combinations
 from fixtures import CHORDS, SCALES, key
 
 from lazy_theory.core.pcset import PitchClassSet
+from lazy_theory.pitch.attraction import anchoring
 from lazy_theory.pitch.catalog import load_scales, pitch, pitch_class
 from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
@@ -22,6 +23,7 @@ from lazy_theory.pitch.names import (
     step_names,
 )
 from lazy_theory.pitch.scale import Scale
+from lazy_theory.suggest.extensions import extended
 
 
 class SpellingTest(unittest.TestCase):
@@ -374,6 +376,45 @@ class FlatKeyTest(unittest.TestCase):
                         note_name(pc, k) for pc in range(12) if (pc - root) % 12 not in scale
                     ]
                     self.assertTrue(all(len(spelled) <= 2 for spelled in outside), outside)
+
+
+class EveryCatalogScaleTest(unittest.TestCase):
+    """Every bundled scale, not only the diatonic modes, on every root: names, chords and
+    their symbols work, and every symbol reads back as its chord."""
+
+    def test_every_scale_on_every_root(self):
+        for name, scale in load_scales().items():
+            for root in range(12):
+                k = Key(scale, root)
+                with self.subTest(scale=name, root=root):
+                    self.assertEqual(len(note_names(k)), len(scale))
+                    self.assertEqual(len(anchoring(k)), 12)
+                    for degree in range(len(scale)):
+                        chord = k.chord(degree)
+                        self.assertEqual(parse_chord(chord_symbol(chord, k), k), chord)
+                        self.assertEqual(parse_chord(chord_symbol(chord)), chord)
+                        self.assertTrue(stack_spelling(scale, degree, chord.pattern))
+                        self.assertTrue(extended(k, degree))
+
+    def test_stacks_name_their_thirds_outside_seven_notes(self):
+        pentatonic = SCALES["Major Pentatonic"]
+        self.assertEqual(stack_spelling(pentatonic, 0, CHORDS["major"]), "1 3 5")
+        self.assertEqual(len(SCALES["Whole Tone"].stack(0)), 3)  # C E G#, then C again
+        with self.assertRaises(ValueError):
+            stack_spelling(pentatonic, 0, PitchClassSet((0,), 1))
+
+
+class StrictToneTest(unittest.TestCase):
+    def test_bracketed_tones_are_written_as_the_writer_writes_them(self):
+        for text in ("C(##9)", "C(b#9)", "C7(no5,5)", "C(maj3)", "C(maj9)", "C7(nob5)"):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                parse_chord(text)
+
+    def test_a_chord_holds_its_root_as_a_whole_step(self):
+        with self.assertRaises(ValueError):
+            Chord(PitchClassSet((4, 7)), 0)  # no root: "C(3,5)" would read back as C
+        with self.assertRaises(TypeError):
+            Chord(CHORDS["major"], 0.5)  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

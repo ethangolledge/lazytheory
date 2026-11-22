@@ -273,6 +273,14 @@ class CountEdgesTest(unittest.TestCase):
                 Meter.of(groups)
 
 
+class LevelTest(unittest.TestCase):
+    def test_a_level_the_meter_has(self):
+        meter = Meter.of((2, 2))
+        self.assertEqual(meter.starts(-1), meter.starts(len(meter.levels) - 1))
+        with self.assertRaises(ValueError):
+            meter.starts(len(meter.levels))
+
+
 class LongCycleTest(unittest.TestCase):
     def test_groupings_grow_with_the_answers_not_the_cycle(self):
         every_other = PitchClassSet(tuple(range(0, 64, 2)), 64)

@@ -194,8 +194,9 @@ Three rules keep it clean:
   capo doesn't shrink the hand. The neck is cut at the highest allowed fret before voicings are
   built, not filtered after. A neck's chords are built, filtered and scored together, and
   roughness reads a table of note pairs computed once per reference pitch.
-- **Suggestions are opt-in.** `suggest` sits on top and nothing imports it: standard tuning stays
-  the default. Candidate tunings are generated, not looked up: every string moved within safe
+- **Suggestions are opt-in.** `suggest` sits on top and no other package imports it (the
+  top-level shortcuts in `lazy_theory/__init__.py` name two of its functions, loaded only when
+  used): standard tuning stays the default. Candidate tunings are generated, not looked up: every string moved within safe
   tension (4 steps down, 2 up), then named afterwards by matching the catalog, shifts included
   ("open D +2"). A screen ranks every retuning at every capo by how many open strings are
   chord tones (`open_tones`): each string's count depends only on its own step and the capo, so the

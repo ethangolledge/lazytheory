@@ -16,6 +16,7 @@ instead of computed), and stretched tunings for stiff strings.
 from dataclasses import dataclass
 from fractions import Fraction
 from math import log, log2
+from operator import index
 from typing import Any, Protocol, overload
 
 
@@ -38,7 +39,7 @@ class EqualTemperament:
     period: Fraction = Fraction(2)
 
     def __post_init__(self) -> None:
-        if self.size < 1:
+        if index(self.size) < 1:
             raise ValueError(f"size must be positive, got {self.size}")
         if self.period <= 1:
             raise ValueError(f"period must be greater than 1, got {self.period}")

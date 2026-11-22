@@ -109,7 +109,7 @@ def load_talas(path: Path | None = None) -> Mapping[str, Meter]:
                 for anga in angas
                 for hand in ([CLAP, *range(1, beats)] if anga == "I" else gestures[anga])
             ]
-            meters[f"{jati} {family}"] = _cycle(parts, hands)
+            add(meters, f"{jati} {family}", _cycle(parts, hands))
     return meters
 
 

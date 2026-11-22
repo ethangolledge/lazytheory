@@ -134,5 +134,12 @@ class CheapestTest(unittest.TestCase):
             self.assertEqual(cheapest(costs, count), expected)
 
 
+class ChoiceTest(unittest.TestCase):
+    def test_at_least_one_step_and_capo(self):
+        for choices in ({"steps": ()}, {"capos": ()}):
+            with self.subTest(**choices), self.assertRaises(ValueError):
+                suggest(STANDARD, [Chord(MAJOR, G)], Taste(), **choices)
+
+
 if __name__ == "__main__":
     unittest.main()
