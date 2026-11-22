@@ -1,4 +1,5 @@
 import unittest
+from itertools import combinations
 
 from lazy_theory.core.pcset import PitchClassSet, shortest
 
@@ -86,6 +87,32 @@ class PitchClassSetTest(unittest.TestCase):
             [0, 1, 5, 6, -5, -1, 1, -1],
         )
         self.assertEqual(shortest(10, 19), -9)
+
+
+class SetClassTest(unittest.TestCase):
+    """Published counts of pitch-class set classes in twelve steps: every subset, the empty and
+    the full set included, falls into 352 classes under transposition and 224 under
+    transposition and inversion (OEIS A000031 and A000029 at 12), and Forte's table lists
+    12 trichords, 29 tetrachords, 38 pentachords and 50 hexachords (Forte 1973)."""
+
+    @staticmethod
+    def classes(size: int, inversion: bool) -> set[PitchClassSet]:
+        found = set()
+        for members in combinations(range(12), size):
+            pcs = PitchClassSet(members)
+            forms = [pcs, PitchClassSet(tuple(-p for p in members))] if inversion else [pcs]
+            found.add(min((form.necklace() for form in forms), key=lambda f: f.pitch_classes))
+        return found
+
+    def test_all_subsets_under_transposition(self):
+        self.assertEqual(sum(len(self.classes(n, False)) for n in range(13)), 352)
+
+    def test_all_subsets_under_transposition_and_inversion(self):
+        self.assertEqual(sum(len(self.classes(n, True)) for n in range(13)), 224)
+
+    def test_fortes_table(self):
+        counts = {n: len(self.classes(n, True)) for n in (3, 4, 5, 6)}
+        self.assertEqual(counts, {3: 12, 4: 29, 5: 38, 6: 50})
 
 
 if __name__ == "__main__":

@@ -57,5 +57,17 @@ class ExactTest(unittest.TestCase):
         self.assertEqual(voice_leading(chromatic, ionian).distance, 5)  # each black key, a step
 
 
+class NeoRiemannianTest(unittest.TestCase):
+    """Cohn (1997): P, L and R each hold two notes of a triad and move the third, by a semitone
+    (P: C to Cm; L: C to Em) or a whole tone (R: C to Am)."""
+
+    def test_parallel_leading_tone_and_relative(self):
+        c_major = PitchClassSet((0, 4, 7))
+        for target, distance in [((0, 3, 7), 1), ((4, 7, 11), 1), ((9, 0, 4), 2)]:
+            moved = voice_leading(c_major, PitchClassSet(target))
+            self.assertEqual(moved.distance, distance, target)
+            self.assertEqual(sum(move.steps != 0 for move in moved.moves), 1, target)
+
+
 if __name__ == "__main__":
     unittest.main()
