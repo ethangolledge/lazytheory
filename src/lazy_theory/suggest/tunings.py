@@ -90,9 +90,10 @@ def suggest(
     `context_weight` times the cheapest voicing of each `context` chord (e.g. the rest of the
     key), so a neck that suits these chords but not the next one ranks lower. Every one of
     `chords` must be playable; a context chord that isn't is counted (`unplayable`), and necks
-    that can play more of the context rank first, then by cost. The screen keeps `shortlist` retuning and capo pairs, and always `base` with
-    no capo when `steps` and `capos` both include 0. Equal costs rank the smaller retuning
-    first, and a path playing the same pitches as a better one is dropped.
+    that play more of the context rank first, then by cost. The screen keeps `shortlist`
+    retuning and capo pairs, and always `base` with no capo when `steps` and `capos` both
+    include 0. Equal costs rank the smaller retuning first, and a path playing the same
+    pitches as a better one is dropped.
     """
     strings, step = len(base.open_strings), np.array(steps, dtype=np.int16)
     score = screen(base.open_strings, steps, capos, chords, base.size).astype(np.int32)

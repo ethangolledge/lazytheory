@@ -4,7 +4,9 @@ Why: "drop D" is a convention, so it is data. Each tuning is written as its lowe
 the steps up to each next one, so a re-entrant ukulele is a negative step, and pitches are
 read once, in the pitch frame (`pitch.catalog.pitch`), against the file's reference.
 
-Pass a path to load your own file instead of the bundled one.
+Pass a path to a loader to read your own file instead of the bundled one: you get its values
+(scales, chords, tunings, talas) to use directly. The names modules always speak the bundled
+files: to change how chords or syllables are written, edit the bundled file.
 """
 
 from collections.abc import Mapping

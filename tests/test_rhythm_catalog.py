@@ -1,7 +1,9 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.rhythm.catalog import load_talas, load_timelines
+from lazy_theory.rhythm.catalog import load_talas, load_tals, load_timelines
 from lazy_theory.rhythm.meter import (
     CLAP,
     WAVE,
@@ -61,6 +63,32 @@ class TimelineTest(unittest.TestCase):
 
     def test_bembe_is_the_major_scale(self):
         self.assertEqual(gaps(self.timelines["bembe"]), (2, 2, 1, 2, 2, 2, 1))
+
+
+class CustomRhythmFileTest(unittest.TestCase):
+    def test_a_thekas_bols_are_read_in_its_own_files_syllables(self):
+        text = """rest = ","
+hold = "_"
+[words]
+1 = "bo"
+[counting]
+[subdivisions]
+[syllables]
+spoken = ["bo", "ka"]
+[takadimi]
+[strokes]
+[khali]
+[tals.two]
+sections = [2]
+theka = ["ka", "bo"]
+"""
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        path = Path(directory.name) / "rhythm.toml"
+        path.write_text(text)
+        theka = load_tals(path)["two"].theka
+        assert theka is not None
+        self.assertEqual(theka.sounds, (2, 1))  # "ka" and "bo" in this file, not the bundled one
 
 
 if __name__ == "__main__":

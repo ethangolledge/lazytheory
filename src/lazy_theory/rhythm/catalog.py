@@ -8,7 +8,9 @@ Theory it speaks to: the 35 suladi talas built from their angas (a laghu is a cl
 fingers counted), Hindustani tals as sections with marks and thekas, and the bell and clave
 timelines of West African and Afro-Cuban music.
 
-Pass a path to load your own file instead of the bundled one.
+Pass a path to a loader to read your own file instead of the bundled one: you get its values
+(scales, chords, tunings, talas) to use directly. The names modules always speak the bundled
+files: to change how chords or syllables are written, edit the bundled file.
 """
 
 from collections.abc import Mapping
@@ -79,9 +81,10 @@ def load_spoken(path: Path | None = None) -> Spoken:
     )
 
 
-def syllable_id(name: str) -> int:
-    """The sound id a phrase stores for the syllable `name` (rhythm.phrase: ids start at 1)."""
-    names = load_spoken().names
+def syllable_id(name: str, path: Path | None = None) -> int:
+    """The sound id a phrase stores for the syllable `name` (rhythm.phrase: ids start at 1),
+    in the syllables of the file at `path` (the bundled one by default)."""
+    names = load_spoken(path).names
     if name not in names:
         raise ValueError(f"unknown syllable {name!r}")
     return names.index(name) + 1
@@ -141,7 +144,7 @@ def load_tals(path: Path | None = None) -> Mapping[str, Tal]:
             if len(entry["theka"]) != beats:
                 raise ValueError(f"{name}: the theka needs one entry per beat ({beats})")
             theka = Phrase.beats(
-                [[syllable_id(b) for b in beat.split()] for beat in entry["theka"]]
+                [[syllable_id(b, path) for b in beat.split()] for beat in entry["theka"]]
             )
         tals[name] = Tal(_cycle(sections, hands), theka)
     return tals

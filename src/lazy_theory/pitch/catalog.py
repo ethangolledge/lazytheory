@@ -1,8 +1,8 @@
 """Named scales and chords, loaded from TOML, and note names into numbers.
 
 Why: "Dorian" and "m7" are conventions, not maths (docs/theory.md), so they are data here and
-never code in the maths modules. Swap a file and the library speaks another tradition's names,
-or your own. This is also where note names become numbers, once: pitch is steps above C0 and
+never code in the maths modules. Edit a file and the library speaks another tradition's
+names, or your own. This is also where note names become numbers, once: pitch is steps above C0 and
 pitch class is pitch mod the steps per period, C being 0 (`pitch`, `pitch_class`). Everything
 after this is integers in that one frame, so any two things compare by subtraction.
 
@@ -12,7 +12,9 @@ is one step pattern and a list of names.
 
 Could grow into: maqam or raga families, 19- or 31-step scales: more data, no code.
 
-Pass a path to load your own file instead of the bundled one.
+Pass a path to a loader to read your own file instead of the bundled one: you get its values
+(scales, chords, tunings, talas) to use directly. The names modules always speak the bundled
+files: to change how chords or syllables are written, edit the bundled file.
 """
 
 from collections.abc import Mapping

@@ -16,8 +16,8 @@ chords, melody and rhythm, and learn why they work. Today the instruments modell
   temperament among many, so microtones are supported too.
 - **Everything relative.** Work in steps from a root. Keys, tunings and instruments are
   configuration.
-- **Conventions are data.** Mode, chord and tuning names live in TOML files. Add any scale and
-  give it any name.
+- **Conventions are data.** Mode, chord, tuning and syllable names live in TOML files. Add a
+  line to add a scale, a chord or a tuning, with any name.
 - **Clean code.** Modular, DRY, one-way dependencies, no circular imports.
 
 ## Docs
