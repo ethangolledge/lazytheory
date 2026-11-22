@@ -32,6 +32,8 @@ class Scale(PitchClassSet):
         In a seven-note scale, stride 2 stacks thirds (1 3 5 7 9 11 13 when all seven are
         stacked) and stride 3 stacks fourths.
         """
+        if notes < 1:
+            raise ValueError(f"stack at least one note, not {notes}")
         members = [self.pitch_classes[(degree + i * stride) % len(self)] for i in range(notes)]
         if len(set(members)) < notes:
             raise ValueError(

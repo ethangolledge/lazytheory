@@ -49,6 +49,8 @@ def interval_name(step: int, number: int) -> str:
     """`step` (steps above a root) written as the `number`th note of the major scale, flat or
     sharp to fit: (3, 3) is "b3", (3, 9) is "#9", (9, 7) is "bb7". Numbers past 7 are the same
     notes a period up."""
+    if number < 1:
+        raise ValueError(f"interval numbers start at 1 (the unison), not {number}")
     return accidentals(shortest(step - _natural(number), TWELVE)) + str(number)
 
 
@@ -93,6 +95,8 @@ def note_name(pitch: int, key: Key | None = None, size: int = TWELVE) -> str:
     is Bb, not A#). Without one, natural or sharp. In a key or `size` of other than twelve
     steps the pitch class is written as a number."""
     size = key.size if key is not None else size
+    if size < 1:
+        raise ValueError(f"a period has at least one step, not {size}")
     if size != TWELVE:
         return str(pitch % size)
     return _spelling(key)[pitch % TWELVE]
@@ -225,9 +229,10 @@ def numeral(key: Key, degree: int) -> str:
 
 
 def stack_spelling(scale: Scale, degree: int, pattern: PitchClassSet) -> str:
-    """The pattern's notes by their place in the stack of thirds on `degree`, in stack order:
-    "1 b3 5 b9" for E minor with E Phrygian's F. Unlike `chord_tone_names`, the number is the
-    note's place in the scale's own stack, whatever else the chord holds; in a scale of other
+    """The pattern's notes that are in the stack of thirds on `degree`, by their place in it,
+    in stack order: "1 b3 5 b9" for E minor with E Phrygian's F. Notes outside the stack (not in
+    the scale, or past where thirds repeat) are left out. Unlike `chord_tone_names`, the number
+    is the note's place in the scale's own stack, whatever else the chord holds; in a scale of other
     than seven notes, where a place isn't a number, each note is named as `chord_tone_names`
     names it. Outside twelve steps each note is its number of steps above the root."""
     if pattern.size != scale.size:
@@ -306,6 +311,7 @@ def _spelled(letter: str, pitch: int) -> str:
     return letter + accidentals(shortest(pitch - pitch_class(letter), TWELVE))
 
 
+@lru_cache(maxsize=4096)  # a song repeats its chords
 def _suffix(pattern: PitchClassSet) -> str:
     """What follows the root in a chord symbol: "m7", or a named core with what's added and
     what's left out ("m7(b9)", "7(no5)"); failing both, every note, "(1,b3,b9)"."""
@@ -326,8 +332,8 @@ def _suffix(pattern: PitchClassSet) -> str:
     return f"{symbols[best.core]}({','.join(labels)})"
 
 
-_WRITTEN = re.compile(r"(?:bb|b|#)?\d+|maj7|no\d+")  # a bracketed tone, as `_suffix` writes one
-OMITTABLE = {3, 5}  # the tones a lead sheet leaves out of a seventh chord: "7(no3)", "m7(no5)"
+_WRITTEN = re.compile(r"(?:bb|b|#)?[1-9]\d*|maj7|no[1-9]\d*")  # a tone as `_suffix` writes it
+_OMITTABLE = {3, 5}  # the tones a lead sheet leaves out of a seventh chord: "7(no3)", "m7(no5)"
 
 
 class _Reading(NamedTuple):
@@ -356,7 +362,7 @@ def _core(core: PitchClassSet, pattern: PitchClassSet, tones: dict[int, str]) ->
     reads_same = all(names[step] == tones[step] for step in kept)
     if omitted and (7 not in own or not reads_same):  # a seventh chord, its other notes as named
         return None
-    if len(kept) < 2 or set(omitted) - OMITTABLE or any(_number(tones[s]) in own for s in added):
+    if len(kept) < 2 or set(omitted) - _OMITTABLE or any(_number(tones[s]) in own for s in added):
         return None
     within_seventh = sum(_number(tones[step]) <= 7 for step in kept)
     rank = (len(kept), not omitted, reads_same, within_seventh)
@@ -375,8 +381,7 @@ def _pattern(text: str) -> PitchClassSet:
     with the same number as one of the core's alters it rather than joining it: "m7(b5)" is
     the half-diminished chord, its fifth lowered, not a minor 7th with two fifths. "no5"
     leaves the core's fifth out."""
-    types = {symbol: chord for chord, symbol in _symbols().items()}
-    types |= {alias: types[symbol] for alias, symbol in load_aliases().items()}
+    types = _types()
     core, added = text, ""
     if text not in types and text.endswith(")"):  # "m(maj7)" is a type; only split what isn't
         core, _, added = text[:-1].rpartition("(")
@@ -398,10 +403,12 @@ def _pattern(text: str) -> PitchClassSet:
         return PitchClassSet(tuple(map(_interval_step, labels)), TWELVE)
     if "1" in labels:
         raise ValueError(f"the root is written only when every note is: {text!r}")
+    if "7" in labels:  # after a named core "(7)" would read as the flat one, so it is never written
+        raise ValueError(f"after a chord type, write b7 or maj7, not 7: {text!r}")
     pattern = types[core]
     omitted = {_number(label[2:]) for label in labels if label.startswith("no")}
     own = {_number(name) for name in chord_tone_names(pattern)}
-    if omitted and (omitted - OMITTABLE or omitted - own or 7 not in own):
+    if omitted and (omitted - _OMITTABLE or omitted - own or 7 not in own):
         raise ValueError(f"only a seventh chord's own 3rd or 5th is left out, not {text!r}")
     notes = [label for label in labels if not label.startswith("no")]
     if omitted & {_number(label) for label in notes}:
@@ -425,6 +432,13 @@ def _number(name: str) -> int:
     if not number.isdigit():
         raise ValueError(f"not an interval: {name!r}")
     return int(number)
+
+
+@cache
+def _types() -> dict[str, PitchClassSet]:
+    """Each written chord type, aliases too, back to its pattern: `_symbols` turned round."""
+    types = {symbol: chord for chord, symbol in _symbols().items()}
+    return types | {alias: types[symbol] for alias, symbol in load_aliases().items()}
 
 
 @cache

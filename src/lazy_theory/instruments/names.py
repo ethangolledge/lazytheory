@@ -14,10 +14,13 @@ names for instruments outside the catalog.
 
 from collections.abc import Mapping, Sequence
 
+from lazy_theory.core.temperament import EqualTemperament
 from lazy_theory.instruments.fretboard import Tuning
 from lazy_theory.pitch.catalog import TWELVE
 from lazy_theory.pitch.key import Key
 from lazy_theory.pitch.names import note_name
+
+TWELVE_TET = EqualTemperament(TWELVE)  # the temperament the catalog's note names are in
 
 
 def tab(
@@ -54,14 +57,18 @@ def tab(
     return "\n".join(line.rstrip() for line in lines)
 
 
-def tuning_name(open_strings: Sequence[int], tunings: Mapping[str, Tuning]) -> str | None:
-    """The name of these open strings among `tunings`, or of a named tuning with every string
-    moved by the same number of steps, e.g. "guitar open D +2" (two steps up); the smallest
-    move wins, a move up over the same move down, then the catalog's order. None if no tuning
-    fits."""
+def tuning_name(
+    open_strings: Sequence[int],
+    tunings: Mapping[str, Tuning],
+    temperament: EqualTemperament = TWELVE_TET,
+) -> str | None:
+    """The name of these open strings, steps of `temperament`, among `tunings` in it, or of
+    a named tuning with every string moved by the same number of steps, e.g. "guitar open D +2"
+    (two steps up); the smallest move wins, a move up over the same move down, then the
+    catalog's order. None if no tuning fits."""
     moved = {}
     for name, tuning in tunings.items():
-        if len(tuning.open_strings) == len(open_strings):
+        if len(tuning.open_strings) == len(open_strings) and tuning.temperament == temperament:
             shifts = {int(a) - b for a, b in zip(open_strings, tuning.open_strings, strict=True)}
             if len(shifts) == 1:
                 moved[name] = shifts.pop()

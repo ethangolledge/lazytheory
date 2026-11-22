@@ -60,5 +60,11 @@ class ScaleTest(unittest.TestCase):
         self.assertEqual(meantone_major_31.chord(0).pitch_classes, (0, 10, 18))
 
 
+class StackedCountTest(unittest.TestCase):
+    def test_at_least_one_note(self):
+        with self.assertRaises(ValueError):
+            Scale.from_steps((2, 2, 1, 2, 2, 2, 1)).stacked(0, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

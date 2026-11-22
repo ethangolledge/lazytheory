@@ -137,5 +137,14 @@ class MemberTypeTest(unittest.TestCase):
             shortest(3, 0)
 
 
+class SizeTypeTest(unittest.TestCase):
+    def test_size_is_a_whole_number(self):
+        for size in (True,):
+            with self.assertRaises(ValueError):
+                PitchClassSet((0,), size)
+        with self.assertRaises(TypeError):
+            PitchClassSet((0,), 12.0)  # type: ignore[arg-type]
+
+
 if __name__ == "__main__":
     unittest.main()

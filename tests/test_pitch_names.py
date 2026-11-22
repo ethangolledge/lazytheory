@@ -13,6 +13,7 @@ from lazy_theory.pitch.names import (
     chord_symbol,
     chord_tone_names,
     degree_names,
+    interval_name,
     note_name,
     note_names,
     numeral,
@@ -415,6 +416,27 @@ class StrictToneTest(unittest.TestCase):
             Chord(PitchClassSet((4, 7)), 0)  # no root: "C(3,5)" would read back as C
         with self.assertRaises(TypeError):
             Chord(CHORDS["major"], 0.5)  # type: ignore[arg-type]
+
+
+class EdgeInputTest(unittest.TestCase):
+    def test_numbers_start_at_the_unison(self):
+        for number in (0, -1):
+            with self.subTest(number=number), self.assertRaises(ValueError):
+                interval_name(0, number)
+
+    def test_a_period_has_steps(self):
+        with self.assertRaises(ValueError):
+            note_name(5, size=0)
+
+    def test_a_plain_seventh_only_where_every_note_is_written(self):
+        for text in ("C(7)", "C7(no03)", "C7(09)"):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                parse_chord(text)
+        self.assertEqual(parse_chord("C(1,b5,7)").pattern, PitchClassSet((0, 6, 11)))
+
+    def test_stack_spelling_names_only_the_stack(self):
+        phrygian = SCALES["Phrygian"]
+        self.assertEqual(stack_spelling(phrygian, 0, PitchClassSet((0, 2, 3, 7))), "1 b3 5")
 
 
 if __name__ == "__main__":

@@ -301,5 +301,13 @@ class LongCycleTest(unittest.TestCase):
         self.assertEqual(sum(1 for _ in compositions(1200, (1200, 1))), 2)
 
 
+class TimingLevelTest(unittest.TestCase):
+    def test_a_level_the_meter_has(self):
+        meter = Meter.of((4,), 4)
+        for level in (-99, 99):
+            with self.subTest(level=level), self.assertRaises(ValueError):
+                meter.timing(2.0, level=level)
+
+
 if __name__ == "__main__":
     unittest.main()

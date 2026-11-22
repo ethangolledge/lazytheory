@@ -141,9 +141,14 @@ class Meter:
 
     def starts(self, level: int) -> PitchClassSet:
         """Where the groups of `level` start: -1 is the finest grid, `self.beat` the beats."""
+        return PitchClassSet(group_starts(self.levels[self._level(level)]), self.pulses)
+
+    def _level(self, level: int) -> int:
+        """`level` counted from the top, -1 the finest, as a list index; ValueError if the
+        meter hasn't it."""
         if not -len(self.levels) <= level < len(self.levels):
             raise ValueError(f"this meter has levels 0 to {len(self.levels) - 1}, not {level}")
-        return PitchClassSet(group_starts(self.levels[level]), self.pulses)
+        return level % len(self.levels)
 
     def weights(self) -> tuple[int, ...]:
         """How strong each pulse is: the number of levels with a group starting on it. The
@@ -182,7 +187,7 @@ class Meter:
         if level is None:
             swung, inner = self.levels, self.levels[-1]
         else:
-            index = level % len(self.levels)
+            index = self._level(level)
             if index + 1 >= len(self.levels):
                 raise ValueError(f"level {level} has no level below it to swing")
             swung, inner = (self.levels[index],), self.levels[index + 1]
@@ -255,10 +260,10 @@ def gaps(onsets: PitchClassSet) -> tuple[int, ...]:
 
 
 def groupings(onsets: PitchClassSet, parts: Collection[int] = (2, 3)) -> list[tuple[int, ...]]:
-    """Each way to group the cycle into `parts` with every onset starting a group: clap 1, 4
-    and 6 of 7/8 and only 3+2+2 fits. Empty if an onset can't start a group, e.g. the cycle's
-    first pulse isn't one. Each stretch between onsets is filled on its own, so the work
-    grows with the answers, not with every grouping of the cycle."""
+    """Each way to group the cycle into `parts` with every onset starting a group: clap 1, 4 and 6
+    of 7/8 and only 3+2+2 fits. The first group starts on the cycle's first pulse whether or not it
+    sounds. Empty if some stretch between onsets can't be filled. Each stretch between onsets is
+    filled on its own, so the work grows with the answers, not with every grouping of the cycle."""
     bounds = sorted({0, *onsets, onsets.size})
     stretches = [list(compositions(end - start, parts)) for start, end in pairwise(bounds)]
     return [tuple(chain.from_iterable(choice)) for choice in product(*stretches)]

@@ -89,14 +89,15 @@ def suggest(
     chords: Chords,
     taste: Taste,
     steps: Sequence[int] = SAFE_STEPS,
-    capos: Sequence[int] = range(8),
+    capos: Sequence[int] | None = None,
     retune: float = 1.0,
     context: Chords = (),
     context_weight: float = 0.25,
     shortlist: int = 20,
     top: int = 5,
 ) -> list[Suggestion]:
-    """The `top` retunings of `base` and capos for `chords`, cheapest first.
+    """The `top` retunings of `base` and capos for `chords`, cheapest first. Capos are tried
+    at frets 0 to 7 unless `capos` says otherwise (fewer on a shorter neck).
 
     Cost is the cheapest path through `chords`, plus `retune` per step of retuning, plus
     `context_weight` times the cheapest voicing of each `context` chord (e.g. the rest of the
@@ -107,6 +108,8 @@ def suggest(
     include 0. Equal costs rank the smaller retuning first, and a path playing the same
     pitches as a better one is dropped.
     """
+    if capos is None:  # the first frets a capo usually sits on, as far as the neck has them
+        capos = range(min(8, base.frets))
     if not len(steps) or not len(capos):
         raise ValueError("give at least one retuning step and one capo")
     strings, step = len(base.open_strings), np.array(steps, dtype=np.int16)

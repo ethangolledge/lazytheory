@@ -2,7 +2,9 @@ import unittest
 
 import numpy as np
 
-from lazy_theory.instruments.names import tab
+from lazy_theory.core.temperament import EqualTemperament
+from lazy_theory.instruments.catalog import load_tunings
+from lazy_theory.instruments.names import tab, tuning_name
 
 
 class TabTest(unittest.TestCase):
@@ -40,6 +42,13 @@ class TitleCountTest(unittest.TestCase):
 class NoTitleTest(unittest.TestCase):
     def test_no_titles_no_title_line(self):
         self.assertEqual(tab([28, 33], []), "A |\nE |")
+
+
+class TemperamentNameTest(unittest.TestCase):
+    def test_names_only_tunings_in_the_same_temperament(self):
+        standard = load_tunings()["guitar standard"].open_strings
+        self.assertEqual(tuning_name(standard, load_tunings()), "guitar standard")
+        self.assertIsNone(tuning_name(standard, load_tunings(), EqualTemperament(19)))
 
 
 if __name__ == "__main__":

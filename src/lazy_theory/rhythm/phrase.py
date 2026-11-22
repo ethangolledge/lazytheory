@@ -137,6 +137,8 @@ class Phrase:
     def accents(self, level: int = -1, start: int = 0, size: int | None = None) -> PitchClassSet:
         """The groups of `level` that start on a sounding token, as onsets: what a listener
         hears as accented when the first syllable of each word is stressed."""
+        if not -len(self.groups) <= level < len(self.groups):
+            raise ValueError(f"this phrase has levels 0 to {len(self.groups) - 1}, not {level}")
         tokens = group_starts(self.groups[level])
         heard = [
             start + pulse

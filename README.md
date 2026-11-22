@@ -110,7 +110,7 @@ chords = [Chord(load_chords()["minor"], e), Chord(load_chords()["minor"], e + 5)
 rich = Taste(sounding=1.0, ringing=1.0, open_within=5)  # reward full chords and open strings
 e_minor = Key(load_scales()["Aeolian"], e).chords()  # the key's other chords count a little
 best = suggest(standard, chords, rich, context=e_minor)  # retunings and capos, cheapest first
-tuning_name(standard.open_strings + best[0].retuning, tunings)  # e.g. "guitar open G"
+tuning_name(standard.open_strings + best[0].retuning, tunings)  # its catalog name, if any
 ```
 
 Optionally, harmonise a melody: one note per chord, the note on top, chords chosen from those

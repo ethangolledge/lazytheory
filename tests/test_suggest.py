@@ -141,5 +141,12 @@ class ChoiceTest(unittest.TestCase):
                 suggest(STANDARD, [Chord(MAJOR, G)], Taste(), **choices)
 
 
+class ShortNeckTest(unittest.TestCase):
+    def test_default_capos_fit_the_neck(self):
+        short = replace(STANDARD, frets=5)
+        found = suggest(short, [Chord(MAJOR, G)], Taste(), steps=(0,))
+        self.assertTrue(found and all(one.capo < 5 for one in found))
+
+
 if __name__ == "__main__":
     unittest.main()

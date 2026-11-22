@@ -146,5 +146,11 @@ class CycleTest(unittest.TestCase):
         self.assertEqual(phrase.onsets(size=8), PitchClassSet((0, 2), 8))
 
 
+class AccentLevelTest(unittest.TestCase):
+    def test_a_level_the_phrase_has(self):
+        with self.assertRaises(ValueError):
+            Phrase.notes(PitchClassSet((0, 2), 4)).accents(level=5)
+
+
 if __name__ == "__main__":
     unittest.main()

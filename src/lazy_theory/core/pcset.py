@@ -52,8 +52,8 @@ class PitchClassSet:
     size: int = 12
 
     def __post_init__(self) -> None:
-        if self.size < 1:
-            raise ValueError(f"size must be positive, got {self.size}")
+        if isinstance(self.size, bool) or index(self.size) < 1:
+            raise ValueError(f"size must be a positive whole number, got {self.size}")
         if isinstance(self.pitch_classes, PitchClassSet) and self.pitch_classes.size != self.size:
             raise ValueError(  # reducing mod another size would make a different set
                 f"a {self.pitch_classes.size}-step set given size {self.size}: pass its size"

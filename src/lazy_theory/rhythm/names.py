@@ -101,6 +101,8 @@ def phrase_text(phrase: Phrase) -> str:
     def name(token: int) -> str:
         if phrase.sounds[token] == NOTE:
             raise ValueError("a note has no syllable yet: spell the phrase first")
+        if phrase.sounds[token] > len(names):
+            raise ValueError(f"no syllable has sound id {phrase.sounds[token]}")
         return names[phrase.sounds[token] - 1]
 
     return _text(phrase, name)
@@ -114,12 +116,14 @@ def parse_phrase(text: str) -> Phrase:
     [ta-ka-di-mi ta]" is a tihai. Raises ValueError saying what's wrong, including text that
     splits into syllables two ways."""
     stack: list[list[Phrase]] = [[]]
-    for piece in re.findall(r"\[|\](?:x\d+)?|[^\s\[\]]+", text.lower()):
+    for piece in re.findall(r"\[|\](?:x\w*)?|[^\s\[\]]+", text.lower()):
         if piece == "[":
             stack.append([])
         elif piece.startswith("]"):
             if len(stack) == 1 or not stack[-1]:
                 raise ValueError("brackets must open before they close and hold something")
+            if not re.fullmatch(r"\](?:x[1-9]\d*)?", piece):
+                raise ValueError(f"a repeat is written ]x and a count, as ]x3: got {piece!r}")
             group = reduce(add, stack.pop()).grouped()
             stack[-1].append(group * int(piece[2:] or 1))
         else:
@@ -162,7 +166,7 @@ def parse_meter(text: str, division: int | Sequence[int] = 1, bars: int = 1) -> 
     grid. `division` splits each count further, as in `Meter.of`; the cycle is `bars` bars."""
     top, slash, bottom = text.replace(" ", "").partition("/")
     groups = top.split("+")
-    if not slash or not bottom.isdigit() or not all(group.isdigit() for group in groups):
+    if not slash or not bottom.isdecimal() or not all(group.isdecimal() for group in groups):
         raise ValueError(f"write a meter as 7/8 or 2+2+3/8, got {text!r}")
     if int(bottom) < 1:  # the groups and bars `Meter.of` checks
         raise ValueError(f"a meter's numbers must be positive, got {text!r}")

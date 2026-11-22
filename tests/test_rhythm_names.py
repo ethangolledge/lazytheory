@@ -232,5 +232,15 @@ class CountingInputTest(unittest.TestCase):
             counting(Meter.of((4,)), 0)
 
 
+class TextInputTest(unittest.TestCase):
+    def test_bad_text_says_what_is_wrong(self):
+        with self.assertRaises(ValueError):
+            phrase_text(Phrase((1,), (999,), ((1,),)))
+        with self.assertRaisesRegex(ValueError, "repeat"):
+            parse_phrase("[ta]x")
+        with self.assertRaises(ValueError):
+            parse_meter("³/8")
+
+
 if __name__ == "__main__":
     unittest.main()
