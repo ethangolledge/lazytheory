@@ -7,6 +7,7 @@ from lazy_theory.pitch.catalog import (
     accidentals,
     alteration,
     chord_names,
+    load_aliases,
     load_chords,
     load_scales,
     load_symbols,
@@ -118,6 +119,13 @@ class CustomCatalogTest(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             load_symbols(path)
+
+    def test_aliases_name_real_symbols_and_never_shadow_one(self):
+        chords = 'size = 12\n[chords]\n"major" = [0, 4, 7]\n[symbols]\n"major" = ""\n'
+        self.assertEqual(load_aliases(self.write_toml(chords + '[aliases]\n"M" = ""\n')), {"M": ""})
+        for bad in ['"M" = "m"', '"" = ""']:
+            with self.subTest(alias=bad), self.assertRaises(ValueError):
+                load_aliases(self.write_toml(chords + "[aliases]\n" + bad + "\n"))
 
     def test_accidentals_read_back(self):
         for shift in range(-3, 4):

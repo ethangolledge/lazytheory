@@ -71,6 +71,19 @@ def load_symbols(path: Path | None = None) -> Mapping[str, str]:
     return symbols
 
 
+@cache
+def load_aliases(path: Path | None = None) -> Mapping[str, str]:
+    """Other ways each chord symbol is written, read but never written: "M7" for "maj7"."""
+    data = read(_PACKAGE, "chords.toml", path)
+    aliases: dict[str, str] = data.get("aliases", {})
+    symbols = set(data.get("symbols", {}).values())
+    if unknown := set(aliases.values()) - symbols:
+        raise ValueError(f"aliases for symbols that don't exist: {sorted(unknown)}")
+    if shadowed := set(aliases) & symbols:
+        raise ValueError(f"aliases that are already symbols: {sorted(shadowed)}")
+    return aliases
+
+
 def pitch(note: str) -> int:
     """Steps above C0: a note name, then its octave, which starts on C (scientific pitch
     notation, so E2 is 28 and A4 is 57)."""

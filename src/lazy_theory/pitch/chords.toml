@@ -1,4 +1,7 @@
 # Chord patterns as pitch classes measured from the chord root, in `size` steps per period.
+# Names and symbols follow the common lead-sheet conventions (e.g. "Chord names and symbols
+# (popular music)", Wikipedia). An 11th chord is the full stack of thirds; a 13th leaves out
+# the 11th, which clashes with the major third, as lead sheets mean it.
 
 size = 12
 
@@ -20,6 +23,18 @@ size = 12
 "diminished 7th" = [0, 3, 6, 9]
 "augmented 7th" = [0, 4, 8, 10]
 "augmented major 7th" = [0, 4, 8, 11]
+"dominant 7th sus4" = [0, 5, 7, 10]
+"added 9th" = [0, 2, 4, 7]
+"minor added 9th" = [0, 2, 3, 7]
+"6/9" = [0, 2, 4, 7, 9]
+"dominant 9th" = [0, 2, 4, 7, 10]
+"major 9th" = [0, 2, 4, 7, 11]
+"minor 9th" = [0, 2, 3, 7, 10]
+"dominant 11th" = [0, 2, 4, 5, 7, 10]
+"minor 11th" = [0, 2, 3, 5, 7, 10]
+"dominant 13th" = [0, 2, 4, 7, 9, 10]
+"major 13th" = [0, 2, 4, 7, 9, 11]
+"minor 13th" = [0, 2, 3, 7, 9, 10]
 
 # How each chord is written after its root note, e.g. "m7" for E minor 7th → Em7.
 [symbols]
@@ -40,3 +55,55 @@ size = 12
 "diminished 7th" = "dim7"
 "augmented 7th" = "aug7"
 "augmented major 7th" = "maj7#5"
+"dominant 7th sus4" = "7sus4"
+"added 9th" = "add9"
+"minor added 9th" = "madd9"
+"6/9" = "6/9"
+"dominant 9th" = "9"
+"major 9th" = "maj9"
+"minor 9th" = "m9"
+"dominant 11th" = "11"
+"minor 11th" = "m11"
+"dominant 13th" = "13"
+"major 13th" = "maj13"
+"minor 13th" = "m13"
+
+# Other ways the same symbols are written, read but never written: "CM7" and "CΔ7" are Cmaj7,
+# "C-7" is Cm7, "Cø7" is Cm7b5, "C°7" is Cdim7, "C+" is Caug.
+[aliases]
+"M" = ""
+"maj" = ""
+"min" = "m"
+"mi" = "m"
+"-" = "m"
+"M7" = "maj7"
+"ma7" = "maj7"
+"Δ" = "maj7"
+"Δ7" = "maj7"
+"min7" = "m7"
+"mi7" = "m7"
+"-7" = "m7"
+"min6" = "m6"
+"-6" = "m6"
+"mM7" = "m(maj7)"
+"-maj7" = "m(maj7)"
+"ø" = "m7b5"
+"ø7" = "m7b5"
+"o" = "dim"
+"°" = "dim"
+"o7" = "dim7"
+"°7" = "dim7"
+"+" = "aug"
+"+7" = "aug7"
+"sus" = "sus4"
+"add2" = "add9"
+"69" = "6/9"
+"6add9" = "6/9"
+"min9" = "m9"
+"-9" = "m9"
+"M9" = "maj9"
+"min11" = "m11"
+"-11" = "m11"
+"M13" = "maj13"
+"min13" = "m13"
+"-13" = "m13"

@@ -19,8 +19,8 @@ German H), enharmonic choice by direction of travel. Names are for twelve steps 
 other systems are written as numbers.
 """
 
+import re
 from functools import cache
-from itertools import combinations
 
 from lazy_theory.core.pcset import PitchClassSet, shortest
 from lazy_theory.pitch.catalog import (
@@ -28,6 +28,7 @@ from lazy_theory.pitch.catalog import (
     accidentals,
     alteration,
     chord_names,
+    load_aliases,
     load_chords,
     load_scales,
     load_symbols,
@@ -151,7 +152,8 @@ def _own_key(chord: Chord) -> Key | None:
 
 def parse_chord(text: str, key: Key | None = None) -> Chord:
     """A written chord back into numbers, the inverse of `chord_symbol`: "Fmaj7/A", "Em7(b9)",
-    "Bb". With a seven-note `key`, its numerals ("bII", "iv") work too. Raises ValueError
+    "Bb". Other common spellings read too ("CM7", "C-7", "Cø7", "C7#9", "C6/9"; the catalog's
+    aliases). With a seven-note `key`, its numerals ("bII", "iv") work too. Raises ValueError
     saying what's wrong."""
     text = text.strip()
     if key is not None and key.size == 12 and len(key.scale) == 7:
@@ -161,7 +163,9 @@ def parse_chord(text: str, key: Key | None = None) -> Chord:
     if not text or text[0] not in LETTERS:
         raise ValueError("a chord starts with its root, A to G")
     length = 1 + len(text[1:]) - len(text[1:].lstrip("#b"))
-    rest, slash, bass = text[length:].partition("/")
+    rest, slash, bass = text[length:].rpartition("/")
+    if not slash or not bass or bass[0] not in LETTERS:  # no bass: "6/9" is part of the type
+        rest, slash = text[length:], ""
     chord = Chord(_pattern(rest), pitch_class(text[:length]))
     if not slash:
         return chord
@@ -246,30 +250,51 @@ def _spelled(letter: str, pitch: int) -> str:
 
 
 def _suffix(pattern: PitchClassSet) -> str:
-    """What follows the root in a chord symbol: "m7", or a named core plus what's added."""
+    """What follows the root in a chord symbol: "m7", or a named core with what's added and
+    what's left out ("m7(b9)", "7(no5)"); failing both, every note, "(1,b3,b9)"."""
     symbols = _symbols()
     if pattern in symbols:
         return symbols[pattern]
     tones = dict(zip(pattern, chord_tone_names(pattern), strict=True))
-    notes = [step for step in pattern if step]
-    for size in range(len(notes) - 1, 0, -1) if pattern.size == 12 else ():  # largest core first
-        cores = [PitchClassSet((0, *c)) for c in combinations(notes, size)]
-        if cores := [core for core in cores if core in symbols and not _clashes(core, tones)]:
-            # a core must read the same inside the chord as alone: with a seventh the 6 of a
-            # 6 chord is a 13, with a third the 2 of a sus2 is a 9, so those cores lose
-            core = max(cores, key=lambda c: chord_tone_names(c) == tuple(tones[s] for s in c))
-            added = sorted(set(pattern) - set(core), key=lambda step: _written_order(tones[step]))
-            written = ",".join("maj7" if tones[step] == "7" else tones[step] for step in added)
-            return f"{symbols[core]}({written})"
-    return f"({','.join(tones.values())})"
+    found = (
+        []
+        if pattern.size != 12
+        else [reading for core in symbols if (reading := _core(core, pattern, tones)) is not None]
+    )
+    if not found:
+        return f"({','.join(tones.values())})"
+    *_, core, omitted, added = max(found, key=lambda reading: reading[:4])  # ties: catalog order
+    labels = [f"no{number}" for number in omitted]
+    labels += ["maj7" if tones[step] == "7" else tones[step] for step in added]
+    return f"{symbols[core]}({','.join(labels)})"
 
 
-def _clashes(core: PitchClassSet, tones: dict[int, str]) -> bool:
-    """Whether a note added to `core` would share a degree with one of the core's own notes:
-    written in brackets it would read as altering that note (`_pattern`), so such a core can't
-    be the one a symbol is built on."""
-    own = {_number(name) for name in chord_tone_names(core)}
-    return any(_number(tones[step]) in own for step in set(tones) - set(core))
+OMITTABLE = {3, 5}  # the tones a lead sheet leaves out of a seventh chord: "7(no3)", "m7(no5)"
+
+
+def _core(
+    core: PitchClassSet, pattern: PitchClassSet, tones: dict[int, str]
+) -> tuple[int, bool, bool, int, PitchClassSet, tuple[int, ...], tuple[int, ...]] | None:
+    """`pattern` read as the named `core` with notes added and its 3rd or 5th left out, ranked
+    for `_suffix` (the largest is chosen), or None if it can't be. Ranked by the most of the
+    core kept; then nothing left out; then a core that reads the same inside the chord as
+    alone (with a seventh the 6 of a 6 chord is a 13, with a third the 2 of a sus2 is a 9);
+    then the most of the chord's own 1 to 7 in the core, so extensions sit on a seventh chord:
+    "Am(maj7)(9)", not "Amadd9(maj7)". An added note may not share a degree with the core's
+    own, or it would read as altering it (`_pattern`). Only a chord with a seventh is written
+    with a note left out, and only when its other notes keep their names."""
+    names = dict(zip(core, chord_tone_names(core), strict=True))
+    kept = [step for step in core if step in pattern]
+    omitted = sorted({_number(names[step]) for step in core if step not in pattern})
+    added = sorted(set(pattern) - set(core), key=lambda step: _written_order(tones[step]))
+    own = {_number(name) for name in names.values()}
+    reads_same = all(names[step] == tones[step] for step in kept)
+    if omitted and (7 not in own or not reads_same):  # a seventh chord, its other notes as named
+        return None
+    if len(kept) < 2 or set(omitted) - OMITTABLE or any(_number(tones[s]) in own for s in added):
+        return None
+    within_seventh = sum(_number(tones[step]) <= 7 for step in kept)
+    return len(kept), not omitted, reads_same, within_seventh, core, tuple(omitted), tuple(added)
 
 
 def _written_order(tone: str) -> tuple[bool, int, int]:
@@ -282,24 +307,33 @@ def _written_order(tone: str) -> tuple[bool, int, int]:
 def _pattern(text: str) -> PitchClassSet:
     """The part of a symbol after its root, back into a pattern: "m7(b9)". A bracketed note
     with the same number as one of the core's alters it rather than joining it: "m7(b5)" is
-    the half-diminished chord, its fifth lowered, not a minor 7th with two fifths."""
+    the half-diminished chord, its fifth lowered, not a minor 7th with two fifths. "no5"
+    leaves the core's fifth out."""
     types = {symbol: chord for chord, symbol in _symbols().items()}
+    types |= {alias: types[symbol] for alias, symbol in load_aliases().items()}
     core, added = text, ""
     if text not in types and text.endswith(")"):  # "m(maj7)" is a type; only split what isn't
         core, _, added = text[:-1].rpartition("(")
-    if core not in types:
-        raise ValueError(f"unknown chord type {core!r}")
     labels = added.split(",") if added else []
+    if core not in types:  # alterations written straight after the type: "7#9", "maj7#11"
+        for end in range(len(core) - 1, -1, -1):
+            if core[:end] in types and re.fullmatch(r"(?:[b#]\d+)+", core[end:]):
+                core, labels = core[:end], [*re.findall(r"[b#]\d+", core[end:]), *labels]
+                break
+        else:
+            raise ValueError(f"unknown chord type {core!r}")
     if not core and "1" in labels:  # "(1,b9,9)": every note is listed, there is no core
         return PitchClassSet(tuple(map(_interval_step, labels)))
     pattern = types[core]
-    altered = {_number(label) for label in labels}
+    omitted = {int(label[2:]) for label in labels if label.startswith("no")}
+    notes = [label for label in labels if not label.startswith("no")]
+    altered = {_number(label) for label in notes} | omitted
     kept = [
         step
         for step, name in zip(pattern, chord_tone_names(pattern), strict=True)
         if _number(name) not in altered
     ]
-    return PitchClassSet((*kept, *map(_interval_step, labels)))
+    return PitchClassSet((*kept, *map(_interval_step, notes)))
 
 
 def _number(name: str) -> int:
