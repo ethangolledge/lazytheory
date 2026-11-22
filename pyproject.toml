@@ -22,7 +22,6 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-extend-exclude = ["base.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]

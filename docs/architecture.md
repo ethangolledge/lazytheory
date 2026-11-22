@@ -52,7 +52,7 @@ of one), so they are sections of the app over `pitch`, `instruments` and `sugges
 |---|---|---|---|
 | `core` | `pcset` | `PitchClassSet`: points on a circle of `size` steps, built from steps or maximal evenness; rotate, transpose, `necklace`, `in`; `shortest` (the signed short way round); `group_starts` (where each of a run of lengths starts). A scale and a rhythm are both this type | standard library |
 | | `temperament` | Steps → frequency ratio, ratio → steps, cents. Every frequency and fret distance comes from here | |
-| `data.py` | | `read` (each TOML file parsed once) and `add` (no repeated name or value): shared by every catalog | standard library |
+| `data.py` | | `read` (each TOML file parsed once and frozen) and `add` (no repeated name or value): shared by every catalog | standard library |
 | `pitch` | `scale` | `Scale(PitchClassSet)`: always contains its root; stacks notes and chords by stride | core, data |
 | | `chord` | `Rooted`: a pattern on a root. `Chord(Rooted)` with an optional bass and `with_note`; `identify` reads a set as every chord it could be | |
 | | `key` | `Key(Rooted)`: a scale on a root, and the chord on each degree | |
@@ -120,9 +120,10 @@ Three rules keep it clean:
   instrument and any two things compare by subtraction. The origin and the note letters are
   catalog conventions (`pitch.catalog.pitch`, `pitch_class`); the maths only sees integers. The letters are not a
   table: they are the Ionian scale on C.
-- **Conventions are data.** Mode, chord and tuning names live in `catalog`. Core never imports
-  it; `identify` takes its patterns as an argument and returns `Chord`s, so core never sees a
-  name at all.
+- **Conventions are data.** Mode, chord, tuning and syllable names live in each domain's TOML
+  files, loaded by its `catalog` module. The maths never imports a `catalog` or `names` module
+  (the architecture test checks it); `pitch.chord.identify` takes its patterns as an argument
+  and returns `Chord`s, so the maths never sees a name at all.
 - **Derived, not listed.** Chords come from stacking a scale; modes from rotation; symmetric
   sets from maximal evenness; secondary dominants, tritone substitutes and borrowed chords from
   `chord`, `rotate`, `transpose` and `voice_leading` (see `tests/test_harmony.py`). No chord

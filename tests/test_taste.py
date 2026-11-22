@@ -1,7 +1,7 @@
 import unittest
 
 import numpy as np
-from fixtures import STANDARD
+from fixtures import MAJOR, MINOR, STANDARD
 
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.fretboard import Fretboard
@@ -9,7 +9,6 @@ from lazy_theory.instruments.rules import contiguous, fingers, placeable, ringin
 from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.chord import Chord
 
-MINOR, MAJOR = PitchClassSet((0, 3, 7)), PitchClassSet((0, 4, 7))
 E, A, C, G = 4, 9, 0, 7  # pitch classes
 
 
