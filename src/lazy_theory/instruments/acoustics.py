@@ -45,14 +45,15 @@ def roughness(
     size = temperament.size
     low = int(np.nanmin(steps)) // size * size
     high = (int(np.nanmax(steps)) // size + 1) * size
-    table = _tempered_beating(hertz, temperament, low, high, harmonics)
+    table = _pair_table(hertz, temperament, low, high, harmonics)
     return _total(table, np.where(sounding, steps - low, 0).astype(np.intp), sounding, harmonics)
 
 
 @lru_cache(maxsize=64)
-def _tempered_beating(
+def _pair_table(
     hertz: float, temperament: EqualTemperament, low: int, high: int, harmonics: int
 ) -> Floats:
+    """The beating between every pair of steps from `low` up to `high`, kept per tuning."""
     table = _beating(hertz * temperament.ratio(np.arange(low, high)), harmonics)
     table.flags.writeable = False
     return table
