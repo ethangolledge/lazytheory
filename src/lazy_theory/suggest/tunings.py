@@ -14,8 +14,9 @@ A tuning is just its open strings' pitches, so candidates are generated, not loo
 way to retune each string within safe tension. Names come afterwards
 (`instruments.names.tuning_name`).
 
-Two passes. A cheap screen scores every retuning at every capo at once by how many open strings
-are chord tones, without building a voicing. Only the shortlist gets the full search: the
+Two passes. A cheap screen ranks retunings and capos by how many open strings are chord tones
+(`open_tones`), without building a voicing, and keeps the best few (`cheapest`). Only that
+shortlist gets the full search: the
 player's cheapest path through the progression, plus what the retuning costs and how well the
 key's other chords sit on the same neck.
 """
@@ -45,24 +46,13 @@ class Suggestion(NamedTuple):
     unplayable: int  # context chords this neck has no allowed voicing for
 
 
-def screen(
+def open_tones(
     open_strings: Grid, steps: Sequence[int], capos: Sequence[int], chords: Chords, size: int
 ) -> Grid:
-    """Open strings that are chord tones, summed over the chords, for every retuning by `steps`
-    at every capo: shape (len(steps),) * strings + (len(capos),).
-
-    A string's count depends only on its own step and the capo, so each string gets a small
-    [step, capo] table and the tables are broadcast together, never enumerated one by one. The
-    whole table has len(steps) ** strings cells per capo: `suggest` reads its best cells
-    without building it (`_best`).
-    """
-    return _by_string(_tables(open_strings, steps, capos, chords, size))
-
-
-def _tables(
-    open_strings: Grid, steps: Sequence[int], capos: Sequence[int], chords: Chords, size: int
-) -> Grid:
-    """Each string's open-string chord tones, as [string, step, capo]."""
+    """How many of `chords` each open string is a tone of, retuned by each of `steps` at each
+    of `capos`: [string, step, capo]. A string's count depends only on its own step and the
+    capo, so a retuning's count is the sum of its strings', read by `cheapest` without ever
+    building the len(steps) ** strings table of every retuning."""
     hits = np.zeros(size, dtype=np.int64)  # chords each pitch class belongs to
     for chord in chords:
         hits[list(chord.pitch_classes)] += 1
@@ -71,7 +61,7 @@ def _tables(
     return tables
 
 
-def _best(costs: Grid, count: int) -> list[tuple[tuple[int, ...], int]]:
+def cheapest(costs: Grid, count: int) -> list[tuple[tuple[int, ...], int]]:
     """The `count` cheapest (step per string, capo) choices, where a choice costs the sum of
     its strings' `costs` [string, step, capo]; cheapest first, ties in index order. Exact, as
     a choice's prefix is among the `count` best prefixes whenever the choice is among the best
@@ -92,17 +82,6 @@ def _best(costs: Grid, count: int) -> list[tuple[tuple[int, ...], int]]:
         ]
     found.sort()  # by cost, then strings, then capo: the dense table's index order
     return [(choice, capo) for _, choice, capo in found[:count]]
-
-
-def _by_string(tables: Grid) -> Grid:
-    """Sum of one [step, capo] table per string, for every retuning and capo: each string's
-    table broadcast along its own axis, shape (steps,) * strings + (capos,)."""
-    strings, steps, capos = tables.shape
-    total: Grid = sum(
-        table.reshape([steps if axis == string else 1 for axis in range(strings)] + [capos])
-        for string, table in enumerate(tables)
-    )
-    return total
 
 
 def suggest(
@@ -129,10 +108,10 @@ def suggest(
     pitches as a better one is dropped.
     """
     strings, step = len(base.open_strings), np.array(steps, dtype=np.int16)
-    tones = _tables(base.open_strings, steps, capos, chords, base.size)
+    tones = open_tones(base.open_strings, steps, capos, chords, base.size)
     effort = np.abs(step).astype(np.int64)[None, :, None]  # per string, the same for each
     rank = effort - tones * (strings * int(effort.max()) + 1)  # most tones, then least effort
-    shortlisted = _best(rank, shortlist)
+    shortlisted = cheapest(rank, shortlist)
     if 0 in steps and 0 in capos:
         shortlisted.insert(0, ((list(steps).index(0),) * strings, list(capos).index(0)))
 

@@ -111,5 +111,16 @@ class OneFingerTest(unittest.TestCase):
             self.assertLessEqual(len({int(fret) for fret in voicing if fret > 0}), 1)
 
 
+class HandTest(unittest.TestCase):
+    def test_spans_grow_and_frets_run_low_to_high(self):
+        for kwargs in (
+            {"spans": (100.0, 50.0, 10.0)},
+            {"spans": (0.0,)},
+            {"lowest": 5, "highest": 2},
+        ):
+            with self.subTest(**kwargs), self.assertRaises(ValueError):
+                Taste(**kwargs)
+
+
 if __name__ == "__main__":
     unittest.main()

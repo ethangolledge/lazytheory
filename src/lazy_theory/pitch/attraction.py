@@ -16,13 +16,13 @@ curve over a progression), and attraction measured against the current chord ins
 tonic, by passing a Key built on that chord's root.
 """
 
-from functools import cache
+from functools import lru_cache
 from math import gcd
 
 from lazy_theory.pitch.key import Key
 
 
-@cache
+@lru_cache(maxsize=256)  # keys a session uses, not every key ever asked
 def anchoring(key: Key) -> tuple[int, ...]:
     """How stable each pitch class is in `key`, indexed by pitch class: Lerdahl's basic space
     without its fifths level. 4 the tonic, 3 the rest of the tonic triad, 2 the rest of the

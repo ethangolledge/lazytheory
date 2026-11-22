@@ -50,6 +50,12 @@ class Taste:
     strings_changed: float = 5.0  # per string that starts or stops
     bass: float = 1.0  # per step the lowest note moves
 
+    def __post_init__(self) -> None:
+        if any(span <= 0 for span in self.spans) or list(self.spans) != sorted(self.spans):
+            raise ValueError(f"spans grow with the fingers between, all positive: {self.spans}")
+        if not 0 <= self.lowest <= self.highest:
+            raise ValueError(f"frets from {self.lowest} to {self.highest}: lowest first, from 0")
+
     @property
     def reach(self) -> float:
         """mm the whole hand spans, first finger to last: none for a single finger."""

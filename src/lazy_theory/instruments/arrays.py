@@ -4,6 +4,11 @@ Why: thousands of voicings are judged at once, so they live in arrays, not objec
 grid has one row per voicing and one fret (or MUTED) per string; a rule returns one value per
 row, or one per pair of rows for a change between chords. Naming those few shapes once keeps
 every signature readable.
+
+Theory it speaks to: none of its own; it is the shape the rules (`rules`), the costs
+(`acoustics`, `taste`) and the search (`trellis`) agree on.
+
+Could grow into: a typed shape checker, if NumPy's typing comes to carry array shapes.
 """
 
 import numpy as np

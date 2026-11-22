@@ -48,12 +48,18 @@ class Loader[T](Protocol):
 
 def bundled_once[T](load: Callable[[Path | None], T]) -> Loader[T]:
     """A catalog loader that runs once for the bundled file and every time for a file of your
-    own (`path`), so an edited file is read again."""
-    once = cache(load)
+    own (`path`), so an edited file is read again. What it returns is frozen like the data it
+    is built from, so the one shared copy can't be changed by any caller."""
+
+    def frozen(path: Path | None) -> T:
+        built: T = _frozen(load(path))
+        return built
+
+    once = cache(frozen)
 
     @wraps(load)
     def loader(path: Path | None = None) -> T:
-        return once(None) if path is None else load(path)
+        return once(None) if path is None else frozen(path)
 
     return loader
 
@@ -65,6 +71,8 @@ def _frozen(value: Any) -> Any:
         return MappingProxyType({key: _frozen(item) for key, item in value.items()})
     if isinstance(value, list):
         return tuple(_frozen(item) for item in value)
+    if isinstance(value, tuple) and hasattr(value, "_fields"):  # a NamedTuple: freeze its fields
+        return type(value)(*map(_frozen, value))
     return value
 
 

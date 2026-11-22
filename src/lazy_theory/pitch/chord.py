@@ -34,7 +34,7 @@ class Rooted[Pattern: PitchClassSet]:
 
     def __post_init__(self) -> None:
         if not self.pattern.pitch_classes:
-            raise ValueError("a chord or a key needs at least one note")
+            raise ValueError(f"a {type(self).__name__} needs at least one note")
         object.__setattr__(self, "root", self.root % self.size)
 
     @property

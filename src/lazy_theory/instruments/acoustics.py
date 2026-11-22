@@ -36,14 +36,17 @@ def roughness(
 
     A neck has few distinct notes, so the beating between every pair of steps in the octaves
     played is computed once and kept: every neck tuned from the same pitch reuses the table,
-    and each voicing only sums its notes' pairs from it.
+    and each voicing only sums its notes' pairs from it, so steps must be whole (a fraction of
+    a step raises ValueError).
     """
     steps = np.sort(steps, axis=1)
     sounding = ~np.isnan(steps)
     if not sounding.any():
         return np.zeros(len(steps))
+    if (steps[sounding] % 1).any():
+        raise ValueError("roughness reads whole steps of the temperament")
     size = temperament.size
-    low = int(np.nanmin(steps)) // size * size
+    low = int(np.nanmin(steps)) // size * size  # whole steps, so // floors as it should
     high = (int(np.nanmax(steps)) // size + 1) * size
     table = _pair_table(hertz, temperament, low, high, harmonics)
     return _total(table, np.where(sounding, steps - low, 0).astype(np.intp), sounding, harmonics)

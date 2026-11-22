@@ -266,5 +266,25 @@ class MaskShapeTest(unittest.TestCase):
                 trellis.shortest([bad, None])
 
 
+class BuildShapeTest(unittest.TestCase):
+    def test_costs_and_transitions_must_fit_the_voicings(self):
+        three, two = (
+            rows([0, 2, 2, 1, 0, 0], [0, 2, 2, 0, 0, 0], [3, 2, 0, 0, 0, 3]),
+            rows([0, 2, 2, 1, 0, 0], [0, 2, 2, 0, 0, 0]),
+        )
+        for costs, transition in (
+            ([np.zeros(1), np.zeros(1)], moved),
+            (None, lambda a, b: np.zeros((1, 1))),
+            (None, lambda a, b: np.float64(0)),
+        ):
+            with self.assertRaises(ValueError):
+                Trellis.build([three, two], transition, costs)
+
+    def test_each_follows_a_long_song_without_recursion(self):
+        one = rows([0, 2, 2, 1, 0, 0])
+        routes = Trellis.build([one] * 2000, moved).each([np.zeros(1)] * 2000, slack=0)
+        self.assertEqual(len(routes), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

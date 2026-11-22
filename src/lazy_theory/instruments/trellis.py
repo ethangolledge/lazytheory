@@ -66,11 +66,19 @@ class Trellis:
             if len(voicings) == 0:
                 raise ValueError(f"no voicing of chord {index} satisfies the rules")
         standing = costs if costs is not None else [np.zeros(len(voicings)) for voicings in options]
-        return cls(
-            list(options),
-            [np.asarray(cost, dtype=np.float64) for cost in standing],
-            [np.asarray(transition(a, b), dtype=np.float64) for a, b in pairwise(options)],
-        )
+        weights = [np.asarray(cost, dtype=np.float64) for cost in standing]
+        steps = [np.asarray(transition(a, b), dtype=np.float64) for a, b in pairwise(options)]
+        if len(weights) != len(options) or any(
+            weight.shape != (len(voicings),)
+            for weight, voicings in zip(weights, options, strict=True)
+        ):
+            raise ValueError("give one cost per voicing of each chord")
+        for index, (step, (a, b)) in enumerate(zip(steps, pairwise(options), strict=True)):
+            if step.shape != (len(a), len(b)):
+                raise ValueError(
+                    f"transition {index} must be [{len(a)}, {len(b)}] voicings, got {step.shape}"
+                )
+        return cls(list(options), weights, steps)
 
     def shortest(self, allowed: Sequence[Mask | None] | None = None) -> Route:
         """The cheapest route: one voicing per chord with the least total cost. `allowed`
@@ -125,7 +133,13 @@ class Trellis:
         kinds = [np.unique(chord_labels) for chord_labels in labels]
         routes: list[Route] = []
 
-        def follow(chord: int, arrive: Floats, back: list[Picks], line: tuple[float, ...]) -> None:
+        # Depth first, labels in order, kept on a stack (not recursion: any length of song).
+        stack: list[tuple[int, Floats, list[Picks], tuple[float, ...]]] = [
+            (0, self.costs[0][None, :], [], ())
+        ]
+        while stack:
+            chord, arrive, back, line = stack.pop()
+            onward_lines = []
             for label in kinds[chord]:
                 total = np.where(labels[chord] == label, arrive, np.inf)
                 if (total + finish[chord]).min() > budget:
@@ -136,9 +150,8 @@ class Trellis:
                     routes.append(self.route(picks, float(total.min()), named))
                 else:
                     onward, pointers = _advance(total, self.steps[chord], self.costs[chord + 1])
-                    follow(chord + 1, onward, [*back, pointers], named)
-
-        follow(0, self.costs[0][None, :], [], ())
+                    onward_lines.append((chord + 1, onward, [*back, pointers], named))
+            stack.extend(reversed(onward_lines))  # so the first label is followed first
         return sorted(routes, key=lambda route: route.cost)
 
     def tied(self, groups: Sequence[Hashable]) -> Route:

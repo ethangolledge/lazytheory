@@ -17,7 +17,7 @@ from typing import NamedTuple
 
 from lazy_theory.core.pcset import PitchClassSet, group_starts
 from lazy_theory.data import add, bundled_once, read
-from lazy_theory.rhythm.meter import CLAP, NONE, WAVE, Meter
+from lazy_theory.rhythm.meter import CLAP, UNMARKED, WAVE, Meter
 from lazy_theory.rhythm.phrase import Phrase
 from lazy_theory.rhythm.stroke import Stroke
 
@@ -126,7 +126,7 @@ def load_tals(path: Path | None = None) -> Mapping[str, Tal]:
     for name, entry in read(__name__, "rhythm.toml", path)["tals"].items():
         sections = entry["sections"]
         beats = sum(sections)
-        hands = [NONE] * beats
+        hands = [UNMARKED] * beats
         if "marks" in entry:
             if len(entry["marks"]) != len(sections):
                 raise ValueError(f"{name}: one mark per section")

@@ -18,6 +18,7 @@ Your own files load as `lazy_theory.data` describes.
 from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
+from types import MappingProxyType
 
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.data import add, bundled_once, read
@@ -57,7 +58,7 @@ def load_chords(path: Path | None = None) -> Mapping[str, PitchClassSet]:
 def chord_names() -> Mapping[PitchClassSet, str]:
     """The name of each bundled chord pattern: `load_chords` turned round. It names what
     `pitch.chord.identify` finds, and serves as the patterns it looks for."""
-    return {pattern: name for name, pattern in load_chords().items()}
+    return MappingProxyType({pattern: name for name, pattern in load_chords().items()})
 
 
 @bundled_once
@@ -85,9 +86,9 @@ def load_aliases(path: Path | None = None) -> Mapping[str, str]:
 
 def pitch(note: str) -> int:
     """Steps above C0: a note name, then its octave, which starts on C (scientific pitch
-    notation, so E2 is 28 and A4 is 57)."""
-    name = note.rstrip(_DIGITS)
-    if name == note:
+    notation, so E2 is 28 and A4 is 57; below C0 the octave is negative, B-1 is -1)."""
+    name = note.rstrip(_DIGITS).removesuffix("-")
+    if name == note or not note[len(name) :].lstrip("-"):
         raise ValueError(f"no octave in {note!r}")
     return TWELVE * int(note[len(name) :]) + pitch_class(name)
 

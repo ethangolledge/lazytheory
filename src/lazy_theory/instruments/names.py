@@ -1,4 +1,16 @@
-"""Words for instruments: tab, and the name of a set of open strings."""
+"""Words for instruments: tab, and the name of a set of open strings.
+
+Why: the maths returns frets and pitches as arrays; a player reads tab and calls a tuning by
+name. Keeping those words here, at the edge, leaves every other instrument module numbers in,
+numbers out (docs/architecture.md).
+
+Theory it speaks to: tab as a fret per string, highest string on top as players read it; a
+tuning named by its catalog entry, or by one moved whole ("open D +2"), as players capo or
+tune down a named tuning.
+
+Could grow into: standard notation beside the tab, rhythm in the tab from a `Phrase`, and
+names for instruments outside the catalog.
+"""
 
 from collections.abc import Mapping, Sequence
 
@@ -18,9 +30,12 @@ def tab(
     """Voicings as guitar tab: one line per string, the highest string on top, labelled with
     its open note (as `note_name` writes it, so a neck of other than twelve steps per period,
     `size`, is labelled in numbers); one column per voicing under its title. A negative fret
-    is a muted "x". Raises ValueError unless every voicing has a fret for each string."""
+    is a muted "x". Raises ValueError unless every voicing has a fret for each string and
+    each title a voicing."""
     if len(open_strings) == 0 or any(len(voicing) != len(open_strings) for voicing in voicings):
         raise ValueError(f"give a fret for each of the {len(open_strings)} strings, at least one")
+    if len(titles) > len(voicings):
+        raise ValueError(f"{len(titles)} titles for {len(voicings)} voicings")
     columns = [[str(fret) if fret >= 0 else "x" for fret in voicing] for voicing in voicings]
     titles = list(titles) + [""] * (len(columns) - len(titles))
     widths = [

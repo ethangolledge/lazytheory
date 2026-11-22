@@ -7,6 +7,7 @@ from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.catalog import chord_names, load_scales
 from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
+from lazy_theory.pitch.scale import Scale
 from lazy_theory.suggest.drones import drones
 from lazy_theory.suggest.neighbours import named, one_finger, passing
 
@@ -105,6 +106,13 @@ class DronesTest(unittest.TestCase):
         found = drones(STANDARD, OPEN, chords, notes=range(12))
         routes = [(d.path.tobytes(), d.first, d.last) for d in found]
         self.assertEqual(len(routes), len(set(routes)))
+
+
+class KeySizeTest(unittest.TestCase):
+    def test_a_key_of_another_size_is_refused(self):
+        nineteen = Key(Scale.from_steps((3, 3, 2, 3, 3, 3, 2)), 0)
+        with self.assertRaises(ValueError):
+            named(STANDARD, row(X, 3, 2, 0, 1, 0)[None], chord_names(), nineteen)
 
 
 if __name__ == "__main__":

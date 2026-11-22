@@ -31,7 +31,7 @@ from lazy_theory.core.pcset import PitchClassSet, group_starts
 
 Levels = tuple[tuple[int, ...], ...]  # groups inside groups, coarsest first
 
-CLAP, WAVE, NONE = 0, -1, -2  # gestures that keep a cycle; k > 0 is the k-th finger counted
+CLAP, WAVE, UNMARKED = 0, -1, -2  # gestures that keep a cycle; k > 0 is the k-th finger counted
 
 
 def grouping(total: int) -> tuple[int, ...]:
@@ -79,7 +79,7 @@ class Meter:
     grid; each is a composition of the cycle in pulses, and every group start of a level is a
     group start of the next. `beat` is the index of the level the time signature counts in
     (the eighths of 7/8, the quarters of 4/4). `hands` is the gesture a player makes on each
-    beat, if the cycle is kept by hand (a tala): CLAP, WAVE, NONE, or k > 0 for the k-th finger
+    beat, if the cycle is kept by hand (a tala): CLAP, WAVE, UNMARKED, or k > 0 for the k-th finger
     counted. Strength (`weights`) counts levels; a gesture is a label, which is why it is kept
     apart: a khali section starts a group, yet it is the "empty" one, marked by a wave."""
 
@@ -95,8 +95,10 @@ class Meter:
             raise ValueError(
                 f"one gesture per beat ({len(self.levels[self.beat])}), got {self.hands}"
             )
-        if any(hand < NONE for hand in self.hands):
-            raise ValueError(f"a gesture is CLAP, WAVE, NONE or a finger count, got {self.hands}")
+        if any(hand < UNMARKED for hand in self.hands):
+            raise ValueError(
+                f"a gesture is CLAP, WAVE, UNMARKED or a finger count, got {self.hands}"
+            )
 
     def with_hands(self, hands: Sequence[int]) -> Meter:
         """The same meter kept by these gestures, one per beat."""

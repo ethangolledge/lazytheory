@@ -31,5 +31,11 @@ class TabInputTest(unittest.TestCase):
                 tab(strings, voicings)
 
 
+class TitleCountTest(unittest.TestCase):
+    def test_a_title_needs_a_voicing(self):
+        with self.assertRaises(ValueError):
+            tab([28, 33], [[0, 2]], ["C", "Em"])
+
+
 if __name__ == "__main__":
     unittest.main()

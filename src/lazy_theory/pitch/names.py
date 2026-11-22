@@ -20,7 +20,7 @@ other systems are written as numbers.
 """
 
 import re
-from functools import cache
+from functools import cache, lru_cache
 from typing import NamedTuple
 
 from lazy_theory.core.pcset import PitchClassSet, shortest
@@ -51,7 +51,7 @@ def interval_name(step: int, number: int) -> str:
     return accidentals(shortest(step - _natural(number), TWELVE)) + str(number)
 
 
-@cache
+@lru_cache(maxsize=256)  # keys a session uses, not every key ever asked
 def step_names(key: Key) -> tuple[str, ...]:
     """Every step above the tonic as an interval: the key's own notes numbered in order (in a
     seven-note key, so Lydian's fourth is "#4"), every other step flat against the major scale
@@ -248,12 +248,14 @@ def _interval_step(name: str) -> int:
     return (_natural(number) + alteration(name)) % TWELVE
 
 
-@cache
+@lru_cache(maxsize=256)
 def _spelling(key: Key | None) -> tuple[str, ...]:
-    """The name of each of the twelve pitch classes, as `key` spells them. A seven-note key
-    whose notes can't each take their own letter with at most two accidentals (C C# D D# E F F#
-    can't) is spelled as no key is."""
-    if key is not None and _numbered(key) and (spellings := _key_spellings(key)):
+    """The name of each of the twelve pitch classes, as `key` spells them: each note on the
+    letter its interval names (C minor pentatonic's b3 is Eb). A seven-note key whose notes
+    can't each take their own letter with at most two accidentals (C C# D D# E F F# can't) is
+    spelled as no key is."""
+    usable = key is not None and (len(key.scale) != 7 or _numbered(key))
+    if key is not None and usable and (spellings := _key_spellings(key)):
         by_step = min(spellings)[-1]
         return tuple(by_step[key.interval(note)] for note in range(TWELVE))
     return tuple(  # natural, or the sharp of the letter below
@@ -263,8 +265,9 @@ def _spelling(key: Key | None) -> tuple[str, ...]:
 
 
 def _key_spellings(key: Key) -> list[tuple[int, int, int, list[str]]]:
-    """Each way to give a seven-note key's notes a letter each, with at most two accidentals
-    on any note, ranked for `_spelling` (fewest accidentals, then on the tonic, then flats)."""
+    """Each way to put a key's notes on the letters their intervals name, with at most two
+    accidentals on any note, ranked for `_spelling`: the plainest tonic (C Ultralocrian starts
+    on C, not B#), then the fewest accidentals (Bb major, not A#), then flats (Ebm, not D#m)."""
     numbers = [_number(name) for name in step_names(key)]
     spellings = []
     for tonic in range(7):  # each letter the tonic could take; the rest follow in order
@@ -275,7 +278,7 @@ def _key_spellings(key: Key) -> list[tuple[int, int, int, list[str]]]:
         altered = [len(names[step]) - 1 for step in key.scale]
         if max(altered) <= 2:
             sharps = sum(names[step].count("#") for step in key.scale)
-            spellings.append((sum(altered), altered[0], -sharps, names))
+            spellings.append((altered[0], sum(altered), sharps, names))
     return spellings
 
 
@@ -357,6 +360,8 @@ def _pattern(text: str) -> PitchClassSet:
     core, added = text, ""
     if text not in types and text.endswith(")"):  # "m(maj7)" is a type; only split what isn't
         core, _, added = text[:-1].rpartition("(")
+    if text.endswith("()"):
+        raise ValueError(f"empty brackets in {text!r}")
     labels = added.split(",") if added else []
     if core not in types:  # alterations written straight after the type: "7#9", "maj7#11"
         for end in range(len(core) - 1, -1, -1):
@@ -365,10 +370,12 @@ def _pattern(text: str) -> PitchClassSet:
                 break
         else:
             raise ValueError(f"unknown chord type {core!r}")
-    if not core and "1" in labels:  # "(1,b9,9)": every note is listed, there is no core
-        return PitchClassSet(tuple(map(_interval_step, labels)), TWELVE)
     if len(set(labels)) < len(labels):
         raise ValueError(f"a note is written twice in {text!r}")
+    if not core and "1" in labels:  # "(1,b9,9)": every note is listed, there is no core
+        return PitchClassSet(tuple(map(_interval_step, labels)), TWELVE)
+    if "1" in labels:
+        raise ValueError(f"the root is written only when every note is: {text!r}")
     pattern = types[core]
     omitted = {_number(label[2:]) for label in labels if label.startswith("no")}
     own = {_number(name) for name in chord_tone_names(pattern)}

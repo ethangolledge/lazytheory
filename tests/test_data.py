@@ -3,7 +3,8 @@ import unittest
 from pathlib import Path
 
 from lazy_theory.data import add, read
-from lazy_theory.pitch.catalog import load_scales
+from lazy_theory.pitch.catalog import chord_names, load_chords, load_scales
+from lazy_theory.rhythm.catalog import load_spoken
 
 
 class ReadTest(unittest.TestCase):
@@ -33,6 +34,13 @@ class AddTest(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 add(named, name, value)
         self.assertEqual(named, {"one": 1, "two": 2})
+
+
+class SharedCatalogTest(unittest.TestCase):
+    def test_no_caller_can_change_a_catalog(self):
+        for catalog in (load_scales(), load_chords(), chord_names(), load_spoken().words):
+            with self.subTest(catalog=type(catalog).__name__), self.assertRaises(TypeError):
+                catalog["X"] = None  # type: ignore[index]
 
 
 if __name__ == "__main__":

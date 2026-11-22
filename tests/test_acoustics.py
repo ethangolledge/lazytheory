@@ -36,5 +36,23 @@ class RoughnessTest(unittest.TestCase):
         self.assertAlmostEqual(roughness(with_silence)[0], roughness(chord(0, 4))[0])
 
 
+class PureToneTest(unittest.TestCase):
+    """Two pure tones (one partial each): roughness is Hutchinson & Knopoff's curve,
+    (4y e^(1 - 4y))^2 at y critical bandwidths apart, the bandwidth 1.72 f^0.65 Hz at the
+    pair's mean frequency, over the two tones' energy."""
+
+    def test_matches_the_published_curve(self):
+        for low, high in ((48, 49), (48, 50), (24, 25), (60, 64), (36, 48)):
+            f, g = C0 * TET.ratio(low), C0 * TET.ratio(high)
+            y = (g - f) / (1.72 * ((f + g) / 2) ** 0.65)
+            curve = (4 * y * np.exp(1 - 4 * y)) ** 2 if y < 1.2 else 0.0
+            found = acoustics.roughness(chord(0, high - low, root=low), C0, TET, harmonics=1)
+            self.assertAlmostEqual(float(found[0]), curve / 2, places=12)
+
+    def test_steps_are_whole(self):
+        with self.assertRaises(ValueError):
+            roughness(np.array([[48, 52.5]]))
+
+
 if __name__ == "__main__":
     unittest.main()

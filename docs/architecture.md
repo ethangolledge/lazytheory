@@ -78,7 +78,7 @@ of one), so they are sections of the app over `pitch`, `instruments` and `sugges
 | | `taste` | `Taste`: one player's rules and weights; `allows`, `standing`, `transition` are the seams | |
 | | `catalog` | Tunings from `tunings.toml` | |
 | | `names` | `tab`, `tuning_name` | |
-| `suggest` | `tunings` | Retunings and capos for a progression and key, screened cheaply then searched | core, pitch, instruments, NumPy |
+| `suggest` | `tunings` | Retunings and capos for a progression and key, shortlisted cheaply (`open_tones`, `cheapest`) then searched | core, pitch, instruments, NumPy |
 | | `harmonise` | Harmonise a melody, one chord per note with the note on top; `MelodicTaste(Taste)` adds parallel and contrary-motion costs | |
 | | `neighbours` | The chord a shape plays (`named`), chords one finger away, the shapes passing between two | |
 | | `drones` | A note held on one string through several chords | |
@@ -197,11 +197,12 @@ Three rules keep it clean:
 - **Suggestions are opt-in.** `suggest` sits on top and nothing imports it: standard tuning stays
   the default. Candidate tunings are generated, not looked up: every string moved within safe
   tension (4 steps down, 2 up), then named afterwards by matching the catalog, shifts included
-  ("open D +2"). A screen scores every retuning at every capo at once by how many open strings
-  are chord tones: each string's count depends only on its own step and the capo, so the
+  ("open D +2"). A screen ranks every retuning at every capo by how many open strings are
+  chord tones (`open_tones`): each string's count depends only on its own step and the capo, so the
   shortlist is merged string by string, keeping only the best `shortlist` partial choices at
-  each (exact, since a best choice's prefix is always among the best prefixes). Memory grows
-  with the string count, not exponentially. Only the shortlist gets the full path search. Retuning
+  each (`cheapest`; exact, since a best choice's prefix is always among the best prefixes).
+  Memory grows with the string count, not exponentially. Only the shortlist gets the full path
+  search. Retuning
   costs per step, so the base tuning wins unless another clearly sounds better, and the key's
   other chords can be weighed in so a neck isn't chosen for three easy shapes alone.
 - **Features extend, not edit.** Optional features subclass what exists: `MelodicTaste` is a

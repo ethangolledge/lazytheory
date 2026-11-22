@@ -1,5 +1,6 @@
 import unittest
 from dataclasses import replace
+from itertools import product
 
 import numpy as np
 from fixtures import MAJOR, STANDARD, TUNINGS
@@ -8,35 +9,39 @@ from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.names import tuning_name
 from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.chord import Chord
-from lazy_theory.suggest.tunings import _best, _by_string, screen, suggest
+from lazy_theory.suggest.tunings import cheapest, open_tones, suggest
 
 OPEN_D = (-2, 0, 0, -1, -2, -2)  # D A D F# A D from E A D G B E
 D, G, A = 2, 7, 9  # pitch classes
 
 
-class ScreenTest(unittest.TestCase):
-    def test_every_retuning_at_every_capo(self):
-        counts = screen(STANDARD.open_strings, range(-2, 3), range(4), [Chord(MAJOR, D)], 12)
-        self.assertEqual(counts.shape, (5,) * 6 + (4,))
+class OpenTonesTest(unittest.TestCase):
+    def test_one_count_per_string_step_and_capo(self):
+        tones = open_tones(STANDARD.open_strings, range(-2, 3), range(4), [Chord(MAJOR, D)], 12)
+        self.assertEqual(tones.shape, (6, 5, 4))
 
     def test_open_strings_in_the_chords(self):
-        counts = screen(STANDARD.open_strings, range(-2, 1), (0,), [Chord(MAJOR, D)], 12)
-        unchanged, open_d = (2,) * 6, tuple(np.add(OPEN_D, 2))
-        self.assertEqual((counts[(*unchanged, 0)], counts[(*open_d, 0)]), (2, 6))
+        tones = open_tones(STANDARD.open_strings, range(-2, 1), (0,), [Chord(MAJOR, D)], 12)
+        unchanged, open_d = (2,) * 6, np.add(OPEN_D, 2)
+        ring = [
+            sum(tones[string, step, 0] for string, step in enumerate(choice))
+            for choice in (unchanged, open_d)
+        ]
+        self.assertEqual(ring, [2, 6])
 
-    def test_matches_counting_each_tuning(self):
+    def test_matches_counting_each_string(self):
         steps, capos, chords = (-1, 0, 2), (0, 3), [Chord(MAJOR, D), Chord(MAJOR, G)]
-        counts = screen(STANDARD.open_strings, steps, capos, chords, 12)
-        for index in np.ndindex(counts.shape):
-            *choice, capo = index
-            strings = (STANDARD.open_strings + np.take(steps, choice) + capos[capo]) % 12
-            ringing = sum(int(string) in chord for chord in chords for string in strings)
-            self.assertEqual(counts[index], ringing)
+        tones = open_tones(STANDARD.open_strings, steps, capos, chords, 12)
+        for string, step, capo in np.ndindex(tones.shape):
+            pitch = (STANDARD.open_strings[string] + steps[step] + capos[capo]) % 12
+            self.assertEqual(
+                tones[string, step, capo], sum(int(pitch) in chord for chord in chords)
+            )
 
     def test_a_capo_moves_the_open_strings(self):
         # No open string of standard tuning is in F# major; capo 2 rings F#, C# and F#.
-        counts = screen(STANDARD.open_strings, (0,), (0, 2), [Chord(MAJOR, 6)], 12)
-        self.assertEqual(counts[(0,) * 6].tolist(), [0, 3])
+        tones = open_tones(STANDARD.open_strings, (0,), (0, 2), [Chord(MAJOR, 6)], 12)
+        self.assertEqual(tones[:, 0, :].sum(axis=0).tolist(), [0, 3])
 
 
 class TuningNameTest(unittest.TestCase):
@@ -113,18 +118,20 @@ class SuggestTest(unittest.TestCase):
         self.assertEqual(costs, sorted(costs))
 
 
-class ShortlistTest(unittest.TestCase):
-    def test_matches_ranking_the_whole_table(self):
+class CheapestTest(unittest.TestCase):
+    def test_matches_ranking_every_choice(self):
         rng = np.random.default_rng(1)
         for _ in range(200):
             strings, steps, capos = rng.integers(1, 6), rng.integers(1, 5), rng.integers(1, 4)
             costs = rng.integers(-3, 4, (strings, steps, capos))
             count = int(rng.integers(1, 12))
-            shape = (steps,) * strings + (capos,)
-            order = np.argsort(_by_string(costs).ravel(), kind="stable")[:count]
-            whole = [np.unravel_index(index, shape) for index in order]
-            expected = [(tuple(map(int, at[:-1])), int(at[-1])) for at in whole]
-            self.assertEqual(_best(costs, count), expected)
+            every = sorted(  # each choice by its cost, then in index order
+                (sum(costs[s, step, capo] for s, step in enumerate(choice)), choice, capo)
+                for choice in product(range(steps), repeat=strings)
+                for capo in range(capos)
+            )
+            expected = [(choice, capo) for _, choice, capo in every[:count]]
+            self.assertEqual(cheapest(costs, count), expected)
 
 
 if __name__ == "__main__":

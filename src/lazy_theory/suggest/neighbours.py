@@ -48,6 +48,8 @@ def named(
     Dm6), the one rooted on the bass; failing that, with `key`, the one whose root is steadiest
     in the key (`pitch.attraction.anchoring`: tonic, then the rest of the home chord, then the
     scale); else the first."""
+    if key is not None and key.size != board.size:
+        raise ValueError(f"a {key.size}-step key on a {board.size}-step neck")
     steady = anchoring(key) if key else None
     chords: list[Chord | None] = []
     for found in board.readings(voicings, patterns):

@@ -58,7 +58,12 @@ class Fretboard:
     def __post_init__(self) -> None:
         if self.frets < 0:
             raise ValueError(f"a neck has zero or more frets, not {self.frets}")
-        open_strings = np.array(self.open_strings, dtype=np.int16)
+        given = np.asarray(self.open_strings)
+        if given.ndim != 1 or len(given) == 0 or (given % 1).any():
+            raise ValueError(f"open strings are whole steps above C0, got {self.open_strings}")
+        if np.abs(given).max() > np.iinfo(np.int16).max // 2:  # room to fret and capo
+            raise ValueError(f"open strings out of range: {self.open_strings}")
+        open_strings = given.astype(np.int16)
         open_strings.flags.writeable = False
         object.__setattr__(self, "open_strings", open_strings)
 

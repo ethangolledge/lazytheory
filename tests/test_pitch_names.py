@@ -334,5 +334,29 @@ class OmissionTest(unittest.TestCase):
             chord_symbol(Chord(CHORDS["major"], 0), nineteen)
 
 
+class SpellingRankTest(unittest.TestCase):
+    def test_plainest_tonic_then_fewest_accidentals_then_flats(self):
+        self.assertEqual(note_names(key("Ultralocrian", "C"))[0], "C")  # not B#
+        self.assertEqual(note_names(key("Ionian", "Bb"))[0], "Bb")  # 2 flats, not 10 sharps
+        self.assertEqual(chord_symbol(Chord(CHORDS["minor"], 3)), "Ebm")  # 6 flats or 6 sharps
+        self.assertEqual(chord_symbol(Chord(CHORDS["major"], 6)), "Gb")
+
+    def test_keys_of_other_lengths_spell_by_their_intervals(self):
+        pentatonic = key("Minor Pentatonic", "C")
+        self.assertEqual(note_names(pentatonic), ("C", "Eb", "F", "G", "Bb"))
+        self.assertEqual(degree_names(pentatonic), ("1", "b3", "4", "5", "b7"))
+
+    def test_scientific_names_read_back_below_c0(self):
+        for value in range(-14, 60):
+            self.assertEqual(pitch(pitch_name(value)), value)
+
+
+class BracketTest(unittest.TestCase):
+    def test_brackets_hold_notes_written_once(self):
+        for text in ("C(1,1)", "C7()", "C7(1)", "C7b9(b9)"):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                parse_chord(text)
+
+
 if __name__ == "__main__":
     unittest.main()

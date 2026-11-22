@@ -210,5 +210,12 @@ class FretCountTest(unittest.TestCase):
             replace(STANDARD, frets=-3)
 
 
+class OpenStringTest(unittest.TestCase):
+    def test_open_strings_are_whole_steps_in_range(self):
+        for strings in ([40.7], [40000], []):
+            with self.subTest(strings=strings), self.assertRaises(ValueError):
+                replace(STANDARD, open_strings=strings)
+
+
 if __name__ == "__main__":
     unittest.main()
