@@ -3,14 +3,15 @@ from dataclasses import replace
 
 import numpy as np
 
-from lazy_theory.catalog import load_tunings
-from lazy_theory.core.chord import Chord
-from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.core.scale import Scale
+from lazy_theory.instruments.catalog import load_tunings
 from lazy_theory.instruments.fretboard import Fretboard
+from lazy_theory.instruments.names import tuning_name
 from lazy_theory.instruments.taste import Taste
-from lazy_theory.suggest.tunings import name, screen, suggest
+from lazy_theory.pitch.chord import Chord
+from lazy_theory.pitch.key import Key
+from lazy_theory.pitch.scale import Scale
+from lazy_theory.suggest.tunings import screen, suggest
 
 TUNINGS = load_tunings()
 STANDARD = Fretboard.from_tuning(TUNINGS["guitar standard"])
@@ -54,10 +55,10 @@ class KeyAndNameTest(unittest.TestCase):
 
     def test_names_from_the_catalog(self):
         open_e = STANDARD.open_strings + np.array([0, 2, 2, 1, 0, 0])
-        self.assertEqual(name(STANDARD.open_strings, TUNINGS), "guitar standard")
-        self.assertEqual(name(STANDARD.open_strings + OPEN_D, TUNINGS), "guitar open D")
-        self.assertEqual(name(open_e, TUNINGS), "guitar open D +2")
-        self.assertIsNone(name(STANDARD.open_strings + [0, 0, 0, 0, 0, 1], TUNINGS))
+        self.assertEqual(tuning_name(STANDARD.open_strings, TUNINGS), "guitar standard")
+        self.assertEqual(tuning_name(STANDARD.open_strings + OPEN_D, TUNINGS), "guitar open D")
+        self.assertEqual(tuning_name(open_e, TUNINGS), "guitar open D +2")
+        self.assertIsNone(tuning_name(STANDARD.open_strings + [0, 0, 0, 0, 0, 1], TUNINGS))
 
 
 class SuggestTest(unittest.TestCase):

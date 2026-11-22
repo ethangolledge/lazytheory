@@ -3,12 +3,10 @@ from unittest import mock
 
 import numpy as np
 
-from lazy_theory.catalog import load_tunings
-from lazy_theory.core.chord import Chord
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.core.scale import Scale
 from lazy_theory.instruments.acoustics import roughness
 from lazy_theory.instruments.arrays import MUTED
+from lazy_theory.instruments.catalog import load_tunings
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import (
     contiguous,
@@ -19,6 +17,8 @@ from lazy_theory.instruments.rules import (
     within,
 )
 from lazy_theory.instruments.trellis import Trellis
+from lazy_theory.pitch.chord import Chord
+from lazy_theory.pitch.scale import Scale
 
 X = MUTED
 STANDARD = Fretboard.from_tuning(load_tunings()["guitar standard"])
@@ -50,7 +50,7 @@ class ShortestTest(unittest.TestCase):
             return moved(previous, following) + 5 * strings_changed(previous, following)
 
         def cost(voicings):
-            return 10 * roughness(STANDARD.frequencies(voicings))
+            return 10 * roughness(STANDARD.notes(voicings), STANDARD.hertz, STANDARD.temperament)
 
         two, five, one = [
             playable(STANDARD.voicings(Chord(IONIAN.chord(degree, 4), C + step), REACH), 5, 9)
@@ -132,7 +132,10 @@ class EachTest(unittest.TestCase):
             playable(STANDARD.voicings(Chord(IONIAN.chord(degree, 3), C + step), REACH), 0, 4)
             for degree, step in ((0, 0), (5, 9), (3, 5), (4, 7))  # C Am F G
         ]
-        self.costs = [10 * roughness(STANDARD.frequencies(v)) for v in self.options]
+        self.costs = [
+            10 * roughness(STANDARD.notes(v), STANDARD.hertz, STANDARD.temperament)
+            for v in self.options
+        ]
         self.tops = [STANDARD.top(v) for v in self.options]
         self.trellis = Trellis.build(self.options, self.transition, self.costs)
 
@@ -176,7 +179,10 @@ class TiedTest(unittest.TestCase):
             for degree, step in ((0, 0), (5, 9), (4, 7))
         )
         self.options = [c, am, c, g]  # C Am C G: C comes back
-        self.costs = [10 * roughness(STANDARD.frequencies(v)) for v in self.options]
+        self.costs = [
+            10 * roughness(STANDARD.notes(v), STANDARD.hertz, STANDARD.temperament)
+            for v in self.options
+        ]
         self.trellis = Trellis.build(self.options, self.transition, self.costs)
 
     def test_matches_brute_force_with_one_repeated_chord(self):

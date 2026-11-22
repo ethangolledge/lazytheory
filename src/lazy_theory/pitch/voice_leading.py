@@ -25,6 +25,8 @@ from lazy_theory.core.pcset import PitchClassSet, shortest
 
 
 class Move(NamedTuple):
+    """One voice: the note it leaves, the note it reaches, and the steps between."""
+
     source: int
     target: int
     steps: int  # signed, the shorter way round; a half-period move counts as upwards
@@ -32,10 +34,13 @@ class Move(NamedTuple):
 
 @dataclass(frozen=True)
 class VoiceLeading:
+    """Every voice's move from one set to another, lowest source first."""
+
     moves: tuple[Move, ...]
 
     @property
     def distance(self) -> int:
+        """Total steps moved, every voice counted: the taxicab distance."""
         return sum(abs(move.steps) for move in self.moves)
 
 
@@ -48,6 +53,8 @@ def voice_leading(source: PitchClassSet, target: PitchClassSet) -> VoiceLeading:
     """
     if source.size != target.size:
         raise ValueError(f"sets have different sizes: {source.size} and {target.size}")
+    if not source.pitch_classes or not target.pitch_classes:
+        raise ValueError("voices move from notes to notes: neither set may be empty")
     if len(source) >= len(target):
         pairs = _cheapest_pairs(source, target)
     else:
@@ -62,8 +69,8 @@ def _cheapest_pairs(larger: PitchClassSet, smaller: PitchClassSet) -> list[tuple
 
     Exact, without trying every pairing: the cheapest finish for the notes still to pair
     depends only on which notes of `smaller` are used so far, so each such state is solved
-    once (notes x 2 ** len(smaller) states).
-    shortcut: fine to about 16 notes in the smaller set; past that, pair in circular order.
+    once (notes x 2 ** len(smaller) states): fine for any chord, too slow past about 16 notes
+    in the smaller set.
     """
     cost = [[abs(shortest(t - s, larger.size)) for t in smaller] for s in larger]
     targets = range(len(smaller))

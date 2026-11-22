@@ -16,11 +16,19 @@ class PitchClassSetTest(unittest.TestCase):
         self.assertEqual(len({PitchClassSet((7, 0, 4)), PitchClassSet((0, 4, 7))}), 1)
         self.assertNotEqual(PitchClassSet((0, 4, 7)), PitchClassSet((0, 4, 7), 31))
 
-    def test_rejects_empty_set_and_bad_size(self):
-        with self.assertRaises(ValueError):
-            PitchClassSet(())
+    def test_rejects_a_bad_size(self):
         with self.assertRaises(ValueError):
             PitchClassSet((0,), 0)
+
+    def test_the_empty_set_is_silence(self):
+        silence = PitchClassSet((), 16)
+        self.assertEqual(len(silence), 0)
+        self.assertEqual(silence.complement(), PitchClassSet(tuple(range(16)), 16))
+        self.assertEqual(silence.transpose(3), silence)
+        self.assertEqual(silence.necklace(), silence)
+        self.assertEqual(PitchClassSet.maximally_even(0, 16), silence)
+        with self.assertRaises(ValueError):
+            silence.rotate(0)
 
     def test_from_steps(self):
         self.assertEqual(PitchClassSet.from_steps(IONIAN_STEPS), IONIAN)
@@ -64,7 +72,7 @@ class PitchClassSetTest(unittest.TestCase):
         self.assertEqual(PitchClassSet.maximally_even(3, 31).pitch_classes, (0, 10, 20))
 
     def test_maximally_even_rejects_impossible_counts(self):
-        for notes in (0, 13):
+        for notes in (-1, 13):
             with self.assertRaises(ValueError, msg=notes):
                 PitchClassSet.maximally_even(notes)
 

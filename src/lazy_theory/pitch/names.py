@@ -1,9 +1,9 @@
-"""Numbers into words, and words back into numbers: the one place the library writes or reads
-note names, interval names, chord symbols, Roman numerals and tab.
+"""Numbers into words and back for pitch: note names, interval names, chord symbols, Roman
+numerals. The one place the library writes or reads them.
 
 Why: everything else works in integers, where a mistake is impossible to hide; names are how
-a musician reads the result. Keeping every name in one module means a symbol and the labels on
-its notes are built by the same rule and cannot disagree.
+a musician reads the result. Keeping every pitch name in one module means a symbol and the
+labels on its notes are built by the same rule and cannot disagree.
 
 Theory it speaks to: names are relative to the major scale, by long convention. An interval
 is "the Nth note of the major scale, flattened or sharpened to fit" (`interval_name`), and
@@ -15,15 +15,15 @@ used once, starting from whichever tonic letter needs the fewest accidentals (Bb
 A# major), and notes outside the key take the letter their interval names (the b6 of D is Bb).
 
 Could grow into: other naming traditions as data (solfege, Nashville numbers, figured bass,
-German H), enharmonic choice by direction of travel, and symbols for chords the catalog
-doesn't list. Names are for twelve steps per period; other systems are written as numbers.
+German H), enharmonic choice by direction of travel. Names are for twelve steps per period;
+other systems are written as numbers.
 """
 
-from collections.abc import Sequence
 from functools import cache
 from itertools import combinations
 
-from lazy_theory.catalog import (
+from lazy_theory.core.pcset import PitchClassSet, shortest
+from lazy_theory.pitch.catalog import (
     LETTERS,
     accidentals,
     alteration,
@@ -33,10 +33,9 @@ from lazy_theory.catalog import (
     major,
     pitch_class,
 )
-from lazy_theory.core.chord import Chord
-from lazy_theory.core.key import Key
-from lazy_theory.core.pcset import PitchClassSet, shortest
-from lazy_theory.core.scale import Scale
+from lazy_theory.pitch.chord import Chord
+from lazy_theory.pitch.key import Key
+from lazy_theory.pitch.scale import Scale
 
 _NUMERALS = ("I", "II", "III", "IV", "V", "VI", "VII")
 
@@ -190,30 +189,6 @@ def stack_spelling(scale: Scale, degree: int, pattern: PitchClassSet) -> str:
     return " ".join(interval_name(note, 2 * place + 1) for place, note in stack if note in pattern)
 
 
-def tab(
-    open_strings: Sequence[int],
-    voicings: Sequence[Sequence[int]],
-    titles: Sequence[str] = (),
-    key: Key | None = None,
-) -> str:
-    """Voicings as guitar tab: one line per string, the highest string on top, labelled with
-    its open note; one column per voicing under its title. A negative fret is a muted "x"."""
-    columns = [[str(fret) if fret >= 0 else "x" for fret in voicing] for voicing in voicings]
-    titles = list(titles) + [""] * (len(columns) - len(titles))
-    widths = [
-        max(len(title), *map(len, column)) for title, column in zip(titles, columns, strict=True)
-    ]
-    labels = [note_name(string, key) for string in open_strings]
-    pad = max(map(len, labels))
-    lines = [" " * (pad + 2) + "  ".join(t.ljust(w) for t, w in zip(titles, widths, strict=True))]
-    for string in reversed(range(len(open_strings))):
-        cells = "  ".join(
-            column[string].ljust(w) for column, w in zip(columns, widths, strict=True)
-        )
-        lines.append(f"{labels[string].ljust(pad)} |{cells}")
-    return "\n".join(line.rstrip() for line in lines)
-
-
 def _natural(number: int) -> int:
     """Steps from a root up to the `number`th note of its major scale: the 3rd is 4, and the
     9th, a period up, is the 2nd's 2."""
@@ -266,7 +241,7 @@ def _suffix(pattern: PitchClassSet) -> str:
     notes = [step for step in pattern if step]
     for size in range(len(notes) - 1, 0, -1) if pattern.size == 12 else ():  # largest core first
         cores = [PitchClassSet((0, *c)) for c in combinations(notes, size)]
-        if cores := [core for core in cores if core in symbols]:
+        if cores := [core for core in cores if core in symbols and not _clashes(core, tones)]:
             # a core must read the same inside the chord as alone: with a seventh the 6 of a
             # 6 chord is a 13, with a third the 2 of a sus2 is a 9, so those cores lose
             core = max(cores, key=lambda c: chord_tone_names(c) == tuple(tones[s] for s in c))
@@ -274,6 +249,14 @@ def _suffix(pattern: PitchClassSet) -> str:
             written = ",".join("maj7" if tones[step] == "7" else tones[step] for step in added)
             return f"{symbols[core]}({written})"
     return f"({','.join(tones.values())})"
+
+
+def _clashes(core: PitchClassSet, tones: dict[int, str]) -> bool:
+    """Whether a note added to `core` would share a degree with one of the core's own notes:
+    written in brackets it would read as altering that note (`_pattern`), so such a core can't
+    be the one a symbol is built on."""
+    own = {_number(name) for name in chord_tone_names(core)}
+    return any(_number(tones[step]) in own for step in set(tones) - set(core))
 
 
 def _written_order(tone: str) -> tuple[bool, int, int]:
@@ -284,7 +267,9 @@ def _written_order(tone: str) -> tuple[bool, int, int]:
 
 
 def _pattern(text: str) -> PitchClassSet:
-    """The part of a symbol after its root, back into a pattern: "m7(b9)"."""
+    """The part of a symbol after its root, back into a pattern: "m7(b9)". A bracketed note
+    with the same number as one of the core's alters it rather than joining it: "m7(b5)" is
+    the half-diminished chord, its fifth lowered, not a minor 7th with two fifths."""
     types = {symbol: chord for chord, symbol in _symbols().items()}
     core, added = text, ""
     if text not in types and text.endswith(")"):  # "m(maj7)" is a type; only split what isn't
@@ -292,8 +277,21 @@ def _pattern(text: str) -> PitchClassSet:
     if core not in types:
         raise ValueError(f"unknown chord type {core!r}")
     labels = added.split(",") if added else []
-    whole = not core and "1" in labels  # "(1,b9,9)": every note is listed, there is no core
-    return PitchClassSet((*(() if whole else types[core]), *map(_interval_step, labels)))
+    if not core and "1" in labels:  # "(1,b9,9)": every note is listed, there is no core
+        return PitchClassSet(tuple(map(_interval_step, labels)))
+    pattern = types[core]
+    altered = {_number(label) for label in labels}
+    kept = [
+        step
+        for step, name in zip(pattern, chord_tone_names(pattern), strict=True)
+        if _number(name) not in altered
+    ]
+    return PitchClassSet((*kept, *map(_interval_step, labels)))
+
+
+def _number(name: str) -> int:
+    """The degree an interval name counts: "b5" and "#5" are both 5, "maj7" is 7."""
+    return int(name.strip().removeprefix("maj").lstrip("b#"))
 
 
 @cache

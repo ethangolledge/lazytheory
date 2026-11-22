@@ -15,18 +15,25 @@ set classes under transposition and inversion, and subset search ("every key hol
 chord"), each a few lines on top of `rotate`, `transpose` and `in`.
 """
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from itertools import accumulate
 from numbers import Integral
 from typing import Self
 
 
-def shortest(steps: int, size: int) -> int:
+def shortest[N: (int, float)](steps: N, size: int) -> N:
     """`steps` round a circle of `size` taken the shorter way, so signed: 11 up in 12 is -1.
-    Half way round counts as up."""
+    Half way round counts as up. Works for times too: 7.5 pulses on a cycle of 8 is -0.5."""
     steps %= size
     return steps - size if steps > size / 2 else steps
+
+
+def group_starts(lengths: Sequence[int]) -> tuple[int, ...]:
+    """Where each of a run of `lengths` starts, the first at 0: (3, 2, 2) starts at 0, 3 and 5.
+    The inverse of `rhythm.meter.gaps`: meters, phrases and step patterns all lay groups end to
+    end."""
+    return tuple(accumulate(lengths[:-1], initial=0))
 
 
 @dataclass(frozen=True, eq=False)
@@ -35,7 +42,7 @@ class PitchClassSet:
 
     Members are reduced mod `size` and stored sorted without duplicates, so (12, 7, 4, 0) and
     (0, 4, 7) are the same set. Sets compare by their members and size alone: a Scale equals
-    the plain set of its notes.
+    the plain set of its notes. A set may be empty: a bar of silence is a rhythm too.
     """
 
     pitch_classes: tuple[int, ...]
@@ -45,8 +52,6 @@ class PitchClassSet:
         if self.size < 1:
             raise ValueError(f"size must be positive, got {self.size}")
         normalised = tuple(sorted({pc % self.size for pc in self.pitch_classes}))
-        if not normalised:
-            raise ValueError("a pitch-class set needs at least one member")
         object.__setattr__(self, "pitch_classes", normalised)
 
     @classmethod
@@ -58,7 +63,7 @@ class PitchClassSet:
         steps = tuple(steps)
         if not steps or any(step < 1 for step in steps):
             raise ValueError(f"steps must be positive, got {steps}")
-        return cls(tuple(accumulate(steps[:-1], initial=0)), sum(steps))
+        return cls(group_starts(steps), sum(steps))
 
     @classmethod
     def maximally_even(cls, notes: int, size: int = 12) -> Self:
@@ -66,14 +71,29 @@ class PitchClassSet:
 
         4 in 12 is the diminished seventh, 6 in 12 the whole-tone scale, 7 in 12 a diatonic mode.
         """
-        if not 0 < notes <= size:
-            raise ValueError(f"notes must be between 1 and {size}, got {notes}")
+        if not 0 <= notes <= size:
+            raise ValueError(f"notes must be between 0 and {size}, got {notes}")
         return cls(tuple(i * size // notes for i in range(notes)), size)
 
     def rotate(self, degree: int) -> Self:
-        """Re-root on the member at `degree` (0-based, wraps). For a scale, this gives its modes."""
+        """Re-root on the member at `degree` (0-based, wraps). For a scale, this gives its modes.
+        Raises ValueError for an empty set, which has no member to re-root on."""
+        if not self.pitch_classes:
+            raise ValueError("an empty set has no member to re-root on")
         root = self.pitch_classes[degree % len(self)]
         return type(self)(tuple(pc - root for pc in self.pitch_classes), self.size)
+
+    def necklace(self) -> Self:
+        """The rotation with the lowest members, the same for every rotation and transposition:
+        compare two sets with it to ask whether one is a mode or displacement of the other.
+        An empty set is its own necklace."""
+        rotations = (self.rotate(degree) for degree in range(len(self)))
+        return min(rotations, key=lambda s: s.pitch_classes, default=self)
+
+    def complement(self) -> PitchClassSet:
+        """Every pitch class the set leaves out: the notes outside a scale, or the gaps a second
+        rhythm part fills. Empty for a full set."""
+        return PitchClassSet(tuple(set(range(self.size)) - set(self.pitch_classes)), self.size)
 
     def transpose(self, steps: int) -> PitchClassSet:
         """Move every member up by `steps`. A moved scale no longer starts on its root, so the

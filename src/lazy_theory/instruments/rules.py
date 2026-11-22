@@ -9,7 +9,7 @@ rules and weights (`taste.Taste`), and a new idea is a new ten-line rule, not a 
 Theory it speaks to: the mechanics of the fretting hand (a barre is one finger across a fret;
 fingers go in fret order and reach a measured span, in millimetres, so the same rule holds on
 a bass or a ukulele), and voice leading on an instrument, where each string is a voice:
-`moved` is the taxicab distance of core.voice_leading with real pitches, `strings_changed`
+`moved` is the taxicab distance of pitch.voice_leading with real pitches, `strings_changed`
 counts voices entering and leaving.
 
 Could grow into: thumb-over-the-neck bass notes, partial barres under other fingers, rules

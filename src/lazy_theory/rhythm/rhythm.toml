@@ -1,0 +1,162 @@
+# Spoken rhythm (konnakol, solkattu) and the Carnatic suladi talas.
+#
+# A group of n pulses is a word of n syllables. Only the short words are listed; a longer group
+# is spelled by splitting it in two, the shorter half first (lazy_theory.core.rhythm.grouping),
+# so 5 is "ta ka ta ki ta", 7 is "ta ki ta ta ka di mi" and 9 is "ta ka di mi ta ka ta ki ta".
+
+rest = ","  # a silent pulse
+hold = "_"  # the syllable before it held one more pulse
+
+[words]
+1 = "ta"
+2 = "ta ka"
+3 = "ta ki ta"
+4 = "ta ka di mi"
+
+# Counting a guitarist reads: the words after the count's number, for each way of splitting it
+# ("1 & 2 &", "1 trip let", "1 e & a"). Splits not listed are counted in their konnakol word,
+# since Western counting has no common words for fives and sevens.
+[counting]
+2 = "&"
+3 = "trip let"
+4 = "e & a"
+
+# What a guitarist calls each split of a count of 4/4, for naming ideas ("16ths in 3s").
+[subdivisions]
+2 = "8ths"
+3 = "triplets"
+4 = "16ths"
+5 = "fives"
+6 = "sextuplets"
+7 = "sevens"
+
+# Every syllable a spoken rhythm may be written with: konnakol, Takadimi and tabla bols. Typed
+# text is split into these, and a phrase stores each by its place in this list, so only ever
+# add to the end. Spellings vary by teacher and school; add yours. Text that can be split two
+# ways is rejected, not guessed, so check a new syllable doesn't make an old word ambiguous.
+[syllables]
+spoken = [
+  "ta", "tha", "ka", "ki", "di", "dhi", "mi", "gi", "na", "thom", "tom", "dhom",
+  "jo", "nu", "ku", "ri", "ga", "dha", "dhin", "tin", "te", "re", "kit", "tak", "lan",
+  "va", "da", "ti", "ma", "ge", "ghe", "dhe", "tun", "kat", "tra", "kda", "ke",
+]
+
+# Takadimi (Hoffman, Pelto & White 1996): a syllable for each position inside a beat, whatever
+# the rhythm, so "di" is always the middle of the beat. From the Wikipedia article: 2 and 4
+# per beat in simple meter, 3 and 6 in compound, 5 and 7 with "ti" added. Three to a beat in
+# simple meter isn't stated there; it is read with the compound syllables.
+[takadimi]
+1 = "ta"
+2 = "ta di"
+3 = "ta ki da"
+4 = "ta ka di mi"
+5 = "ta ka di mi ti"
+6 = "ta va ki di da ma"
+7 = "ta va ki di da ma ti"
+
+# Tabla strokes as [low head, high head], each 0 silent, 1 damped, 2 open (core.stroke). The
+# four classes and their bols are Rohit & Rao (2021), table 3: damped, resonant treble,
+# resonant bass, resonant both. The paper doesn't say which head a damped stroke is on; it is
+# put on the high head, as core.stroke's LIGHT. Bols the paper doesn't class have no stroke.
+# Spelling a rhythm as bols uses the first bol listed for each stroke.
+[strokes]
+ti = [0, 1]
+ta = [0, 1]
+tak = [0, 1]
+ke = [0, 1]
+tra = [0, 1]
+kda = [0, 1]
+na = [0, 2]
+tin = [0, 2]
+tun = [0, 2]
+ghe = [2, 0]
+dhe = [2, 0]
+dhi = [2, 0]
+dha = [2, 2]
+dhin = [2, 2]
+
+# Khali: the same bols without the bass, as the khali section of a theka plays them (dhin
+# becomes tin in Teentaal's third section; Gangolli, UW Music 428 thekas; Chordia, CCRMA).
+[khali]
+dha = "ta"
+dhin = "tin"
+
+# Suladi talas: a tala is a sequence of angas. "I" is a laghu of `jati` beats, "O" a drutam
+# and "U" an anudrutam. Seven families times five jatis give the 35 talas, named
+# "<jati> <family>" (Adi tala is "chatusra triputa").
+[talas.angas]
+O = 2
+U = 1
+
+# The hand on each beat of an anga (Wikipedia, "Tala (music)"): a drutam is a clap and a wave,
+# an anudrutam a clap. A laghu is a clap, then a finger counted for each beat after it.
+[talas.gestures]
+O = ["clap", "wave"]
+U = ["clap"]
+
+[talas.jatis]
+tisra = 3
+chatusra = 4
+khanda = 5
+misra = 7
+sankeerna = 9
+
+[talas.families]
+dhruva = "IOII"
+matya = "IOI"
+rupaka = "OI"
+jhampa = "IUO"
+triputa = "IOO"
+ata = "IIOO"
+eka = "I"
+
+# Timelines: the bell and clave patterns a whole ensemble keeps time by, as gaps in pulses.
+# The six 16-pulse ones are Toussaint's "six fundamental 4/4 clave and bell timelines" (Bridges
+# 2002); each reproduces his metric complexity (17 minus the sum of Lerdahl & Jackendoff's
+# weights) and his stated symmetries. The bembe bell is Toussaint (2005): the diatonic steps.
+[timelines]
+shiko = [4, 2, 4, 2, 4]
+son = [3, 3, 4, 2, 4]
+rumba = [3, 4, 3, 2, 4]
+gahu = [3, 3, 4, 4, 2]
+soukous = [3, 3, 4, 1, 5]
+bossa-nova = [3, 3, 4, 3, 3]
+bembe = [2, 2, 1, 2, 2, 2, 1]
+
+# Hindustani tals: sections (vibhag) in beats (matra), the mark on each section (X sam, a
+# number a clap, 0 the wave of khali) and the theka, one entry per beat; a beat of several
+# bols is written with spaces ("dha ge"). Thekas and marks: Gangolli, UW Music 428. Sources
+# disagree on Rupak: some mark it X 2 3, others start it on khali (0 1 2), as here. Ektaal's
+# grouping is also debated (4-4-4, 2x6 or 4-4-2-2); this is 2x6.
+[tals.teentaal]
+sections = [4, 4, 4, 4]
+marks = ["X", "2", "0", "3"]
+theka = [
+  "dha", "dhin", "dhin", "dha", "dha", "dhin", "dhin", "dha",
+  "dha", "tin", "tin", "ta", "na", "dhin", "dhin", "dha",
+]
+
+[tals.jhaptaal]
+sections = [2, 3, 2, 3]
+marks = ["X", "2", "0", "3"]
+theka = ["dhin", "na", "dhin", "dhin", "na", "tin", "na", "dhin", "dhin", "na"]
+
+[tals.rupak]
+sections = [3, 2, 2]
+marks = ["0", "1", "2"]
+theka = ["tin", "tin", "na", "dhin", "na", "dhin", "na"]
+
+[tals.ektaal]
+sections = [2, 2, 2, 2, 2, 2]
+marks = ["X", "0", "2", "0", "3", "4"]
+theka = [
+  "dhin", "dhin", "dha ge", "te re ki te", "tun", "na",
+  "kat", "ta", "dha ge", "te re ki te", "dhin", "na",
+]
+
+# Carnatic chapu talas, counted by claps alone. Misra chapu as Råberg (Berklee, 2017): seven
+# beats as 3+4, claps on 1, 2, 4 and 6. Others count it as 14, or 3+2+2 with a wave; khanda
+# chapu waits for a source.
+["tals"."misra chapu"]
+sections = [3, 4]
+claps = [1, 2, 4, 6]

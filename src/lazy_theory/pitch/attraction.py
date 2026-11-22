@@ -18,7 +18,7 @@ tonic, by passing a Key built on that chord's root.
 
 from functools import cache
 
-from lazy_theory.core.key import Key
+from lazy_theory.pitch.key import Key
 
 
 @cache

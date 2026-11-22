@@ -11,7 +11,8 @@ Could grow into: partial capos, one tuning for a whole set of songs, and string 
 for a tuning.
 
 A tuning is just its open strings' pitches, so candidates are generated, not looked up: every
-way to retune each string within safe tension. Names come afterwards, from the catalog.
+way to retune each string within safe tension. Names come afterwards
+(`instruments.names.tuning_name`).
 
 Two passes. A cheap screen scores every retuning at every capo at once by how many open strings
 are chord tones, without building a voicing. Only the shortlist gets the full search: the
@@ -19,23 +20,24 @@ player's cheapest path through the progression, plus what the retuning costs and
 key's other chords sit on the same neck.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import replace
 from typing import NamedTuple
 
 import numpy as np
 
-from lazy_theory.catalog import Tuning
-from lazy_theory.core.chord import Chords
 from lazy_theory.instruments.arrays import Grid
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.taste import Taste
+from lazy_theory.pitch.chord import Chords
 
 # Tension rises with the square of frequency: 4 steps down leaves 63% of it, 2 up adds 26%.
 SAFE_STEPS = range(-4, 3)
 
 
 class Suggestion(NamedTuple):
+    """A retuning and capo, with the cheapest way to play the progression on that neck."""
+
     retuning: tuple[int, ...]  # steps each string moves from the base tuning
     capo: int
     path: Grid  # one voicing per chord, frets counted from the capo
@@ -122,18 +124,3 @@ def suggest(
     for _, _, sound, suggestion in sorted(found, key=lambda one: one[:2]):
         heard.setdefault(sound, suggestion)  # the same pitches from another tuning sound the same
     return list(heard.values())[:top]
-
-
-def name(open_strings: Grid, tunings: Mapping[str, Tuning]) -> str | None:
-    """The catalog's name for these open strings, or a named tuning moved by whole steps, e.g.
-    "guitar open D +2"; the smallest move wins."""
-    moved = {}
-    for tuning_name, tuning in tunings.items():
-        if len(tuning.open_strings) == len(open_strings):
-            shift = np.subtract(open_strings, tuning.open_strings)
-            if (shift == shift[0]).all():
-                moved[tuning_name] = int(shift[0])
-    if not moved:
-        return None
-    nearest = min(moved, key=lambda one: abs(moved[one]))
-    return nearest if moved[nearest] == 0 else f"{nearest} {moved[nearest]:+d}"

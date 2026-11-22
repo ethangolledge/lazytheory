@@ -2,9 +2,9 @@ import unittest
 
 import numpy as np
 
-from lazy_theory.core.chord import Chord, identify
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.core.scale import Scale
+from lazy_theory.pitch.chord import Chord, identify
+from lazy_theory.pitch.scale import Scale
 
 MAJOR, AUGMENTED = PitchClassSet((0, 4, 7)), PitchClassSet((0, 4, 8))
 SUS2, SUS4 = PitchClassSet((0, 2, 7)), PitchClassSet((0, 5, 7))

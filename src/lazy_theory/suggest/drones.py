@@ -19,13 +19,15 @@ from typing import NamedTuple
 
 import numpy as np
 
-from lazy_theory.core.chord import Chord, Chords
 from lazy_theory.instruments.arrays import MUTED, Grid, Mask
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.taste import Taste
+from lazy_theory.pitch.chord import Chord, Chords
 
 
 class Drone(NamedTuple):
+    """A note held on fixed strings through a run of chords, and the route that holds it."""
+
     strings: tuple[int, ...]  # every string held through the run: two make a double pedal
     frets: tuple[int, ...]  # where each is held
     first: int  # the first and last chord it is held through

@@ -22,31 +22,21 @@ from lazy_theory.core.temperament import EqualTemperament
 from lazy_theory.instruments.arrays import Floats
 
 
-def roughness(frequencies: Floats, harmonics: int = 11) -> Floats:
-    """Roughness of each row of frequencies (hertz, NaN for silent strings): Hutchinson &
-    Knopoff (1978), with the parameters Harrison & Pearce (2020) use.
+def roughness(
+    steps: Floats, hertz: float, temperament: EqualTemperament, harmonics: int = 11
+) -> Floats:
+    """Roughness of each row of notes, given as steps of `temperament` above `hertz` (NaN for a
+    silent string): Hutchinson & Knopoff (1978), with the parameters Harrison & Pearce (2020)
+    use.
 
     Each note is a harmonic tone with `harmonics` partials at amplitude 1/n. Two partials beat
     when they are less than 1.2 critical bandwidths apart, most at a quarter of one, and the
     critical bandwidth widens with frequency (1.72 * f ** 0.65 Hz), so the same interval is
     rougher lower down. Pairs are weighted by their amplitudes and normalised by total energy.
 
-    A fretboard has few distinct frequencies, so the beating between each pair of them is
-    computed once, and each voicing sums its notes' pairs from that table.
-    """
-    frequencies = np.sort(frequencies, axis=1)  # the same notes on other strings score the same
-    sounding = ~np.isnan(frequencies)
-    unique, note = np.unique(np.where(sounding, frequencies, 1.0), return_inverse=True)
-    return _total(_beating(unique, harmonics), note.reshape(frequencies.shape), sounding, harmonics)
-
-
-def tempered_roughness(
-    steps: Floats, hertz: float, temperament: EqualTemperament, harmonics: int = 11
-) -> Floats:
-    """`roughness` of notes given as steps of `temperament` above `hertz` (NaN for silent).
-
-    The same values, but the table of pairs covers whole octaves of steps and is kept, so
-    every neck tuned from the same pitch reuses it.
+    A neck has few distinct notes, so the beating between every pair of steps in the octaves
+    played is computed once and kept: every neck tuned from the same pitch reuses the table,
+    and each voicing only sums its notes' pairs from it.
     """
     steps = np.sort(steps, axis=1)
     sounding = ~np.isnan(steps)
@@ -71,7 +61,7 @@ def _tempered_beating(
 def _beating(frequencies: Floats, harmonics: int) -> Floats:
     """Amplitude-weighted beating between the partials of every pair of `frequencies`' tones,
     as [frequency, frequency]. Within one tone each pair of partials counts twice."""
-    amplitude = 1 / np.arange(1, harmonics + 1)
+    amplitude = _amplitudes(harmonics)
     partials = frequencies[:, None] * np.arange(1, harmonics + 1)  # [frequency, partial]
     low, high = partials[:, :, None, None], partials[None, None, :, :]
     distance = np.abs(high - low) / (1.72 * ((low + high) / 2) ** 0.65)
@@ -88,6 +78,12 @@ def _total(
     energy of its tones."""
     weight = sounding[:, :, None] & sounding[:, None, :]
     pairs = (pair[note[:, :, None], note[:, None, :]] * weight).sum(axis=(1, 2)) / 2
-    energy = ((1 / np.arange(1, harmonics + 1)) ** 2).sum()  # per tone, partials at 1/n
+    energy = (_amplitudes(harmonics) ** 2).sum()  # per tone
     rough: Floats = pairs / (np.maximum(sounding.sum(axis=1), 1) * energy)  # silence is smooth
     return rough
+
+
+def _amplitudes(harmonics: int) -> Floats:
+    """Each partial's amplitude in an ideal harmonic tone: 1/n."""
+    amplitudes: Floats = 1 / np.arange(1, harmonics + 1)
+    return amplitudes

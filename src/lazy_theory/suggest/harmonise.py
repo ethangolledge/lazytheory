@@ -25,10 +25,10 @@ from typing import NamedTuple
 
 import numpy as np
 
-from lazy_theory.core.chord import Chords
 from lazy_theory.instruments.arrays import Floats, Grid
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.taste import Taste
+from lazy_theory.pitch.chord import Chords
 
 
 def parallels(board: Fretboard, previous: Grid, following: Grid) -> Floats:
@@ -68,6 +68,7 @@ class MelodicTaste(Taste):
     contrary: float = 1.0  # reward when the top note and the bass move in opposite directions
 
     def transition(self, board: Fretboard, previous: Grid, following: Grid) -> Floats:
+        """`Taste.transition`, plus parallels as a cost and contrary motion as a reward."""
         cost: Floats = (
             super().transition(board, previous, following)
             + self.parallels * parallels(board, previous, following)
@@ -77,6 +78,8 @@ class MelodicTaste(Taste):
 
 
 class Harmony(NamedTuple):
+    """A harmonised melody: the chord chosen in each slot and how to play them all."""
+
     chords: tuple[int, ...]  # which of each slot's chords was chosen
     path: Grid  # one voicing per slot
     cost: float

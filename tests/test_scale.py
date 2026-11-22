@@ -1,7 +1,7 @@
 import unittest
 
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.core.scale import Scale
+from lazy_theory.pitch.scale import Scale
 
 IONIAN = Scale.from_steps((2, 2, 1, 2, 2, 2, 1))
 

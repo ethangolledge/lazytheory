@@ -6,7 +6,19 @@ import unittest
 from pathlib import Path
 
 PACKAGE = Path(__file__).parents[1] / "src" / "lazy_theory"
-LAYERS = ["core", "catalog", "instruments", "suggest"]  # lowest first; import only itself and below
+
+# What each package may import from the library. Pitch and rhythm are separate domains that share
+# only `core`'s circle maths; instruments play pitch; suggestions search instruments.
+ALLOWED = {
+    "core": {"core"},
+    "pitch": {"core", "data", "pitch"},
+    "rhythm": {"core", "data", "rhythm"},
+    "instruments": {"core", "data", "pitch", "instruments"},
+    "suggest": {"core", "pitch", "instruments", "suggest"},
+}
+# the modules that hold names; the maths beside them never imports them
+WORDS = {"catalog", "names"}
+STANDARD_LIBRARY_ONLY = {"core", "pitch", "rhythm"}
 
 
 def imports(path: Path) -> set[str]:
@@ -19,19 +31,35 @@ def imports(path: Path) -> set[str]:
     return modules
 
 
-class LayerTest(unittest.TestCase):
-    def test_every_layer_is_listed(self):
-        found = {path.name for path in PACKAGE.iterdir() if (path / "__init__.py").exists()}
-        self.assertEqual(found, set(LAYERS))
+def library(path: Path) -> list[list[str]]:
+    """The library modules `path` imports, each as its parts after "lazy_theory"."""
+    return [m.split(".")[1:] for m in imports(path) if m.startswith("lazy_theory.")]
 
-    def test_layers_only_import_downwards(self):
-        for layer in LAYERS:
-            allowed = LAYERS[: LAYERS.index(layer) + 1]
-            for path in (PACKAGE / layer).glob("*.py"):
-                for module in imports(path):
-                    if module.startswith("lazy_theory."):
-                        with self.subTest(file=path.name, imports=module):
-                            self.assertIn(module.split(".")[1], allowed)
+
+class LayerTest(unittest.TestCase):
+    def test_every_package_is_listed(self):
+        found = {path.name for path in PACKAGE.iterdir() if (path / "__init__.py").exists()}
+        self.assertEqual(found, set(ALLOWED))
+
+    def test_packages_import_only_what_they_may(self):
+        for package, allowed in ALLOWED.items():
+            for path in (PACKAGE / package).glob("*.py"):
+                for parts in library(path):
+                    with self.subTest(file=f"{package}/{path.name}", imports=".".join(parts)):
+                        self.assertIn(parts[0], allowed)
+
+    def test_maths_never_imports_words(self):
+        for package in ALLOWED:
+            for path in (PACKAGE / package).glob("*.py"):
+                if path.stem in WORDS:
+                    continue
+                for parts in library(path):
+                    with self.subTest(file=f"{package}/{path.name}", imports=".".join(parts)):
+                        same_package = parts[0] == package
+                        self.assertFalse(same_package and parts[-1] in WORDS)
+
+    def test_the_data_reader_imports_nothing_of_the_library(self):
+        self.assertEqual(library(PACKAGE / "data.py"), [])
 
     def test_no_import_cycles(self):
         graph = {
@@ -54,12 +82,13 @@ class LayerTest(unittest.TestCase):
         for module in graph:
             visit(module, ())
 
-    def test_core_uses_only_the_standard_library(self):
-        for path in (PACKAGE / "core").glob("*.py"):
-            for module in imports(path):
-                root = module.split(".")[0]
-                with self.subTest(file=path.name, imports=module):
-                    self.assertIn(root, sys.stdlib_module_names | {"lazy_theory"})
+    def test_pitch_rhythm_and_core_use_only_the_standard_library(self):
+        for package in STANDARD_LIBRARY_ONLY:
+            for path in (PACKAGE / package).glob("*.py"):
+                for module in imports(path):
+                    root = module.split(".")[0]
+                    with self.subTest(file=f"{package}/{path.name}", imports=module):
+                        self.assertIn(root, sys.stdlib_module_names | {"lazy_theory"})
 
 
 if __name__ == "__main__":

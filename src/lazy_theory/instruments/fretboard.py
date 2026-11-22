@@ -9,7 +9,7 @@ A capo, a retuning or a 31-step neck is the same code with another number.
 Theory it speaks to: Mersenne's law (a fret leaves 1/ratio of the string sounding, so frets
 get closer up the neck and reach is measured in millimetres, not frets), and the two
 directions of harmony on an instrument: voicing (a chord into shapes) and reading (a shape
-back into chords, by `core.chord.identify`).
+back into chords, by `pitch.chord.identify`).
 
 Could grow into: fingerings (which finger on which note: `rules.placeable` already finds one
 to prove a shape fits), fanned frets and per-string scale lengths, harmonics and bends as
@@ -21,19 +21,26 @@ column per fret (0 = open). A voicing grid has one row per voicing and one fret,
 string.
 """
 
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
 
-from lazy_theory.catalog import Tuning
-from lazy_theory.core.chord import Chord, Chords, Rooted, identify
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.temperament import EqualTemperament
 from lazy_theory.instruments.arrays import MUTED, Floats, Grid, Mask
+from lazy_theory.pitch.chord import Chord, Chords, Rooted, identify
+
+
+class Tuning(NamedTuple):
+    """A named tuning: its open strings, the neck they sit on and the pitch it is tuned from."""
+
+    open_strings: tuple[int, ...]  # pitch of each open string, steps above C0
+    scale_length: float  # millimetres from nut to bridge
+    hertz: float  # frequency of pitch 0 (C0), from the file's reference
 
 
 @dataclass(frozen=True, eq=False)
@@ -54,6 +61,7 @@ class Fretboard:
 
     @classmethod
     def from_tuning(cls, tuning: Tuning, frets: int = 24) -> Fretboard:
+        """The neck a catalog tuning describes."""
         return cls(np.array(tuning.open_strings), tuning.scale_length, tuning.hertz, frets)
 
     def capo(self, fret: int) -> Fretboard:
@@ -72,6 +80,7 @@ class Fretboard:
 
     @property
     def size(self) -> int:
+        """Steps per period."""
         return self.temperament.size
 
     @cached_property
@@ -151,7 +160,7 @@ class Fretboard:
 
     def readings(self, frets: Grid, patterns: Collection[PitchClassSet]) -> list[list[Chord]]:
         """Every chord each voicing could be, the inverse of `voicings`: its notes read as
-        each of `patterns` on each of its own notes as root (`core.chord.identify`), with the
+        each of `patterns` on each of its own notes as root (`pitch.chord.identify`), with the
         voicing's lowest note written as the bass unless that is the root. Choosing between
         readings is the caller's: the one with no bass written sits on its root."""
         read: dict[tuple[bytes, float], list[Chord]] = {}
@@ -175,8 +184,7 @@ class Fretboard:
         return chroma
 
     def notes(self, frets: Grid) -> Floats:
-        """Pitch of each string in each voicing, in steps above C0; NaN where
-        muted."""
+        """Pitch of each string in each voicing, in steps above C0; NaN where muted."""
         notes: Floats = np.where(frets != MUTED, self.open_strings + frets, np.nan)
         return notes
 
@@ -192,11 +200,6 @@ class Fretboard:
         top: Floats = np.fmax.reduce(notes, axis=1, initial=np.nan)
         return top
 
-    def frequencies(self, frets: Grid) -> Floats:
-        """Frequency of each string in each voicing, in hertz; NaN where muted."""
-        frequencies: Floats = self.hertz * self.temperament.ratio(self.notes(frets))
-        return frequencies
-
     def stack(self, frets: Grid, root: int) -> Grid:
         """Intervals above `root` of each voicing's notes, lowest pitch first, then MUTED.
 
@@ -208,7 +211,7 @@ class Fretboard:
         stack: Grid = intervals.astype(np.int16)
         return stack
 
-    def _tones(self, sets: Chords | list[Rooted[Any]]) -> Mask:
+    def _tones(self, sets: Sequence[Rooted[Any]]) -> Mask:
         """Which pitch classes each chord or key holds, as [set, pitch class]: the same form
         as `chroma`, so a voicing is checked against its chord by comparing rows."""
         tones = np.zeros((len(sets), self.size), dtype=bool)

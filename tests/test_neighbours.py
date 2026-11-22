@@ -2,12 +2,13 @@ import unittest
 
 import numpy as np
 
-from lazy_theory.catalog import load_chords, load_scales, load_tunings
-from lazy_theory.core.chord import Chord
-from lazy_theory.core.key import Key
 from lazy_theory.instruments.arrays import MUTED
+from lazy_theory.instruments.catalog import load_tunings
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.taste import Taste
+from lazy_theory.pitch.catalog import load_chords, load_scales
+from lazy_theory.pitch.chord import Chord
+from lazy_theory.pitch.key import Key
 from lazy_theory.suggest.drones import drones
 from lazy_theory.suggest.neighbours import named, one_finger, passing
 

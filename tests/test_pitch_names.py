@@ -2,8 +2,11 @@ import unittest
 from dataclasses import replace
 from itertools import combinations
 
-from lazy_theory.catalog import load_chords, load_scales, pitch, pitch_class
-from lazy_theory.catalog.names import (
+from lazy_theory.core.pcset import PitchClassSet
+from lazy_theory.pitch.catalog import load_chords, load_scales, pitch, pitch_class
+from lazy_theory.pitch.chord import Chord
+from lazy_theory.pitch.key import Key
+from lazy_theory.pitch.names import (
     chord_symbol,
     chord_tone_names,
     degree_names,
@@ -14,11 +17,7 @@ from lazy_theory.catalog.names import (
     pitch_name,
     quality,
     step_names,
-    tab,
 )
-from lazy_theory.core.chord import Chord
-from lazy_theory.core.key import Key
-from lazy_theory.core.pcset import PitchClassSet
 
 SCALES, CHORDS = load_scales(), load_chords()
 
@@ -183,9 +182,21 @@ class ParseChordTest(unittest.TestCase):
                         read = parse_chord(chord_symbol(chord))  # a bass on the root isn't written
                         self.assertEqual(read, Chord(pattern, root, None if bass == root else bass))
 
+    def test_every_set_of_notes_reads_back(self):
+        for size in range(12):  # all 2047 chords on C: named, core plus added, or listed
+            for rest in combinations(range(1, 12), size):
+                chord = Chord(PitchClassSet((0, *rest)), 0)
+                with self.subTest(written=chord_symbol(chord)):
+                    self.assertEqual(parse_chord(chord_symbol(chord)), chord)
+
     def test_extensions_and_flats(self):
         parsed = parse_chord("Bbm7(b9)/Db")
         self.assertEqual(parsed, Chord(PitchClassSet((0, 1, 3, 7, 10)), 10, bass=1))
+
+    def test_a_bracketed_chord_tone_alters_it(self):
+        self.assertEqual(parse_chord("Bbm7(b5)"), parse_chord("Bbm7b5"))
+        self.assertEqual(parse_chord("C7(#5)").pattern, PitchClassSet((0, 4, 8, 10)))
+        self.assertEqual(parse_chord("C7(b9)").pattern, PitchClassSet((0, 1, 4, 7, 10)))  # added
 
     def test_numerals_in_a_key(self):
         e_phrygian = key("Phrygian", "E")
@@ -207,15 +218,6 @@ class ChordToneTest(unittest.TestCase):
         self.assertEqual(chord_tone_names(PitchClassSet((0, 4, 7, 9))), ("1", "3", "5", "6"))
         self.assertEqual(
             chord_tone_names(PitchClassSet((0, 4, 7, 9, 10))), ("1", "3", "5", "13", "b7")
-        )
-
-
-class TabTest(unittest.TestCase):
-    def test_highest_string_on_top_one_column_per_chord(self):
-        text = tab([28, 33, 38, 43, 47, 52], [[-1, 3, 2, 0, 1, 0], [0, 2, 2, 0, 0, 0]], ["C", "Em"])
-        self.assertEqual(
-            text.splitlines(),
-            ["   C  Em", "E |0  0", "B |1  0", "G |0  0", "D |2  2", "A |3  2", "E |x  0"],
         )
 
 

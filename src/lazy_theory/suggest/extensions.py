@@ -10,14 +10,14 @@ triads (three neighbouring notes of the stack), and which extensions a melody no
 Stacking a seven-note scale in thirds from any degree gives 1 3 5 7 9 11 13; the 13th chord is
 the whole scale. An extended chord keeps a core, the root and third that give its quality, and
 adds any of the rest: every add9, seventh, ninth, eleventh and thirteenth is one of those.
-`catalog.names.stack_spelling` names their notes by place in the stack ("1 b3 5 b9").
+`pitch.names.stack_spelling` names their notes by place in the stack ("1 b3 5 b9").
 """
 
 from itertools import combinations
 
-from lazy_theory.core.chord import Chord
-from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
+from lazy_theory.pitch.chord import Chord
+from lazy_theory.pitch.key import Key
 
 
 def extended(key: Key, degree: int, core: int = 2, most: int = 5) -> list[Chord]:

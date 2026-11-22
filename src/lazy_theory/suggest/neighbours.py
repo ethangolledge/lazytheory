@@ -22,16 +22,18 @@ from typing import NamedTuple
 
 import numpy as np
 
-from lazy_theory.catalog import chord_names
-from lazy_theory.core.attraction import anchoring
-from lazy_theory.core.chord import Chord
-from lazy_theory.core.key import Key
 from lazy_theory.instruments.arrays import MUTED, Grid
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.taste import Taste
+from lazy_theory.pitch.attraction import anchoring
+from lazy_theory.pitch.catalog import chord_names
+from lazy_theory.pitch.chord import Chord
+from lazy_theory.pitch.key import Key
 
 
 class Neighbour(NamedTuple):
+    """A nearby shape, the chord it plays, and how far the fingers moved to reach it."""
+
     frets: Grid  # one row: a fret or MUTED per string
     chord: Chord  # with the shape's bass written, unless it is the root
     steps: int  # semitones moved in all, from the shape it was found from
@@ -40,7 +42,7 @@ class Neighbour(NamedTuple):
 def named(board: Fretboard, voicings: Grid, key: Key | None = None) -> list[Chord | None]:
     """The chord each voicing plays, read from the catalog's patterns; None where no pattern
     fits. Of several readings (F A B D is Bm7b5 or Dm6), the one rooted on the bass; failing
-    that, with `key`, the one whose root is steadiest in the key (`core.attraction.anchoring`:
+    that, with `key`, the one whose root is steadiest in the key (`pitch.attraction.anchoring`:
     tonic, then the rest of the home chord, then the scale); else the first."""
     steady = anchoring(key) if key else None
     chords: list[Chord | None] = []

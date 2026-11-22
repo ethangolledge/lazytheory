@@ -2,12 +2,12 @@
 
 import unittest
 
-from lazy_theory.catalog import chord_names, load_chords, load_scales
-from lazy_theory.core.chord import Chord, identify
-from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.core.scale import Scale
-from lazy_theory.core.voice_leading import voice_leading
+from lazy_theory.pitch.catalog import chord_names, load_chords, load_scales
+from lazy_theory.pitch.chord import Chord, identify
+from lazy_theory.pitch.key import Key
+from lazy_theory.pitch.scale import Scale
+from lazy_theory.pitch.voice_leading import voice_leading
 
 SCALES = load_scales()
 CHORDS = load_chords()

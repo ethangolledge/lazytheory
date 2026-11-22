@@ -14,8 +14,8 @@ and secondary dominants as `Key(scale, chord.root).chord(4)`.
 
 from dataclasses import dataclass
 
-from lazy_theory.core.chord import Chord, Rooted
-from lazy_theory.core.scale import Scale
+from lazy_theory.pitch.chord import Chord, Rooted
+from lazy_theory.pitch.scale import Scale
 
 
 @dataclass(frozen=True)

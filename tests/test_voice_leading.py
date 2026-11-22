@@ -3,7 +3,7 @@ import unittest
 from itertools import product
 
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.core.voice_leading import Move, voice_leading
+from lazy_theory.pitch.voice_leading import Move, voice_leading
 
 C_MAJOR = PitchClassSet((0, 4, 7))
 G_SEVENTH = PitchClassSet((7, 11, 2, 5))

@@ -494,6 +494,110 @@ cycle (2+4 in its common form).
 The *tihāī* (a phrase played three times so that it lands on sam) is a structural device whose
 length is pure arithmetic.
 
+**[math]** *A rhythm is a set on a circle.* Where notes start in a cycle of N pulses is a subset
+of the integers mod N, exactly as a scale is a subset of the 12 steps (Toussaint 2013). The gaps
+between onsets are its step pattern; displacing it is transposition; two rhythms are the same
+pattern started elsewhere when they are rotations of each other (the same *necklace*). The
+Euclidean rhythms are the maximally even sets of §5 (Demaine et al. 2009): E(3,8) is the
+tresillo `3 3 2`, E(5,8) the cinquillo, and E(7,12) the West African bembé bell, whose gaps
+`2 2 1 2 2 2 1` are the major scale's steps. A set is maximally even exactly when every span
+(the distance covering k onsets, for each k) comes in one size or two consecutive sizes
+(Clough & Douthett 1991); how far a rhythm is from that is a measure of its unevenness.
+
+**[math]** *A meter is groups inside groups.* The cycle splits into groups, each group splits
+again, down to the pulse. Two rules do every split. Heard as a meter, a multiple of 3 is
+compound: beats of 3, themselves grouped (9 = 3+3+3, 12 = 6+6 then 3s, 15 = 6+9 then five 3s);
+anything else splits in two, the shorter half first, until the groups are 2s and 3s
+(4 = 2+2, 7 = 3+4 then 3+2+2). Spoken, every group splits in two, so konnakol's nine is 4+5
+(*ta ka di mi ta ka ta ki ṭa*), where Western 9/8 is 3+3+3: the same number heard two ways, so
+the rule is a parameter, not a fact. A pulse's *metrical weight* is how many levels start a
+group on it, which reproduces Longuet-Higgins & Lee's 4/4 weights (1984). Beats split
+differently (a quintuplet among sixteenths) share a grid of the least common multiple of their
+divisions, so every position stays an integer.
+
+**[math]** *Syncopation* (Longuet-Higgins & Lee 1984): a note followed by a silence stronger
+than itself, before the next note, adds the difference in weight. Rhythms on the meter's own
+levels score 0.
+
+**[math]** *Counting fills.* The ordered ways to fill n pulses with parts from a set P satisfy
+`c(n) = Σ c(n − p)`. With parts 1 and 2 these are the Fibonacci numbers, known to Indian
+prosodists (Pingala, Hemachandra) as the count of metres of short and long syllables; with 2
+and 3, the Padovan numbers: 7 pulses have exactly three groupings, 2+2+3, 2+3+2, 3+2+2.
+
+**[math]** *Cadences are linear equations.* Three statements of p pulses with two gaps of g fill
+`3p + 2g`. For 16, the only solutions are (4, 2) and (2, 5). A tihai of tihais (*chakradār*)
+fills `9p + 6g + 2G` (65 = 64 + 1 in Tīntāl: a phrase of 7 nine times, one pulse between the
+tihais). Statements growing or shrinking by d (*yati*: srotovaha, gopuccha) fill
+`k·a + d·k(k−1)/2`. One solver lists every whole-number answer. Traditions count the landing
+two ways: the last note *on* sam (Jhaptaal: 21 = 2 × 10 + 1) or the phrase ending *before* sam
+(16 over 16), so the code asks which. A trio of equal or evenly growing parts always spans a
+multiple of 3, so in a cycle of 12 it can never start on sam and land 1 or 2 pulses later
+(Krishnaswamy & Wells 2023).
+
+**[math]** *A phrase is three layers.* Spoken rhythm has a pulse, the syllables that sound on it,
+and the words the syllables form, whose first syllables are the accents: "ta-ka-di-mi ta-ki-ta"
+is seven onsets and two accents. A held syllable (*karvai*) is a longer duration, a gap a
+silent token; words group into larger groups (the three statements of a tihai). The same tokens
+can be regrouped (*gati bhedam*: a stream of 4s heard in 3s), played faster or slower (*kalam*:
+every length halved or doubled), reversed, have their parts reordered (the *palta* of a qa'ida,
+Kippen & Bel), or their sounds swapped (khali). Onsets and accents are each an ordinary rhythm
+set, so every measure here applies to either.
+
+**[convention]** *A cycle kept by hand.* A tāla is kept by gestures: in Carnatic music a laghu is a
+clap then a finger counted on each beat, a drutam a clap and a wave, an anudrutam a clap; in
+Hindustani music each vibhāg starts with a clap (sam marked X, then numbers) or a wave (khālī,
+0). The gesture is a label, not a strength: khālī starts a section, yet it is the "empty" one,
+played without the bass (Tīntāl's third section, *dha tin tin ta*).
+
+**[math]** *Guest over host.* A repeating pattern laid over a meter disagrees with it in two
+ways (Krebs 1999). A *grouping dissonance* G a/b: groups of a against groups of b, where neither
+divides the other, counted in their largest common unit (every 3rd beat over a 4/4 bar is G3/4;
+a hemiola is G3/2). A *displacement dissonance* D a+k: the same groups, shifted k units (late)
+or −k (early). A G meets the host again after lcm(a, b) units (G3/4 after 12 beats); a D never
+does. When only the guest sounds, the listener hears it against the meter they expect: Krebs'
+*subliminal* dissonance.
+
+**[physics]** *A stroke is two heads.* Most hand drums are a low head and a high head (or one
+head struck low and high), each left to ring or damped; tabla strokes sort into exactly these
+classes: damped, resonant treble, resonant bass, resonant both (Rohit & Rao 2021). Size sets the
+pitch and damping the decay, so a stroke is two numbers and its sound follows from them.
+
+**[convention]** *The bass marks the cycle.* A tabla theka drops the bass in its khali section,
+so the listener hears where the cycle is from timbre alone. The default voicing here follows it:
+the bass on notes that start a group above the count, the open high head on a count or an
+inner group's start (the 3 of a five felt 2+3), a damped high head on any other note. Only notes
+sound: a stroke on every silent point would bury the rhythm under its grid.
+
+**[math]** *Timelines.* An ensemble often keeps time by a bell or clave pattern rather than a
+pulse. Toussaint (2002) scores six 16-pulse timelines by metric complexity, 17 minus the sum of
+Lerdahl & Jackendoff's weights (the weights of §10's 4/4 in sixteenths): shiko 2, son 4, rumba 5,
+gahu 5, soukous 6, bossa-nova 6. Shiko and bossa-nova are palindromes, son is one about pulse 3,
+and bossa-nova is maximally even.
+
+**[math]** *Interlocking parts.* In Balinese kotekan each of two parts fills the other's gaps,
+so the second part is the complement of the first on the grid; a sparser answer puts one note in
+each gap, where the halving rule splits it. A *cadence* is a tihai built from a rhythm's own
+opening: its first p pulses three times, g apart, with 3p + 2g filling the cycle.
+
+**[convention]** Spoken words: 1 *ta*, 2 *ta ka*, 3 *ta ki ta*, 4 *ta ka di mi*; a longer group
+is spoken as its two halves by the spoken rule above, which gives the jāti words in the table.
+Syllable spellings differ by school and are data.
+
+**[convention]** *Syllables say one of three things.* Konnakol says the place in the group (*ta-ki-ta*
+is a group of three, whatever the beat). Takadimi (Hoffman, Pelto & White 1996) and "1 e & a"
+say the place in the beat (*di* is always the middle). Tabla bols and taiko's kuchi shōga say
+the sound (*dha* both drums open, *na* the treble ringing, *ti* damped; Rohit & Rao 2021 class
+the bols this way). So one phrase can be spoken in any of them, and they differ only in what
+the syllable is chosen by.
+
+**[math]** *Measures of hearing.* The nPVI (Patel & Daniele 2003) is how much each duration
+differs from the next; English instrumental themes score higher than French ones, as the two
+languages' speech does, so it measures how speech-like a rhythm is. People synchronise with
+events down to about 100 ms apart (Repp 2006); a faster level is texture, not count. A meter
+of uneven beats is heard as one when its beats are maximally even in the grid (London 2012;
+Polak & London 2014): 3+2+2 and 3+3+2, not 4+1+2. Medium syncopation draws the most desire to
+move (Witek et al. 2014), so syncopation is shown, never maximised.
+
 ## Glossary
 
 | Term | Meaning here |
@@ -513,12 +617,17 @@ length is pure arithmetic.
 | **voice leading** | Pairing the notes of one chord with the next; its distance is the total movement |
 | **tonicization** | Treating a chord root as a temporary home to derive chords around it |
 | **cycle** | A repeating rhythmic frame of N beats |
+| **pulse** | The finest grid point of a cycle; rhythms are sets of pulses |
+| **onset** | A pulse where a note starts |
+| **meter** | A cycle as groups inside groups; it says which pulses are strong |
+| **host / guest** | The meter, and a repeating pattern laid over it |
 
 ## References
 
 - Clough, J. & Douthett, J. (1991). Maximally even sets. *Journal of Music Theory* 35.
 - Cohn, R. (1997). Neo-Riemannian operations, parsimonious trichords, and their *Tonnetz*
   representations. *Journal of Music Theory* 41.
+- Demaine, E. et al. (2009). The distance geometry of music. *Computational Geometry* 42(5).
 - Harrison, P. & Pearce, M. (2020). Simultaneous consonance in music perception and
   composition. *Psychological Review* 127(2).
 - Harrison, P. & Pearce, M. (2020). A computational cognitive model for the analysis and
@@ -531,7 +640,11 @@ length is pure arithmetic.
   *Interface* 7.
 - Jacoby, N. et al. (2019). Universal and non-universal features of musical pitch perception
   revealed by singing. *Current Biology* 29.
+- Krebs, H. (1999). *Fantasy Pieces: Metrical Dissonance in the Music of Robert Schumann*.
+  Oxford University Press.
 - Lerdahl, F. & Krumhansl, C. (2007). Modeling tonal tension. *Music Perception* 24(4).
+- Longuet-Higgins, H. C. & Lee, C. (1984). The rhythmic interpretation of monophonic music.
+  *Music Perception* 1(4).
 - McDermott, J., Lehr, A. & Oxenham, A. (2010). Individual differences reveal the basis of
   consonance. *Current Biology* 20.
 - McDermott, J. et al. (2016). Indifference to dissonance in native Amazonians reveals cultural
@@ -539,5 +652,25 @@ length is pure arithmetic.
 - Parncutt, R. (1988). Revision of Terhardt's model of the root(s) of a musical chord.
   *Music Perception* 6.
 - Plomp, R. & Levelt, W. (1965). Tonal consonance and critical bandwidth. *JASA* 38.
+- Rohit, M. A. & Rao, P. (2021). Automatic stroke classification of tabla accompaniment in
+  Hindustani vocal concert audio. arXiv:2104.09064.
 - Sethares, W. (2005). *Tuning, Timbre, Spectrum, Scale*. Springer.
+- Toussaint, G. (2002). A mathematical analysis of African, Brazilian, and Cuban clave rhythms.
+  *Bridges* 2002.
+- Toussaint, G. (2013). *The Geometry of Musical Rhythm*. CRC Press.
+- Hoffman, R., Pelto, W. & White, J. (1996). Takadimi: a beat-oriented system of rhythm
+  pedagogy. *Journal of Music Theory Pedagogy* 10.
+- Kippen, J. & Bel, B. (1992). Bol Processor grammars. In *Understanding Music with AI*. AAAI
+  Press.
+- Krishnaswamy, A. & Wells, R. (2023). The mathematics of the Carnatic kōrvai.
+- London, J. (2012). *Hearing in Time: Psychological Aspects of Musical Meter* (2nd ed.). Oxford
+  University Press.
+- Patel, A. & Daniele, J. (2003). An empirical comparison of rhythm in language and music.
+  *Cognition* 87.
+- Polak, R. & London, J. (2014). Timing and meter in Mande drumming from Mali. *Music Theory
+  Online* 20(1).
+- Repp, B. (2006). Rate limits of sensorimotor synchronization. *Advances in Cognitive
+  Psychology* 2.
+- Witek, M. et al. (2014). Syncopation, body-movement and pleasure in groove music. *PLoS ONE*
+  9(4).
 - Tymoczko, D. (2011). *A Geometry of Music*. Oxford University Press.

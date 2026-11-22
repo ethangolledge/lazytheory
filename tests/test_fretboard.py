@@ -2,14 +2,14 @@ import unittest
 
 import numpy as np
 
-from lazy_theory.catalog import load_tunings
-from lazy_theory.core.chord import Chord
-from lazy_theory.core.key import Key
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.core.scale import Scale
 from lazy_theory.core.temperament import EqualTemperament
 from lazy_theory.instruments.arrays import MUTED
+from lazy_theory.instruments.catalog import load_tunings
 from lazy_theory.instruments.fretboard import Fretboard
+from lazy_theory.pitch.chord import Chord
+from lazy_theory.pitch.key import Key
+from lazy_theory.pitch.scale import Scale
 
 X = MUTED
 TUNINGS = load_tunings()
@@ -88,11 +88,15 @@ class PhysicsTest(unittest.TestCase):
     def test_frets_get_closer_up_the_neck(self):
         self.assertTrue((np.diff(STANDARD.fret_distance, n=2) < 0).all())
 
-    def test_frequencies(self):
-        open_strings = STANDARD.frequencies(rows([0, 0, 0, 0, 0, 0]))[0]
-        self.assertAlmostEqual(open_strings[0], 82.41, places=2)  # E2
-        self.assertAlmostEqual(open_strings[1], 110.0)  # A2
-        self.assertTrue(np.isnan(STANDARD.frequencies(rows([X, 0, 0, 0, 0, 0]))[0, 0]))
+    def test_notes(self):
+        open_strings = STANDARD.notes(rows([0, 0, 0, 0, 0, 0]))[0]
+        self.assertAlmostEqual(
+            STANDARD.hertz * STANDARD.temperament.ratio(open_strings[0]), 82.41, places=2
+        )  # E2
+        self.assertAlmostEqual(
+            STANDARD.hertz * STANDARD.temperament.ratio(open_strings[1]), 110.0
+        )  # A2
+        self.assertTrue(np.isnan(STANDARD.notes(rows([X, 0, 0, 0, 0, 0]))[0, 0]))
 
     def test_familiar_shapes_are_found(self):
         self.assertTrue(contains_row(STANDARD.voicings(Chord(MAJOR, C), REACH), [X, 3, 2, 0, 1, 0]))
@@ -148,8 +152,8 @@ class CapoTest(unittest.TestCase):
             self.CAPO_2.fret_distance, STANDARD.fret_distance[2:] - STANDARD.fret_distance[2]
         )
         np.testing.assert_allclose(
-            self.CAPO_2.frequencies(rows([0, 0, 0, 0, 0, 0], [3, X, X, X, X, 1])),
-            STANDARD.frequencies(rows([2, 2, 2, 2, 2, 2], [5, X, X, X, X, 3])),
+            self.CAPO_2.notes(rows([0, 0, 0, 0, 0, 0], [3, X, X, X, X, 1])),
+            STANDARD.notes(rows([2, 2, 2, 2, 2, 2], [5, X, X, X, X, 3])),
         )
 
     def test_open_shapes_move_with_the_capo(self):

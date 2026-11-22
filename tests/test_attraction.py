@@ -1,8 +1,8 @@
 import unittest
 
-from lazy_theory.catalog import load_scales, pitch
-from lazy_theory.core.attraction import anchoring, attraction
-from lazy_theory.core.key import Key
+from lazy_theory.pitch.attraction import anchoring, attraction
+from lazy_theory.pitch.catalog import load_scales, pitch
+from lazy_theory.pitch.key import Key
 
 C_MAJOR = Key(load_scales()["Ionian"], 0)
 

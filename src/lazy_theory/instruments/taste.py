@@ -15,7 +15,7 @@ here, not hidden, because they are choices, not measurements.
 Could grow into: weights fitted to how people actually play (tabs give thousands of real
 chord changes to rank), tastes per style, and costs on the outer voices or on fingering
 changes. To add a rule or a cost, subclass and extend `allows`, `standing` or `transition`
-with `super()`: every search that takes a Taste then uses it (`suggest.melody.MelodicTaste`).
+with `super()`: every search that takes a Taste then uses it (`suggest.harmonise.MelodicTaste`).
 """
 
 from collections.abc import Callable
@@ -24,8 +24,7 @@ from functools import partial
 
 import numpy as np
 
-from lazy_theory.core.chord import Chord, Chords
-from lazy_theory.instruments.acoustics import tempered_roughness
+from lazy_theory.instruments.acoustics import roughness
 from lazy_theory.instruments.arrays import Floats, Grid, Mask
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import (
@@ -40,6 +39,7 @@ from lazy_theory.instruments.rules import (
     within,
 )
 from lazy_theory.instruments.trellis import Route, Trellis
+from lazy_theory.pitch.chord import Chord, Chords
 
 
 @dataclass(frozen=True)
@@ -96,7 +96,7 @@ class Taste:
 
     def standing(self, board: Fretboard, voicings: Grid) -> Floats:
         """Cost of each voicing on its own."""
-        rough = tempered_roughness(board.notes(voicings), board.hertz, board.temperament)
+        rough = roughness(board.notes(voicings), board.hertz, board.temperament)
         reward = self.sounding * sounding(voicings) + self.ringing * ringing(voicings)
         cost: Floats = self.roughness * rough - reward
         return cost

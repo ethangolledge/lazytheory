@@ -57,4 +57,5 @@ class EqualTemperament:
         return self.size * log(ratio, float(self.period))
 
     def cents(self, step: float) -> float:
+        """Size of `step` steps in cents: 100 a step in twelve to the octave."""
         return ratio_to_cents(self.ratio(step))

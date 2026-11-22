@@ -34,6 +34,8 @@ _CELLS = 4_000_000  # most search x voicing x voicing cells held at once (32 MB 
 
 
 class Route(NamedTuple):
+    """One way through a progression: a voicing per chord and what it costs in all."""
+
     path: Grid  # one voicing per chord
     cost: float
     picks: tuple[int, ...]  # the row of each chord's options that was chosen
@@ -201,7 +203,8 @@ def _advance(total: Floats, step: Floats, cost: Floats) -> tuple[Floats, Picks]:
     ([search, voicing]), the cheapest total at each voicing of the next chord, and which
     voicing each was reached from."""
     reach = total[:, :, None] + step
-    return reach.min(axis=1) + cost, reach.argmin(axis=1)
+    came = reach.argmin(axis=1)
+    return np.take_along_axis(reach, came[:, None, :], axis=1)[:, 0] + cost, came
 
 
 def _trace(back: Sequence[Picks], last: Picks) -> Picks:

@@ -2,22 +2,23 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lazy_theory.catalog import (
+from lazy_theory.instruments.catalog import load_tunings
+from lazy_theory.pitch.catalog import (
     accidentals,
     alteration,
     chord_names,
     load_chords,
     load_scales,
     load_symbols,
-    load_tunings,
     pitch,
     pitch_class,
 )
-from lazy_theory.core.chord import identify
-from lazy_theory.core.temperament import EqualTemperament
+from lazy_theory.pitch.chord import identify
 
 SCALES = load_scales()
+
 CHORDS = load_chords()
+
 TUNINGS = load_tunings()
 
 
@@ -53,18 +54,6 @@ class BundledCatalogTest(unittest.TestCase):
         scale = SCALES["Major Pentatonic"]
         for degree in range(len(scale)):
             self.assertTrue(identify(scale.chord(degree), chord_names()), degree)
-
-    def test_tunings_are_open_string_pitches(self):
-        self.assertEqual(TUNINGS["guitar standard"].open_strings, (28, 33, 38, 43, 47, 52))
-        self.assertEqual(TUNINGS["guitar drop D"].open_strings[0], pitch("D2"))
-        self.assertEqual(TUNINGS["ukulele standard"].open_strings, (55, 48, 52, 57))  # re-entrant
-
-    def test_tunings_know_their_frequency_and_length(self):
-        guitar, bass = TUNINGS["guitar standard"], TUNINGS["bass standard"]
-        e2 = guitar.hertz * EqualTemperament().ratio(guitar.open_strings[0])
-        self.assertAlmostEqual(e2, 82.407, places=3)  # from A4 = 440 Hz
-        self.assertEqual(bass.open_strings[0], guitar.open_strings[0] - 12)  # E1
-        self.assertEqual((guitar.scale_length, bass.scale_length), (648.0, 864.0))
 
 
 class NoteTest(unittest.TestCase):
@@ -116,14 +105,6 @@ class CustomCatalogTest(unittest.TestCase):
         path = self.write_toml('[a]\nsteps = [6, 6]\nmodes = ["A", "B", "C"]\n')
         with self.assertRaises(ValueError):
             load_scales(path)
-
-    def test_tuning_needs_an_octave(self):
-        path = self.write_toml(
-            'reference = { note = "A4", hertz = 440.0 }\n'
-            '[lute]\nscale_length = 600.0\ntunings.old = { first = "G", gaps = [5] }\n'
-        )
-        with self.assertRaises(ValueError):
-            load_tunings(path)
 
     def test_rejects_duplicate_chord(self):
         path = self.write_toml('size = 12\n[chords]\n"major" = [0, 4, 7]\n"big" = [0, 7, 4]\n')

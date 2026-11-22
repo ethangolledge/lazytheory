@@ -7,7 +7,8 @@ instrument. The only letter you ever give is the root. This repo models music th
 built on the physics of sound, derived with maths, with every cultural convention swappable.
 
 The goal is a web app where pianists, guitarists, bassists and anyone else can explore scales,
-chords, melody and rhythm, and learn why they work.
+chords, melody and rhythm, and learn why they work. Today the instruments modelled are fretted
+(guitar, bass, ukulele); keyboards are not modelled yet.
 
 ## Principles
 
@@ -38,12 +39,18 @@ uv run mypy                                 # type check (strict, src only)
 
 The same checks run on every push (`.github/workflows/checks.yml`).
 
+## Front end
+
+There isn't one yet: it is being redesigned. What it should look and feel like is in
+[docs/design.md](docs/design.md).
+
 ## Example
 
 ```python
-from lazy_theory.catalog import load_chords, load_scales, load_tunings, pitch_class
-from lazy_theory.core.chord import Chord
-from lazy_theory.core.key import Key
+from lazy_theory.instruments.catalog import load_tunings
+from lazy_theory.pitch.catalog import load_chords, load_scales, pitch_class
+from lazy_theory.pitch.chord import Chord
+from lazy_theory.pitch.key import Key
 from lazy_theory.instruments.fretboard import Fretboard
 
 board = Fretboard.from_tuning(load_tunings()["guitar open D"])
@@ -73,7 +80,8 @@ taste.lines(board, chords)  # the best route for each top line about as easy as 
 Back to words, only at the edge:
 
 ```python
-from lazy_theory.catalog.names import chord_symbol, parse_chord, tab
+from lazy_theory.instruments.names import tab
+from lazy_theory.pitch.names import chord_symbol, parse_chord
 from lazy_theory.suggest.neighbours import named
 
 titles = [chord_symbol(chord) for chord in named(board, route.path)]  # each shape, read back
@@ -85,7 +93,8 @@ Optionally, suggest a tuning and capo for a progression. Standard tuning stays t
 is a separate layer you opt into:
 
 ```python
-from lazy_theory.suggest.tunings import name, suggest
+from lazy_theory.instruments.names import tuning_name
+from lazy_theory.suggest.tunings import suggest
 
 tunings = load_tunings()
 standard = Fretboard.from_tuning(tunings["guitar standard"])
@@ -94,14 +103,14 @@ chords = [Chord(load_chords()["minor"], e), Chord(load_chords()["minor"], e + 5)
 rich = Taste(sounding=1.0, ringing=1.0, open_within=5)  # reward full chords and open strings
 e_minor = Key(load_scales()["Aeolian"], e).chords()  # the key's other chords count a little
 best = suggest(standard, chords, rich, context=e_minor)  # retunings and capos, cheapest first
-name(standard.open_strings + best[0].retuning, tunings)  # e.g. "guitar open G"
+tuning_name(standard.open_strings + best[0].retuning, tunings)  # e.g. "guitar open G"
 ```
 
 Optionally, harmonise a melody: one note per chord, the note on top, chords chosen from those
 allowed in each slot:
 
 ```python
-from lazy_theory.suggest.melody import MelodicTaste, harmonise
+from lazy_theory.suggest.harmonise import MelodicTaste, harmonise
 
 phrygian = Key(load_scales()["Phrygian"], e).chords()  # E Phrygian's chords
 em, am = phrygian[0], phrygian[3]
@@ -118,4 +127,9 @@ tuning that maps every voicing of a chord, reads any shape back as chords, measu
 and answers every question about a progression as one shortest-path search: the smoothest
 inversions, the best route for each top or bass line, a repeated chord kept on one shape.
 Optionally: tunings and capos, harmonised melodies, chords one finger away, passing chords,
-held notes, and extensions derived from the key. Next: rhythm.
+held notes, and extensions derived from the key. Rhythm: meters as groups inside groups (any
+time signature, talas and tals), swing, syncopation and other measures with sources, spoken
+phrases (konnakol, Takadimi, counting, bols) with the moves traditions vary them by, cadences
+(tihai, chakradar, yati) solved exactly, rhythms one move away, and performances kept exactly as
+played, read onto a grid only when asked. Next: the front end
+([docs/design.md](docs/design.md)).
