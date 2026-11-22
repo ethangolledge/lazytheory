@@ -157,6 +157,13 @@ class EachTest(unittest.TestCase):
         total = self.trellis.shortest().cost
         self.assertTrue(all(abs(r.cost - total) < 1e-9 for r in routes))
 
+    def test_rejects_masks_for_the_wrong_number_of_chords(self):
+        trellis = Trellis.build([rows([0, 2, 2, 1, 0, 0]), rows([0, 2, 2, 0, 0, 0])], moved)
+        with self.assertRaises(ValueError):
+            trellis.shortest([None])
+        with self.assertRaises(ValueError):
+            trellis.tied(["C"])
+
 
 class TiedTest(unittest.TestCase):
     transition = staticmethod(EachTest.transition)

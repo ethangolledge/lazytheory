@@ -125,7 +125,9 @@ class Fretboard:
         """`voicings` of every chord at once, grouped by chord in order, and which chord each
         row plays. One pass over the strings serves the whole progression. `contiguous` keeps
         only voicings whose sounding strings are neighbours (rules.contiguous), never building
-        the rest."""
+        the rest. No chords, no voicings."""
+        if not chords:
+            return np.zeros((0, len(self.open_strings)), dtype=np.int16), np.zeros(0, np.intp)
         tones = self._tones(chords)  # [chord, pitch class]
         playable = tones[:, self.intervals(0)]  # [chord, string, fret]
         which = np.arange(len(chords))

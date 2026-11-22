@@ -89,6 +89,10 @@ class PhysicsTest(unittest.TestCase):
         )  # A2
         self.assertTrue(np.isnan(STANDARD.notes(rows([X, 0, 0, 0, 0, 0]))[0, 0]))
 
+    def test_no_chords_no_voicings(self):
+        grid, which = STANDARD.voicings_of([], REACH)
+        self.assertEqual((grid.shape, which.shape), ((0, 6), (0,)))
+
     def test_familiar_shapes_are_found(self):
         self.assertTrue(contains_row(STANDARD.voicings(Chord(MAJOR, C), REACH), [X, 3, 2, 0, 1, 0]))
         self.assertTrue(contains_row(STANDARD.voicings(Chord(MAJOR, E), REACH), [0, 2, 2, 1, 0, 0]))

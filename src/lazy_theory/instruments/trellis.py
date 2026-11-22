@@ -87,6 +87,8 @@ class Trellis:
         [search, voicing], or [1, voicing] to share one mask between all of them. The picks of
         every search and its total, infinite where nothing is allowed. Searches run together
         as one array, in batches that bound memory."""
+        if len(allowed) != len(self.options):
+            raise ValueError(f"one mask per chord ({len(self.options)}), got {len(allowed)}")
         searches = max((len(mask) for mask in allowed if mask is not None), default=1)
         batch = max(1, _CELLS // max((step.size for step in self.steps), default=1))
         found = [
@@ -139,6 +141,8 @@ class Trellis:
         one group can reach alone (coordinate descent), which may miss a route that needs two
         groups to change together.
         """
+        if len(groups) != len(self.options):
+            raise ValueError(f"one group per chord ({len(self.options)}), got {len(groups)}")
         places: dict[Hashable, list[int]] = {}
         for index, group in enumerate(groups):
             places.setdefault(group, []).append(index)

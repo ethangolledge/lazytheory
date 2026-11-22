@@ -217,8 +217,8 @@ class Phrase:
         """The phrase `times` times with `gap` pulses after each but the last, each statement a
         group: a tihai (mora). The gap is a rest, or with `hold` the last syllable held.
         `rhythm.cadence.tihais` gives the lengths that land."""
-        if gap < 0:
-            raise ValueError(f"gap must not be negative, got {gap}")
+        if gap < 0 or times < 1:
+            raise ValueError(f"need a gap of 0 or more and 1 or more times, got {gap}, {times}")
         statement = self.grouped()
         if not gap:
             body = statement

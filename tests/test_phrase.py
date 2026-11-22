@@ -94,6 +94,11 @@ class MoveTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             Phrase((3, 2), (NOTE, NOTE)).faster(2)
 
+    def test_a_tihai_needs_at_least_one_statement(self):
+        for times in (0, -5):
+            with self.subTest(times=times), self.assertRaises(ValueError):
+                Phrase((1,), (NOTE,)).tihai(1, times=times)
+
     def test_tihai_is_three_statements_and_two_gaps(self):
         for phrase in self.every:
             for gap in range(3):
