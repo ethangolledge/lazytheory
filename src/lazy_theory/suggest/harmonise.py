@@ -31,7 +31,7 @@ from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.chord import Chords
 
 
-def parallels(board: Fretboard, previous: Grid, following: Grid) -> Floats:
+def parallel_perfects(board: Fretboard, previous: Grid, following: Grid) -> Floats:
     """Pairs of strings moving the same way from a perfect fifth or octave (unisons included)
     to the same interval, for each change. Shape (len(previous), len(following)).
 
@@ -49,7 +49,7 @@ def parallels(board: Fretboard, previous: Grid, following: Grid) -> Floats:
     return count
 
 
-def contrary(board: Fretboard, previous: Grid, following: Grid) -> Floats:
+def contrary_motion(board: Fretboard, previous: Grid, following: Grid) -> Floats:
     """1 where the top note and the bass move in opposite directions, for each change."""
     tops = [board.top(voicings) for voicings in (previous, following)]
     basses = [board.bass(voicings) for voicings in (previous, following)]
@@ -71,8 +71,8 @@ class MelodicTaste(Taste):
         """`Taste.transition`, plus parallels as a cost and contrary motion as a reward."""
         cost: Floats = (
             super().transition(board, previous, following)
-            + self.parallels * parallels(board, previous, following)
-            - self.contrary * contrary(board, previous, following)
+            + self.parallels * parallel_perfects(board, previous, following)
+            - self.contrary * contrary_motion(board, previous, following)
         )
         return cost
 

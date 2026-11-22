@@ -39,6 +39,7 @@ from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
 from lazy_theory.pitch.scale import Scale
 
+TWELVE = 12  # names are for twelve steps per period; other sizes are written as numbers
 _NUMERALS = ("I", "II", "III", "IV", "V", "VI", "VII")
 
 
@@ -46,7 +47,7 @@ def interval_name(step: int, number: int) -> str:
     """`step` (steps above a root) written as the `number`th note of the major scale, flat or
     sharp to fit: (3, 3) is "b3", (3, 9) is "#9", (9, 7) is "bb7". Numbers past 7 are the same
     notes a period up."""
-    return accidentals(shortest(step - _natural(number), 12)) + str(number)
+    return accidentals(shortest(step - _natural(number), TWELVE)) + str(number)
 
 
 @cache
@@ -54,11 +55,11 @@ def step_names(key: Key) -> tuple[str, ...]:
     """Every step above the tonic as an interval: the key's own notes numbered in order (in a
     seven-note key, so Lydian's fourth is "#4"), every other step flat against the major scale
     (b2 b3 b5 b6 b7). What a note is in the key, wherever a chord puts it."""
-    if key.size != 12:
+    if key.size != TWELVE:
         return tuple(map(str, range(key.size)))
     names = [  # each step on the first major-scale note at or above it, so flat
         interval_name(step, next(n for n in range(1, 8) if _natural(n) >= step))
-        for step in range(12)
+        for step in range(TWELVE)
     ]
     if len(key.scale) == 7:
         for degree, step in enumerate(key.scale):
@@ -77,9 +78,9 @@ def note_name(pitch: int, key: Key | None = None) -> str:
     """A pitch or pitch class (C = 0) as a note name. A seven-note `key` spells it: its own
     notes one letter each, any other on the letter its interval in the key names (the b6 of D
     is Bb, not A#). Without one, natural or sharp."""
-    if key is not None and key.size != 12:
+    if key is not None and key.size != TWELVE:
         return str(pitch % key.size)
-    return _spelling(key)[pitch % 12]
+    return _spelling(key)[pitch % TWELVE]
 
 
 def note_names(key: Key) -> tuple[str, ...]:
@@ -90,9 +91,12 @@ def note_names(key: Key) -> tuple[str, ...]:
 
 def pitch_name(pitch: int, key: Key | None = None) -> str:
     """A pitch (steps above C0) in scientific notation, e.g. "E2"; B#3 and Cb4 keep the octave
-    of their letter."""
+    of their letter. Scientific notation is for twelve steps only: other keys raise ValueError
+    (`note_name` still writes their pitch classes as numbers)."""
+    if key is not None and key.size != TWELVE:
+        raise ValueError(f"scientific pitch names need twelve steps, not {key.size}")
     name = note_name(pitch, key)
-    return f"{name}{(pitch - pitch_class(name)) // 12}"
+    return f"{name}{(pitch - pitch_class(name)) // TWELVE}"
 
 
 def chord_tone_names(pattern: PitchClassSet) -> tuple[str, ...]:
@@ -106,7 +110,7 @@ def chord_tone_names(pattern: PitchClassSet) -> tuple[str, ...]:
     - nine steps is a 13th over a seventh, the diminished seventh on a diminished triad,
       otherwise a 6th
     """
-    if pattern.size != 12:
+    if pattern.size != TWELVE:
         return tuple(map(str, pattern))
     third, fifth = 3 in pattern or 4 in pattern, 7 in pattern
     seventh, diminished = 10 in pattern or 11 in pattern, 3 in pattern and 6 in pattern
@@ -144,7 +148,7 @@ def chord_symbol(chord: Chord, key: Key | None = None) -> str:
 def _own_key(chord: Chord) -> Key | None:
     """The key a chord is spelled in when none is given: minor on its root with a minor third
     and no major one, otherwise major. None outside twelve steps, where notes are numbers."""
-    if chord.size != 12:
+    if chord.size != TWELVE:
         return None
     minor = 3 in chord.pattern and 4 not in chord.pattern
     return Key(load_scales()["Aeolian" if minor else "Ionian"], chord.root)
@@ -156,7 +160,7 @@ def parse_chord(text: str, key: Key | None = None) -> Chord:
     aliases). With a seven-note `key`, its numerals ("bII", "iv") work too. Raises ValueError
     saying what's wrong."""
     text = text.strip()
-    if key is not None and key.size == 12 and len(key.scale) == 7:
+    if key is not None and key.size == TWELVE and len(key.scale) == 7:
         for degree in range(7):
             if text == numeral(key, degree):
                 return key.chord(degree)
@@ -178,7 +182,7 @@ def quality(scale: Scale) -> str | None:
     """Whether a mode sounds major or minor: the catalog's name for the chord stacked in
     thirds on its first note ("major", "minor", "diminished", "augmented"). Where that stacking
     makes no named chord, the third it contains decides; with both thirds or neither, None."""
-    if len(scale) >= 5 and scale.size == 12:
+    if len(scale) >= 5 and scale.size == TWELVE:
         name = chord_names().get(scale.chord(0))
         if name in ("major", "minor", "diminished", "augmented"):
             return name
@@ -189,7 +193,7 @@ def numeral(key: Key, degree: int) -> str:
     """The Roman numeral of the triad on `degree` (0-based): upper case with a major third,
     lower case with a minor one, ° diminished, + augmented, flat or sharp as the degree is.
     E Phrygian's second degree is "bII"."""
-    if key.size != 12 or len(key.scale) != 7:
+    if key.size != TWELVE or len(key.scale) != 7:
         raise ValueError("Roman numerals need a seven-note key in twelve steps")
     triad = key.scale.chord(degree)
     text = degree_names(key)[degree][:-1] + _NUMERALS[degree]
@@ -218,7 +222,7 @@ def _interval_step(name: str) -> int:
     number = name.lstrip("b#")
     if number not in ("1", "2", "3", "4", "5", "6", "7", "9", "11", "13"):
         raise ValueError(f"unknown extension {name!r}")
-    return (_natural(int(number)) + alteration(name)) % 12
+    return (_natural(int(number)) + alteration(name)) % TWELVE
 
 
 @cache
@@ -227,7 +231,7 @@ def _spelling(key: Key | None) -> tuple[str, ...]:
     if key is None or len(key.scale) != 7:  # natural, or the sharp of the letter below
         return tuple(
             _spelled([letter for letter in LETTERS if pitch_class(letter) <= note][-1], note)
-            for note in range(12)
+            for note in range(TWELVE)
         )
     numbers = [int(name.lstrip("b#")) for name in step_names(key)]
     spellings = []
@@ -241,12 +245,12 @@ def _spelling(key: Key | None) -> tuple[str, ...]:
             sharps = sum(names[step].count("#") for step in key.scale)
             spellings.append((sum(altered), altered[0], -sharps, names))
     by_step = min(spellings)[-1]
-    return tuple(by_step[key.interval(note)] for note in range(12))
+    return tuple(by_step[key.interval(note)] for note in range(TWELVE))
 
 
 def _spelled(letter: str, pitch: int) -> str:
     """`pitch` written on `letter`, with the sharps or flats that takes."""
-    return letter + accidentals(shortest(pitch - pitch_class(letter), 12))
+    return letter + accidentals(shortest(pitch - pitch_class(letter), TWELVE))
 
 
 def _suffix(pattern: PitchClassSet) -> str:
@@ -258,7 +262,7 @@ def _suffix(pattern: PitchClassSet) -> str:
     tones = dict(zip(pattern, chord_tone_names(pattern), strict=True))
     found = (
         []
-        if pattern.size != 12
+        if pattern.size != TWELVE
         else [reading for core in symbols if (reading := _core(core, pattern, tones)) is not None]
     )
     if not found:

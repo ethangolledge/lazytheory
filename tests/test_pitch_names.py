@@ -41,6 +41,12 @@ class SpellingTest(unittest.TestCase):
         self.assertEqual(note_name(1), "C#")
         self.assertEqual(note_name(1, key("Ionian", "F")), "Db")
 
+    def test_other_sizes_are_numbers_and_have_no_scientific_names(self):
+        nineteen = Key(PitchClassSet((0, 3, 6, 8, 11, 14, 17), 19), 0)
+        self.assertEqual(note_name(24, nineteen), "5")
+        with self.assertRaises(ValueError):
+            pitch_name(24, nineteen)
+
     def test_pitches_round_trip(self):
         for note in ("E2", "A4", "C#3"):
             self.assertEqual(pitch_name(pitch(note)), note)

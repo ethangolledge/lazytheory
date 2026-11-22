@@ -24,20 +24,10 @@ from functools import partial
 
 import numpy as np
 
+from lazy_theory.instruments import rules
 from lazy_theory.instruments.acoustics import roughness
 from lazy_theory.instruments.arrays import Floats, Grid, Mask
 from lazy_theory.instruments.fretboard import Fretboard
-from lazy_theory.instruments.rules import (
-    contiguous,
-    motion,
-    moved,
-    open_within,
-    placeable,
-    ringing,
-    sounding,
-    strings_changed,
-    within,
-)
 from lazy_theory.instruments.trellis import Route, Trellis
 from lazy_theory.pitch.chord import Chord, Chords
 
@@ -86,18 +76,22 @@ class Taste:
     def allows(self, board: Fretboard, voicings: Grid) -> Mask:
         """Which voicings this player allows and this hand can play, however they were made:
         the rules `options` builds with, checked on any grid."""
-        keep = within(voicings, self.lowest, self.highest) & (voicings <= board.frets).all(axis=1)
+        keep = rules.within(voicings, self.lowest, self.highest) & (voicings <= board.frets).all(
+            axis=1
+        )
         if self.contiguous:
-            keep &= contiguous(voicings)
+            keep &= rules.contiguous(voicings)
         if self.open_within is not None:
-            keep &= open_within(voicings, self.open_within)
-        keep[keep] = placeable(voicings[keep], board.fret_distance, self.spans)  # costly: last
+            keep &= rules.open_within(voicings, self.open_within)
+        keep[keep] = rules.placeable(
+            voicings[keep], board.fret_distance, self.spans
+        )  # costly: last
         return keep
 
     def standing(self, board: Fretboard, voicings: Grid) -> Floats:
         """Cost of each voicing on its own."""
         rough = roughness(board.notes(voicings), board.hertz, board.temperament)
-        reward = self.sounding * sounding(voicings) + self.ringing * ringing(voicings)
+        reward = self.sounding * rules.sounding(voicings) + self.ringing * rules.ringing(voicings)
         cost: Floats = self.roughness * rough - reward
         return cost
 
@@ -111,9 +105,9 @@ class Taste:
     def transition(self, board: Fretboard, previous: Grid, following: Grid) -> Floats:
         """Cost of each change from a previous voicing to a following one."""
         cost: Floats = (
-            self.moved * moved(previous, following)
-            + self.strings_changed * strings_changed(previous, following)
-            + self.bass * motion(board.bass(previous), board.bass(following))
+            self.moved * rules.moved(previous, following)
+            + self.strings_changed * rules.strings_changed(previous, following)
+            + self.bass * rules.motion(board.bass(previous), board.bass(following))
         )
         return cost
 

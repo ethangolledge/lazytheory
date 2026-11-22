@@ -97,7 +97,7 @@ Most features are one of five moves. Each has a worked example in the code.
 | To add | Do this | Example |
 |---|---|---|
 | A scale, chord, tuning or name | Add a line to a TOML file. No code | `pitch/chords.toml`: `"fifth" = [0, 7]` made power chords nameable, parseable and readable from shapes |
-| A property of a voicing or of a change | Write a function from grids to one value per row (or per pair of rows) | `rules.strings_changed`, `harmonise.parallels` |
+| A property of a voicing or of a change | Write a function from grids to one value per row (or per pair of rows) | `rules.strings_changed`, `harmonise.parallel_perfects` |
 | A preference or a hard rule | Subclass `Taste` and extend `allows` (a rule), `standing` (a cost per voicing) or `transition` (a cost per change) with `super()`. Every search then obeys it | `harmonise.MelodicTaste` |
 | A constraint on one chord of a progression | Pass a mask to `Trellis.shortest`, or many to `Trellis.search` | a pinned voicing; `harmonise.harmonise` (top note given); `drones` (a string held) |
 | A new question about a progression | Build `taste.trellis(board, options)` once and ask it | `Taste.lines` (the best route per top or bass line) |

@@ -7,7 +7,12 @@ from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.catalog import load_scales
 from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
-from lazy_theory.suggest.harmonise import MelodicTaste, contrary, harmonise, parallels
+from lazy_theory.suggest.harmonise import (
+    MelodicTaste,
+    contrary_motion,
+    harmonise,
+    parallel_perfects,
+)
 
 E, F, A = 4, 5, 9  # pitch classes
 E_PHRYGIAN = Key(load_scales()["Phrygian"], E).chords()
@@ -17,17 +22,22 @@ class VoiceMotionTest(unittest.TestCase):
     def test_parallel_fifths_and_octaves(self):
         c5, d5 = rows([X, 3, 5, X, X, X]), rows([X, 5, 7, X, X, X])
         c_octave, d_octave = rows([X, 3, 5, 5, X, X]), rows([X, 5, 7, 7, X, X])
-        self.assertEqual(parallels(STANDARD, c5, d5).tolist(), [[1]])
-        self.assertEqual(parallels(STANDARD, c_octave, d_octave).tolist(), [[2]])  # 5th + 8ve
+        self.assertEqual(parallel_perfects(STANDARD, c5, d5).tolist(), [[1]])
+        self.assertEqual(
+            parallel_perfects(STANDARD, c_octave, d_octave).tolist(), [[2]]
+        )  # 5th + 8ve
 
     def test_moving_to_another_interval_is_not_parallel(self):
         self.assertEqual(
-            parallels(STANDARD, rows([X, 3, 5, X, X, X]), rows([X, 5, 4, X, X, X])).tolist(), [[0]]
+            parallel_perfects(
+                STANDARD, rows([X, 3, 5, X, X, X]), rows([X, 5, 4, X, X, X])
+            ).tolist(),
+            [[0]],
         )
 
     def test_contrary_motion(self):
         c, g, d = rows([X, 3, 2, 0, 1, 0]), rows([3, 2, 0, 0, 0, 3]), rows([X, X, 0, 2, 3, 2])
-        self.assertEqual(contrary(STANDARD, c, np.concatenate([g, d])).tolist(), [[1, 0]])
+        self.assertEqual(contrary_motion(STANDARD, c, np.concatenate([g, d])).tolist(), [[1, 0]])
 
 
 class MelodicTasteTest(unittest.TestCase):
