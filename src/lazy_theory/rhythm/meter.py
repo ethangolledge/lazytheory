@@ -111,6 +111,8 @@ class Meter:
         above), so every position stays a whole number."""
         if bars < 1:
             raise ValueError(f"a cycle needs at least one bar, got {bars}")
+        if not groups or any(group < 1 for group in groups):
+            raise ValueError(f"a bar needs one or more groups of at least one beat, got {groups}")
         beats = sum(groups) * bars
         divisions = (division,) * beats if isinstance(division, int) else tuple(division)
         if len(divisions) != beats or any(split < 1 for split in divisions):
@@ -229,6 +231,8 @@ def compositions(total: int, parts: Collection[int]) -> Iterator[tuple[int, ...]
 def count(total: int, parts: Collection[int]) -> int:
     """How many `compositions` there are, without listing them. With parts (1, 2) these are
     the Fibonacci numbers (Hemachandra's count of metres); with (2, 3), the Padovan numbers."""
+    if total < 0:
+        return 0
     ways = [1] + [0] * total
     for filled in range(1, total + 1):
         ways[filled] = sum(ways[filled - part] for part in set(parts) if 0 < part <= filled)

@@ -260,5 +260,18 @@ class SyncopationTest(unittest.TestCase):
             syncopation(PitchClassSet((0,), 8), FOUR_FOUR_SIXTEENTHS)
 
 
+class CountEdgesTest(unittest.TestCase):
+    def test_count_agrees_with_compositions_for_every_total(self):
+        for parts in ((1, 2), (2, 3), (3,)):
+            for total in range(-4, 12):
+                with self.subTest(parts=parts, total=total):
+                    self.assertEqual(count(total, parts), len(list(compositions(total, parts))))
+
+    def test_a_bar_needs_groups(self):
+        for groups in ((), (3, 0)):
+            with self.subTest(groups=groups), self.assertRaises(ValueError):
+                Meter.of(groups)
+
+
 if __name__ == "__main__":
     unittest.main()

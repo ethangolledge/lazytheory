@@ -77,5 +77,11 @@ class HarmoniseTest(unittest.TestCase):
             harmonise(STANDARD, [F], [[Chord(MINOR, E)]], Taste())
 
 
+class EmptySlotTest(unittest.TestCase):
+    def test_a_note_with_no_chords_is_rejected(self):
+        with self.assertRaises(ValueError):
+            harmonise(STANDARD, [4], [[]], Taste())
+
+
 if __name__ == "__main__":
     unittest.main()

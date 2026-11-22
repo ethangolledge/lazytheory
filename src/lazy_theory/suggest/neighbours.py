@@ -36,7 +36,7 @@ class Neighbour(NamedTuple):
 
     frets: Grid  # one row: a fret or MUTED per string
     chord: Chord  # with the shape's bass written, unless it is the root
-    steps: int  # semitones moved in all, from the shape it was found from
+    steps: int  # steps of the temperament moved in all, from the shape it was found from
 
 
 def named(board: Fretboard, voicings: Grid, key: Key | None = None) -> list[Chord | None]:

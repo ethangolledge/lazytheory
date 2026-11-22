@@ -24,6 +24,8 @@ def counting(meter: Meter, bar: int) -> tuple[str, ...]:
     """A word per grid point, as a guitarist counts: each count's number (1 to `bar`, the
     counts in a bar), then the catalog's words for how it is split ("1 & 2 &", "1 trip let",
     "1 e & a"); a split the catalog doesn't count is said in its konnakol word ("1 ka ta ki ta")."""
+    if bar < 1:
+        raise ValueError(f"a bar has at least one count, got {bar}")
     said = load_spoken().counting
     return tuple(
         str(count % bar + 1) if not index else (said.get(split) or _word(split)[1:])[index - 1]
@@ -165,8 +167,8 @@ def parse_meter(text: str, division: int | Sequence[int] = 1, bars: int = 1) -> 
     groups = top.split("+")
     if not slash or not bottom.isdigit() or not all(group.isdigit() for group in groups):
         raise ValueError(f"write a meter as 7/8 or 2+2+3/8, got {text!r}")
-    if int(bottom) < 1 or any(int(group) < 1 for group in groups) or bars < 1:
-        raise ValueError(f"a meter's numbers must be positive, got {text!r} x {bars}")
+    if int(bottom) < 1:  # the groups and bars `Meter.of` checks
+        raise ValueError(f"a meter's numbers must be positive, got {text!r}")
     return Meter.of([int(group) for group in groups], division, bars)
 
 

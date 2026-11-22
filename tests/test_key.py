@@ -10,6 +10,12 @@ E, F = 4, 5
 
 
 class KeyTest(unittest.TestCase):
+    def test_chords_on_every_degree(self):
+        chords = Key(SCALES["Ionian"], root=0).chords()  # C
+        self.assertEqual([chord.root for chord in chords], [0, 2, 4, 5, 7, 9, 11])  # C D E F G A B
+        patterns = [chord.pattern.pitch_classes for chord in chords]
+        self.assertEqual(patterns[:2], [(0, 4, 7), (0, 3, 7)])
+
     def test_degree_chords_sit_on_their_notes(self):
         e_phrygian = Key(SCALES["Phrygian"], E)
         chords = e_phrygian.chords()

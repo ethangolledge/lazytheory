@@ -126,7 +126,7 @@ Three rules keep it clean:
   and returns `Chord`s, so the maths never sees a name at all.
 - **Derived, not listed.** Chords come from stacking a scale; modes from rotation; symmetric
   sets from maximal evenness; secondary dominants, tritone substitutes and borrowed chords from
-  `chord`, `rotate`, `transpose` and `voice_leading` (see `tests/test_harmony.py`). No chord
+  `chord`, `rotate`, `transpose` and `voice_leading` (see `tests/test_tension.py`). No chord
   shapes, scale boxes or function tables are stored.
 - **Ints until there is behaviour.** No `Interval` class: an interval is a step count. A chord
   and a key share real behaviour (their notes, the interval a pitch makes with the root,

@@ -12,5 +12,11 @@ class TabTest(unittest.TestCase):
         )
 
 
+class OtherSizeTabTest(unittest.TestCase):
+    def test_strings_labelled_in_numbers(self):
+        text = tab([0, 6, 11], [[0, 1, 2]], size=19)
+        self.assertEqual([line.split()[0] for line in text.splitlines()[1:]], ["11", "6", "0"])
+
+
 if __name__ == "__main__":
     unittest.main()

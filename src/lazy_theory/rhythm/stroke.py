@@ -35,7 +35,7 @@ class Stroke(NamedTuple):
     high: int  # the treble head (dayan, valanthalai, tak)
 
 
-REST = Stroke(SILENT, SILENT)
+SILENCE = Stroke(SILENT, SILENT)
 BOTH = Stroke(OPEN, OPEN)
 HIGH = Stroke(SILENT, OPEN)
 LIGHT = Stroke(SILENT, DAMPED)
@@ -53,14 +53,14 @@ def voicing(
     notes = meter.to_grid(onsets)  # raises for a note off the grid
     if accents is not None:
         return tuple(
-            (BOTH if pulse in accents else HIGH) if point in notes else REST
+            (BOTH if pulse in accents else HIGH) if point in notes else SILENCE
             for point, pulse in enumerate(meter.starts(-1))
         )
     weight = meter.weights()
     plain = min(weight[count] for count in meter.starts(meter.beat))
     finest = min(weight[point] for point in meter.starts(-1))
     return tuple(
-        REST
+        SILENCE
         if point not in notes
         else BOTH
         if weight[pulse] > plain

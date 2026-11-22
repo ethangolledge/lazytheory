@@ -2,19 +2,19 @@ import unittest
 
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.rhythm.meter import Meter
-from lazy_theory.rhythm.stroke import BOTH, HIGH, LIGHT, REST, voicing
+from lazy_theory.rhythm.stroke import BOTH, HIGH, LIGHT, SILENCE, voicing
 
 
 class VoicingTest(unittest.TestCase):
     def test_only_notes_sound(self):
         meter = Meter.of((7,))  # 3+4, then 3+2+2
         strokes = voicing(PitchClassSet((0, 3, 5), 7), meter)
-        self.assertEqual(strokes, (BOTH, REST, REST, BOTH, REST, BOTH, REST))
+        self.assertEqual(strokes, (BOTH, SILENCE, SILENCE, BOTH, SILENCE, BOTH, SILENCE))
 
     def test_plain_counts_get_the_high_head(self):
         meter = Meter.of((2, 2), 2)  # 4/4 in eighths: bass on 1 and 3
         strokes = voicing(meter.starts(meter.beat), meter)
-        self.assertEqual(strokes, (BOTH, REST, HIGH, REST, BOTH, REST, HIGH, REST))
+        self.assertEqual(strokes, (BOTH, SILENCE, HIGH, SILENCE, BOTH, SILENCE, HIGH, SILENCE))
 
     def test_sixteenths_are_lighter_than_eighths(self):
         meter = Meter.of((2, 2), 4)
@@ -38,7 +38,7 @@ class VoicingTest(unittest.TestCase):
         self.assertEqual(
             (strokes[0], strokes[3], strokes[6], strokes[12]), (BOTH, HIGH, HIGH, BOTH)
         )
-        self.assertEqual(strokes[4], REST)
+        self.assertEqual(strokes[4], SILENCE)
 
 
 if __name__ == "__main__":

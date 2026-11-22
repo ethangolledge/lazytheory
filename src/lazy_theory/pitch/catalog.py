@@ -12,9 +12,7 @@ is one step pattern and a list of names.
 
 Could grow into: maqam or raga families, 19- or 31-step scales: more data, no code.
 
-Pass a path to a loader to read your own file instead of the bundled one: you get its values
-(scales, chords, tunings, talas) to use directly. The names modules always speak the bundled
-files: to change how chords or syllables are written, edit the bundled file.
+Your own files load as `lazy_theory.data` describes.
 """
 
 from collections.abc import Mapping
@@ -25,9 +23,6 @@ from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.data import add, read
 from lazy_theory.pitch.scale import Scale
 
-_PACKAGE = __name__.rpartition(".")[0]  # where the bundled data files sit
-
-
 LETTERS = tuple("CDEFGAB")  # the Ionian scale on C, in order
 
 _DIGITS = "0123456789"
@@ -37,7 +32,7 @@ _DIGITS = "0123456789"
 def load_scales(path: Path | None = None) -> Mapping[str, Scale]:
     """Every named mode, keyed by name."""
     scales: dict[str, Scale] = {}
-    for family, entry in read(_PACKAGE, "scales.toml", path).items():
+    for family, entry in read(__name__, "scales.toml", path).items():
         scale = Scale.from_steps(entry["steps"])
         if not 0 < len(entry["modes"]) <= len(scale):
             raise ValueError(f"{family}: name between 1 and {len(scale)} modes")
@@ -49,7 +44,7 @@ def load_scales(path: Path | None = None) -> Mapping[str, Scale]:
 @cache
 def load_chords(path: Path | None = None) -> Mapping[str, PitchClassSet]:
     """Every named chord pattern, keyed by name."""
-    data = read(_PACKAGE, "chords.toml", path)
+    data = read(__name__, "chords.toml", path)
     chords: dict[str, PitchClassSet] = {}
     for name, members in data["chords"].items():
         add(chords, name, PitchClassSet(tuple(members), data["size"]))
@@ -66,8 +61,8 @@ def chord_names() -> Mapping[PitchClassSet, str]:
 @cache
 def load_symbols(path: Path | None = None) -> Mapping[str, str]:
     """How each named chord is written after its root, e.g. "m7" for "minor 7th"."""
-    data = read(_PACKAGE, "chords.toml", path)
-    symbols: dict[str, str] = data.get("symbols", {})
+    data = read(__name__, "chords.toml", path)
+    symbols: Mapping[str, str] = data.get("symbols", {})
     if mismatched := set(symbols) ^ set(data["chords"]):  # so every chord can be written
         raise ValueError(f"chords and symbols differ: {sorted(mismatched)}")
     return symbols
@@ -76,8 +71,8 @@ def load_symbols(path: Path | None = None) -> Mapping[str, str]:
 @cache
 def load_aliases(path: Path | None = None) -> Mapping[str, str]:
     """Other ways each chord symbol is written, read but never written: "M7" for "maj7"."""
-    data = read(_PACKAGE, "chords.toml", path)
-    aliases: dict[str, str] = data.get("aliases", {})
+    data = read(__name__, "chords.toml", path)
+    aliases: Mapping[str, str] = data.get("aliases", {})
     symbols = set(data.get("symbols", {}).values())
     if unknown := set(aliases.values()) - symbols:
         raise ValueError(f"aliases for symbols that don't exist: {sorted(unknown)}")
@@ -96,10 +91,11 @@ def pitch(note: str) -> int:
 
 
 def pitch_class(note: str) -> int:
-    """Steps above C, so C is 0 and E is 4. The letters are the Ionian scale on C; each #
-    raises and each b lowers a step (B# is 12: reduce it mod the period where needed)."""
-    letter, altered = note[:1].upper(), note[1:]
-    if letter not in LETTERS or set(altered) - {"#", "b"}:
+    """Steps above C, so C is 0 and E is 4. The letters are the Ionian scale on C, upper
+    case; then sharps, each raising a step, or flats, each lowering one, never both (B# is 12:
+    reduce it mod the period where needed)."""
+    letter, altered = note[:1], note[1:]
+    if letter not in LETTERS or altered.strip("#") and altered.strip("b"):
         raise ValueError(f"not a note name: {note!r}")
     return major().pitch_classes[LETTERS.index(letter)] + alteration(altered)
 

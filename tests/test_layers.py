@@ -72,5 +72,12 @@ class InterlockTest(unittest.TestCase):
         self.assertEqual(midpoints(PitchClassSet((0, 1), 2)), ())
 
 
+class LayerInputTest(unittest.TestCase):
+    def test_groups_of_no_pulses_are_rejected(self):
+        for call in (lambda: meets(0, 0, 4), lambda: meets(3, 0, 0), lambda: next(fills(0, 4))):
+            with self.assertRaises(ValueError):
+                call()
+
+
 if __name__ == "__main__":
     unittest.main()

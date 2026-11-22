@@ -103,5 +103,13 @@ class TasteTest(unittest.TestCase):
         self.assertLessEqual(int(fingers(three).max()), 3)
 
 
+class OneFingerTest(unittest.TestCase):
+    def test_no_spans_is_one_finger(self):
+        (grid,) = Taste(spans=()).options(STANDARD, [Chord(MAJOR, 0)])
+        self.assertGreater(len(grid), 0)
+        for voicing in grid:  # one finger: every fretted note on one fret, a barre at most
+            self.assertLessEqual(len({int(fret) for fret in voicing if fret > 0}), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

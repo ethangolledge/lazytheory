@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 
 from lazy_theory.instruments.fretboard import Tuning
 from lazy_theory.pitch.key import Key
-from lazy_theory.pitch.names import note_name
+from lazy_theory.pitch.names import TWELVE, note_name
 
 
 def tab(
@@ -12,15 +12,18 @@ def tab(
     voicings: Sequence[Sequence[int]],
     titles: Sequence[str] = (),
     key: Key | None = None,
+    size: int = TWELVE,
 ) -> str:
     """Voicings as guitar tab: one line per string, the highest string on top, labelled with
-    its open note; one column per voicing under its title. A negative fret is a muted "x"."""
+    its open note (as `note_name` writes it, so a neck of other than twelve steps per period,
+    `size`, is labelled in numbers); one column per voicing under its title. A negative fret
+    is a muted "x"."""
     columns = [[str(fret) if fret >= 0 else "x" for fret in voicing] for voicing in voicings]
     titles = list(titles) + [""] * (len(columns) - len(titles))
     widths = [
         max(len(title), *map(len, column)) for title, column in zip(titles, columns, strict=True)
     ]
-    labels = [note_name(string, key) for string in open_strings]
+    labels = [note_name(string, key, size) for string in open_strings]
     pad = max(map(len, labels))
     lines = [" " * (pad + 2) + "  ".join(t.ljust(w) for t, w in zip(titles, widths, strict=True))]
     for string in reversed(range(len(open_strings))):

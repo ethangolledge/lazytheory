@@ -72,6 +72,8 @@ def landing(start: int, span: int, cycle: int, on_target: bool = True) -> int:
     """The pulse of a `cycle` where a phrase of `span` pulses from `start` lands, `span`'s
     inverse. `on_target` means the phrase's last note is the landing (21 pulses over a 10-beat
     cycle land on its first beat); otherwise the landing is the pulse after it (16 over 16)."""
+    if cycle < 1:
+        raise ValueError(f"a cycle has at least one pulse, got {cycle}")
     return (start + span - on_target) % cycle
 
 

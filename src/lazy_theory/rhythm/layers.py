@@ -57,6 +57,8 @@ def dissonance(period: int, offset: int, host: int) -> Dissonance:
 def meets(period: int, offset: int, host: int) -> int | None:
     """The first pulse after 0 where a guest group and a host group start together, or None if
     they never do. A 3 over a 4 meets at 12; displaced by 1 over a 3, never."""
+    if period < 1 or host < 1:
+        raise ValueError(f"groups last at least one pulse, got {period} and {host}")
     if offset % gcd(period, host):
         return None
     pulse = offset % period or period
@@ -69,6 +71,8 @@ def fills(period: int, length: int, parts: Collection[int] = (2, 3)) -> Iterator
     """Ways to fill `length` pulses with a guest of `period`, as many repeats as possible
     first, then the rest made of `parts`, so the next group lands on the cycle's first pulse.
     Each comes once: a tail never starts with another full `period`."""
+    if period < 1:
+        raise ValueError(f"a guest group lasts at least one pulse, got {period}")
     for repeats in range(length // period, -1, -1):
         tail = length - repeats * period
         for ending in compositions(tail, parts):

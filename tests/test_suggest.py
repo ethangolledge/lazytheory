@@ -8,8 +8,6 @@ from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.names import tuning_name
 from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.chord import Chord
-from lazy_theory.pitch.key import Key
-from lazy_theory.pitch.scale import Scale
 from lazy_theory.suggest.tunings import screen, suggest
 
 OPEN_D = (-2, 0, 0, -1, -2, -2)  # D A D F# A D from E A D G B E
@@ -41,14 +39,7 @@ class ScreenTest(unittest.TestCase):
         self.assertEqual(counts[(0,) * 6].tolist(), [0, 3])
 
 
-class KeyAndNameTest(unittest.TestCase):
-    def test_key_chords(self):
-        major = Scale.from_steps((2, 2, 1, 2, 2, 2, 1))
-        chords = Key(major, root=0).chords()  # C
-        self.assertEqual([chord.root for chord in chords], [0, 2, 4, 5, 7, 9, 11])  # C D E F G A B
-        patterns = [chord.pattern.pitch_classes for chord in chords]
-        self.assertEqual(patterns[:2], [(0, 4, 7), (0, 3, 7)])
-
+class TuningNameTest(unittest.TestCase):
     def test_names_from_the_catalog(self):
         open_e = STANDARD.open_strings + np.array([0, 2, 2, 1, 0, 0])
         self.assertEqual(tuning_name(STANDARD.open_strings, TUNINGS), "guitar standard")

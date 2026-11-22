@@ -98,10 +98,9 @@ def jam(
     spine: PitchClassSet, splits: Iterable[int] = range(2, 6), groups: Iterable[int] = range(2, 6)
 ) -> list[tuple[int, int, PitchClassSet]]:
     """Every `filled` version of `spine`: (per count, group, notes) for each subdivision and
-    group size,
-    leaving out a group as long as a count (that is just the counts), a group that fits in no
-    gap, and any idea that sounds the same as one already found. Fewest notes first: a count,
-    not a taste."""
+    group size, leaving out a group as long as a count (that is just the counts), a group that
+    fits in no gap, and any idea that sounds the same as one already found. Fewest notes
+    first: a count, not a taste."""
     found: dict[frozenset[Fraction], tuple[int, int, PitchClassSet]] = {}
     for per_count in splits:
         for group in groups:
@@ -112,25 +111,20 @@ def jam(
     return sorted(found.values(), key=lambda idea: (len(idea[2]), idea[0], idea[1]))
 
 
-MOVES: dict[str, RhythmMove] = {
-    "nudge": nudged,
-    "split": split,
-    "merge": merged,
-    "shift": shifted,
-    "even": even,
-}
+MOVES: tuple[RhythmMove, ...] = (nudged, split, merged, shifted, even)  # smallest first
 
 
-def moves(onsets: PitchClassSet, meter: Meter) -> dict[str, list[PitchClassSet]]:
-    """Every rhythm one move from `onsets`, by move, each in pulses on `meter`. A rhythm two
-    moves reach is listed under the first, so each appears once."""
+def moves(onsets: PitchClassSet, meter: Meter) -> dict[RhythmMove, list[PitchClassSet]]:
+    """Every rhythm one move from `onsets`, keyed by the move (in `MOVES` order), each in
+    pulses on `meter`. A rhythm two moves reach is listed under the first, so each appears
+    once."""
     points = meter.to_grid(onsets)
     seen = {points}
-    found: dict[str, list[PitchClassSet]] = {}
-    for name, move in MOVES.items():
+    found: dict[RhythmMove, list[PitchClassSet]] = {}
+    for move in MOVES:
         fresh = [result for result in move(points) if result not in seen]
         seen.update(fresh)
-        found[name] = [meter.from_grid(result) for result in fresh]
+        found[move] = [meter.from_grid(result) for result in fresh]
     return found
 
 

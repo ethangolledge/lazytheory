@@ -3,6 +3,7 @@ import unittest
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.rhythm.meter import Meter, unevenness
 from lazy_theory.rhythm.moves import (
+    MOVES,
     even,
     filled,
     jam,
@@ -49,7 +50,7 @@ class MovesTest(unittest.TestCase):
         flat = [rhythm for rhythms in found.values() for rhythm in rhythms]
         self.assertEqual(len(flat), len(set(flat)))
         self.assertNotIn(TRESILLO, flat)
-        self.assertEqual(list(found), ["nudge", "split", "merge", "shift", "even"])
+        self.assertEqual(tuple(found), MOVES)
 
     def test_counted_on_the_grid_returned_in_pulses(self):
         meter = Meter.of((2, 2), (4, 5, 4, 4))  # 80 pulses, 17 grid points

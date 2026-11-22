@@ -21,6 +21,7 @@ other systems are written as numbers.
 
 import re
 from functools import cache
+from typing import NamedTuple
 
 from lazy_theory.core.pcset import PitchClassSet, shortest
 from lazy_theory.pitch.catalog import (
@@ -39,7 +40,8 @@ from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
 from lazy_theory.pitch.scale import Scale
 
-TWELVE = 12  # names are for twelve steps per period; other sizes are written as numbers
+TWELVE = major().size  # the steps names are for: the major scale's in the scales file. Other
+# sizes are written as numbers.
 _NUMERALS = ("I", "II", "III", "IV", "V", "VI", "VII")
 
 
@@ -74,12 +76,14 @@ def degree_names(key: Key) -> tuple[str, ...]:
     return tuple(names[step] for step in key.scale)
 
 
-def note_name(pitch: int, key: Key | None = None) -> str:
+def note_name(pitch: int, key: Key | None = None, size: int = TWELVE) -> str:
     """A pitch or pitch class (C = 0) as a note name. A seven-note `key` spells it: its own
     notes one letter each, any other on the letter its interval in the key names (the b6 of D
-    is Bb, not A#). Without one, natural or sharp."""
-    if key is not None and key.size != TWELVE:
-        return str(pitch % key.size)
+    is Bb, not A#). Without one, natural or sharp. In a key or `size` of other than twelve
+    steps the pitch class is written as a number."""
+    size = key.size if key is not None else size
+    if size != TWELVE:
+        return str(pitch % size)
     return _spelling(key)[pitch % TWELVE]
 
 
@@ -139,9 +143,9 @@ def chord_symbol(chord: Chord, key: Key | None = None) -> str:
     Without a `key`, the chord is spelled in its own: the major or minor key on its root with
     the fewest accidentals, so Bb minor is "Bbm", not "A#m", and its bass follows."""
     spelling = key if key is not None else _own_key(chord)
-    symbol = note_name(chord.root, spelling) + _suffix(chord.pattern)
+    symbol = note_name(chord.root, spelling, chord.size) + _suffix(chord.pattern)
     if chord.bass is not None and chord.bass != chord.root:
-        symbol += "/" + note_name(chord.bass, spelling)
+        symbol += "/" + note_name(chord.bass, spelling, chord.size)
     return symbol
 
 
@@ -181,8 +185,11 @@ def parse_chord(text: str, key: Key | None = None) -> Chord:
 def quality(scale: Scale) -> str | None:
     """Whether a mode sounds major or minor: the catalog's name for the chord stacked in
     thirds on its first note ("major", "minor", "diminished", "augmented"). Where that stacking
-    makes no named chord, the third it contains decides; with both thirds or neither, None."""
-    if len(scale) >= 5 and scale.size == TWELVE:
+    makes no named chord, the third it contains decides; with both thirds or neither, None.
+    None outside twelve steps, where the names don't apply."""
+    if scale.size != TWELVE:
+        return None
+    if len(scale) >= 5:
         name = chord_names().get(scale.chord(0))
         if name in ("major", "minor", "diminished", "augmented"):
             return name
@@ -192,9 +199,10 @@ def quality(scale: Scale) -> str | None:
 def numeral(key: Key, degree: int) -> str:
     """The Roman numeral of the triad on `degree` (0-based): upper case with a major third,
     lower case with a minor one, ° diminished, + augmented, flat or sharp as the degree is.
-    E Phrygian's second degree is "bII"."""
+    E Phrygian's second degree is "bII". Degrees wrap, as `Key.chord`'s do."""
     if key.size != TWELVE or len(key.scale) != 7:
         raise ValueError("Roman numerals need a seven-note key in twelve steps")
+    degree %= 7
     triad = key.scale.chord(degree)
     text = degree_names(key)[degree][:-1] + _NUMERALS[degree]
     if 3 in triad:
@@ -205,7 +213,10 @@ def numeral(key: Key, degree: int) -> str:
 def stack_spelling(scale: Scale, degree: int, pattern: PitchClassSet) -> str:
     """The pattern's notes by their place in the stack of thirds on `degree`, in stack order:
     "1 b3 5 b9" for E minor with E Phrygian's F. Unlike `chord_tone_names`, the number is the
-    note's place in the scale's own stack, whatever else the chord holds."""
+    note's place in the scale's own stack, whatever else the chord holds. Outside twelve
+    steps each note is its number of steps above the root."""
+    if scale.size != TWELVE:
+        return " ".join(str(note) for note in scale.stacked(degree, len(scale)) if note in pattern)
     stack = enumerate(scale.stacked(degree, len(scale)))
     return " ".join(interval_name(note, 2 * place + 1) for place, note in stack if note in pattern)
 
@@ -267,18 +278,25 @@ def _suffix(pattern: PitchClassSet) -> str:
     )
     if not found:
         return f"({','.join(tones.values())})"
-    *_, core, omitted, added = max(found, key=lambda reading: reading[:4])  # ties: catalog order
-    labels = [f"no{number}" for number in omitted]
-    labels += ["maj7" if tones[step] == "7" else tones[step] for step in added]
-    return f"{symbols[core]}({','.join(labels)})"
+    best = max(found, key=lambda reading: reading.rank)  # ties: catalog order
+    labels = [f"no{number}" for number in best.omitted]
+    labels += ["maj7" if tones[step] == "7" else tones[step] for step in best.added]
+    return f"{symbols[best.core]}({','.join(labels)})"
 
 
 OMITTABLE = {3, 5}  # the tones a lead sheet leaves out of a seventh chord: "7(no3)", "m7(no5)"
 
 
-def _core(
-    core: PitchClassSet, pattern: PitchClassSet, tones: dict[int, str]
-) -> tuple[int, bool, bool, int, PitchClassSet, tuple[int, ...], tuple[int, ...]] | None:
+class _Reading(NamedTuple):
+    """A chord read as a named core with notes added or left out, as `_core` ranks it."""
+
+    rank: tuple[int, bool, bool, int]  # the larger reads better: see `_core`
+    core: PitchClassSet
+    omitted: tuple[int, ...]  # degree numbers left out: 3, 5
+    added: tuple[int, ...]  # steps above the root, in written order
+
+
+def _core(core: PitchClassSet, pattern: PitchClassSet, tones: dict[int, str]) -> _Reading | None:
     """`pattern` read as the named `core` with notes added and its 3rd or 5th left out, ranked
     for `_suffix` (the largest is chosen), or None if it can't be. Ranked by the most of the
     core kept; then nothing left out; then a core that reads the same inside the chord as
@@ -298,7 +316,8 @@ def _core(
     if len(kept) < 2 or set(omitted) - OMITTABLE or any(_number(tones[s]) in own for s in added):
         return None
     within_seventh = sum(_number(tones[step]) <= 7 for step in kept)
-    return len(kept), not omitted, reads_same, within_seventh, core, tuple(omitted), tuple(added)
+    rank = (len(kept), not omitted, reads_same, within_seventh)
+    return _Reading(rank, core, tuple(omitted), tuple(added))
 
 
 def _written_order(tone: str) -> tuple[bool, int, int]:
@@ -327,9 +346,9 @@ def _pattern(text: str) -> PitchClassSet:
         else:
             raise ValueError(f"unknown chord type {core!r}")
     if not core and "1" in labels:  # "(1,b9,9)": every note is listed, there is no core
-        return PitchClassSet(tuple(map(_interval_step, labels)))
+        return PitchClassSet(tuple(map(_interval_step, labels)), TWELVE)
     pattern = types[core]
-    omitted = {int(label[2:]) for label in labels if label.startswith("no")}
+    omitted = {_number(label[2:]) for label in labels if label.startswith("no")}
     notes = [label for label in labels if not label.startswith("no")]
     altered = {_number(label) for label in notes} | omitted
     kept = [
@@ -337,12 +356,16 @@ def _pattern(text: str) -> PitchClassSet:
         for step, name in zip(pattern, chord_tone_names(pattern), strict=True)
         if _number(name) not in altered
     ]
-    return PitchClassSet((*kept, *map(_interval_step, notes)))
+    return PitchClassSet((*kept, *map(_interval_step, notes)), TWELVE)
 
 
 def _number(name: str) -> int:
-    """The degree an interval name counts: "b5" and "#5" are both 5, "maj7" is 7."""
-    return int(name.strip().removeprefix("maj").lstrip("b#"))
+    """The degree an interval name counts: "b5" and "#5" are both 5, "maj7" is 7. Raises
+    ValueError if there is no number."""
+    number = name.strip().removeprefix("maj").lstrip("b#")
+    if not number.isdigit():
+        raise ValueError(f"not an interval: {name!r}")
+    return int(number)
 
 
 @cache

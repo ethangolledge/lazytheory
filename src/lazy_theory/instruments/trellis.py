@@ -65,7 +65,7 @@ class Trellis:
         for index, voicings in enumerate(options):
             if len(voicings) == 0:
                 raise ValueError(f"no voicing of chord {index} satisfies the rules")
-        standing = costs or [np.zeros(len(voicings)) for voicings in options]
+        standing = costs if costs is not None else [np.zeros(len(voicings)) for voicings in options]
         return cls(
             list(options),
             [np.asarray(cost, dtype=np.float64) for cost in standing],

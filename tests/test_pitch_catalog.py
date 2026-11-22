@@ -128,5 +128,12 @@ class CustomCatalogTest(unittest.TestCase):
         self.assertEqual([accidentals(shift) for shift in (-2, 0, 1)], ["bb", "", "#"])
 
 
+class StrictNoteTest(unittest.TestCase):
+    def test_rejects_mixed_accidentals_and_lower_case(self):
+        for note in ("C#b", "Cb#", "c", "e2"):
+            with self.subTest(note=note), self.assertRaises(ValueError):
+                pitch(note) if note[-1].isdigit() else pitch_class(note)
+
+
 if __name__ == "__main__":
     unittest.main()

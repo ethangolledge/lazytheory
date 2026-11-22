@@ -3,6 +3,10 @@
 Why: names are data, not code (docs/theory.md), and each domain keeps its own files next to its
 code (pitch/scales.toml, rhythm/rhythm.toml, instruments/tunings.toml). Reading and checking
 them is the same job everywhere, so it is written once here.
+
+Pass a path to a catalog's loader to read your own file instead of the bundled one: you get
+its values (scales, chords, tunings, talas) to use directly. The names modules always speak
+the bundled files: to change how chords or syllables are written, edit the bundled file.
 """
 
 import tomllib
@@ -16,11 +20,12 @@ from typing import Any
 
 
 @cache
-def read(package: str, bundled: str, path: Path | None = None) -> Mapping[str, Any]:
-    """The TOML file at `path`, or else the file `bundled` with `package`: parsed once and shared
+def read(module: str, bundled: str, path: Path | None = None) -> Mapping[str, Any]:
+    """The TOML file at `path`, or else the file `bundled` beside `module` (the caller's
+    `__name__`), in its package: parsed once and shared
     by every loader that reads it, so it is frozen (tables read-only, lists tuples) and no
     caller can change what the next one reads."""
-    source: Path | Traversable = path or files(package) / bundled
+    source: Path | Traversable = path or files(module.rpartition(".")[0]) / bundled
     with source.open("rb") as file:
         frozen: Mapping[str, Any] = _frozen(tomllib.load(file))
         return frozen

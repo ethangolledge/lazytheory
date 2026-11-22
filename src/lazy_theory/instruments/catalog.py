@@ -4,9 +4,7 @@ Why: "drop D" is a convention, so it is data. Each tuning is written as its lowe
 the steps up to each next one, so a re-entrant ukulele is a negative step, and pitches are
 read once, in the pitch frame (`pitch.catalog.pitch`), against the file's reference.
 
-Pass a path to a loader to read your own file instead of the bundled one: you get its values
-(scales, chords, tunings, talas) to use directly. The names modules always speak the bundled
-files: to change how chords or syllables are written, edit the bundled file.
+Your own files load as `lazy_theory.data` describes.
 """
 
 from collections.abc import Mapping
@@ -19,13 +17,11 @@ from lazy_theory.data import add, read
 from lazy_theory.instruments.fretboard import Tuning
 from lazy_theory.pitch.catalog import major, pitch
 
-_PACKAGE = __name__.rpartition(".")[0]  # where the bundled data files sit
-
 
 @cache
 def load_tunings(path: Path | None = None) -> Mapping[str, Tuning]:
     """Every named tuning, keyed by instrument and name, e.g. "guitar standard"."""
-    data = read(_PACKAGE, "tunings.toml", path)
+    data = read(__name__, "tunings.toml", path)
     reference = data["reference"]
     temperament = EqualTemperament(major().size)
     hertz = reference["hertz"] * temperament.ratio(-pitch(reference["note"]))

@@ -52,8 +52,8 @@ class Taste:
 
     @property
     def reach(self) -> float:
-        """mm the whole hand spans, first finger to last."""
-        return self.spans[-1]
+        """mm the whole hand spans, first finger to last: none for a single finger."""
+        return self.spans[-1] if self.spans else 0.0
 
     def voicings(self, board: Fretboard, chord: Chord) -> Grid:
         """Every voicing of `chord` this hand can play and this player allows."""
@@ -83,9 +83,8 @@ class Taste:
             keep &= rules.contiguous(voicings)
         if self.open_within is not None:
             keep &= rules.open_within(voicings, self.open_within)
-        keep[keep] = rules.placeable(
-            voicings[keep], board.fret_distance, self.spans
-        )  # costly: last
+        # the costly rule last, on what the others keep
+        keep[keep] = rules.placeable(voicings[keep], board.fret_distance, self.spans)
         return keep
 
     def standing(self, board: Fretboard, voicings: Grid) -> Floats:

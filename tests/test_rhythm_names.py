@@ -226,5 +226,11 @@ class TalTest(unittest.TestCase):
         self.assertEqual(theka.pulses, 48)
 
 
+class CountingInputTest(unittest.TestCase):
+    def test_a_bar_of_no_counts_is_rejected(self):
+        with self.assertRaises(ValueError):
+            counting(Meter.of((4,)), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

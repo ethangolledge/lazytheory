@@ -8,9 +8,7 @@ Theory it speaks to: the 35 suladi talas built from their angas (a laghu is a cl
 fingers counted), Hindustani tals as sections with marks and thekas, and the bell and clave
 timelines of West African and Afro-Cuban music.
 
-Pass a path to a loader to read your own file instead of the bundled one: you get its values
-(scales, chords, tunings, talas) to use directly. The names modules always speak the bundled
-files: to change how chords or syllables are written, edit the bundled file.
+Your own files load as `lazy_theory.data` describes.
 """
 
 from collections.abc import Mapping
@@ -23,8 +21,6 @@ from lazy_theory.data import add, read
 from lazy_theory.rhythm.meter import CLAP, NONE, WAVE, Meter
 from lazy_theory.rhythm.phrase import Phrase
 from lazy_theory.rhythm.stroke import Stroke
-
-_PACKAGE = __name__.rpartition(".")[0]  # where the bundled data files sit
 
 
 class Spoken(NamedTuple):
@@ -46,7 +42,7 @@ class Spoken(NamedTuple):
 def load_spoken(path: Path | None = None) -> Spoken:
     """The words and syllables of spoken rhythm: konnakol words, Takadimi positions, tabla bols
     with their strokes."""
-    data = read(_PACKAGE, "rhythm.toml", path)
+    data = read(__name__, "rhythm.toml", path)
     names = tuple(data["syllables"]["spoken"])
     syllables = frozenset(names)
     if len(syllables) != len(names):
@@ -100,7 +96,7 @@ def load_talas(path: Path | None = None) -> Mapping[str, Meter]:
     ("I") is jati beats, a clap then a finger counted on each beat after it; the other angas'
     beats and gestures are data. Nothing is grouped inside an anga, so no beat of a laghu is
     heavier than another."""
-    talas = read(_PACKAGE, "rhythm.toml", path)["talas"]
+    talas = read(__name__, "rhythm.toml", path)["talas"]
     gestures = {anga: [_GESTURES[g] for g in hands] for anga, hands in talas["gestures"].items()}
     meters: dict[str, Meter] = {}
     for jati, beats in talas["jatis"].items():
@@ -128,7 +124,7 @@ def load_tals(path: Path | None = None) -> Mapping[str, Tal]:
     gestures on each section's first beat (X or a number a clap, 0 a wave); a chapu lists the
     beats it claps on."""
     tals: dict[str, Tal] = {}
-    for name, entry in read(_PACKAGE, "rhythm.toml", path)["tals"].items():
+    for name, entry in read(__name__, "rhythm.toml", path)["tals"].items():
         sections = entry["sections"]
         beats = sum(sections)
         hands = [NONE] * beats
@@ -161,6 +157,6 @@ def _cycle(sections: list[int], hands: list[int]) -> Meter:
 def load_timelines(path: Path | None = None) -> Mapping[str, PitchClassSet]:
     """Every named timeline (bell or clave pattern), keyed by name, as onsets on its cycle."""
     timelines: dict[str, PitchClassSet] = {}
-    for name, steps in read(_PACKAGE, "rhythm.toml", path)["timelines"].items():
+    for name, steps in read(__name__, "rhythm.toml", path)["timelines"].items():
         add(timelines, name, PitchClassSet.from_steps(steps))
     return timelines

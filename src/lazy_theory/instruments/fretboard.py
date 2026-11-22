@@ -55,6 +55,8 @@ class Fretboard:
     temperament: EqualTemperament = field(default_factory=EqualTemperament)
 
     def __post_init__(self) -> None:
+        if self.frets < 0:
+            raise ValueError(f"a neck has zero or more frets, not {self.frets}")
         open_strings = np.array(self.open_strings, dtype=np.int16)
         open_strings.flags.writeable = False
         object.__setattr__(self, "open_strings", open_strings)
@@ -134,7 +136,8 @@ class Fretboard:
         grid = np.zeros((len(chords), 0), dtype=np.int16)
         lowest = np.full(len(chords), self.frets)  # lowest and highest fretted note so far
         highest = np.zeros(len(chords), dtype=np.int16)
-        sounded = ended = np.zeros(len(chords), dtype=bool)  # a string sounded; then one muted
+        sounded = np.zeros(len(chords), dtype=bool)  # a string has sounded
+        ended = np.zeros(len(chords), dtype=bool)  # then one was muted
         for string in range(len(self.open_strings)):  # add a string, keep what the hand can span
             options, valid = _options(playable[:, string])  # [chord, option], up the neck
             parent = np.repeat(np.arange(len(grid)), options.shape[1])

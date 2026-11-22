@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 import numpy as np
 from fixtures import MAJOR, REACH, STANDARD, TUNINGS, X, rows
@@ -201,6 +202,12 @@ class StackTest(unittest.TestCase):
     def test_sorted_by_pitch_not_string(self):
         c_major = rows([0, 0, 0, 3])  # G4 C4 E4 C5 on a re-entrant ukulele
         self.assertEqual(UKULELE.stack(c_major, root=C)[0].tolist(), [0, 4, 7, 0])
+
+
+class FretCountTest(unittest.TestCase):
+    def test_rejects_negative_frets(self):
+        with self.assertRaises(ValueError):
+            replace(STANDARD, frets=-3)
 
 
 if __name__ == "__main__":

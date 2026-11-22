@@ -95,7 +95,9 @@ def harmonise(
     allowed voicing.
     """
     options, owners = [], []
-    for note, chords in zip(melody, slots, strict=True):
+    for index, (note, chords) in enumerate(zip(melody, slots, strict=True)):
+        if not chords:
+            raise ValueError(f"no chords are allowed under note {index}")
         grids = taste.options(board, chords)
         if note is not None:
             grids = [grid[board.top(grid) % board.size == note % board.size] for grid in grids]

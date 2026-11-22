@@ -18,8 +18,10 @@ from lazy_theory.pitch.names import (
     parse_chord,
     pitch_name,
     quality,
+    stack_spelling,
     step_names,
 )
+from lazy_theory.pitch.scale import Scale
 
 
 class SpellingTest(unittest.TestCase):
@@ -264,6 +266,37 @@ class ChordToneTest(unittest.TestCase):
         self.assertEqual(
             chord_tone_names(PitchClassSet((0, 4, 7, 9, 10))), ("1", "3", "5", "13", "b7")
         )
+
+
+class OtherSizesTest(unittest.TestCase):
+    """Outside twelve steps every name is a number: no 12-step letters leak through."""
+
+    nineteen = Scale.from_steps((3, 3, 2, 3, 3, 3, 2))  # 19-step major
+
+    def test_chord_symbols_in_numbers(self):
+        chord = Chord(PitchClassSet((0, 6, 11), 19), 13, 6 + 13)
+        self.assertEqual(chord_symbol(chord), "13(0,6,11)/0")
+
+    def test_stack_spelling_in_numbers(self):
+        triad = PitchClassSet((0, 6, 11), 19)
+        self.assertEqual(stack_spelling(self.nineteen, 0, triad), "0 6 11")
+
+    def test_no_quality(self):
+        self.assertIsNone(quality(self.nineteen))
+
+
+class NumeralWrapTest(unittest.TestCase):
+    def test_degrees_wrap_as_key_chords_do(self):
+        major = key("Ionian", "C")
+        self.assertEqual(numeral(major, 7), numeral(major, 0))
+        self.assertEqual(numeral(major, -1), numeral(major, 6))
+
+
+class ParseErrorTest(unittest.TestCase):
+    def test_bad_symbols_say_what_is_wrong(self):
+        for text in ("C(no)", "C(nox)", "c", "Cmaj7(#)"):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                parse_chord(text)
 
 
 if __name__ == "__main__":

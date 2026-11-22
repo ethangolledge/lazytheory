@@ -1,7 +1,7 @@
 import unittest
 from itertools import combinations
 
-from lazy_theory.core.pcset import PitchClassSet, shortest
+from lazy_theory.core.pcset import PitchClassSet, group_starts, shortest
 
 IONIAN_STEPS = (2, 2, 1, 2, 2, 2, 1)
 IONIAN = PitchClassSet((0, 2, 4, 5, 7, 9, 11))
@@ -113,6 +113,20 @@ class SetClassTest(unittest.TestCase):
     def test_fortes_table(self):
         counts = {n: len(self.classes(n, True)) for n in (3, 4, 5, 6)}
         self.assertEqual(counts, {3: 12, 4: 29, 5: 38, 6: 50})
+
+
+class GroupStartsTest(unittest.TestCase):
+    def test_starts(self):
+        self.assertEqual(group_starts((3, 2, 2)), (0, 3, 5))
+        self.assertEqual(group_starts(()), ())  # no groups, no starts
+
+
+class FromAnotherSetTest(unittest.TestCase):
+    def test_keeps_its_size_or_refuses(self):
+        nineteen = PitchClassSet((0, 3, 17), 19)
+        self.assertEqual(PitchClassSet(nineteen, 19), nineteen)
+        with self.assertRaises(ValueError):
+            PitchClassSet(nineteen)  # 12 by default: 17 would quietly become 5
 
 
 if __name__ == "__main__":

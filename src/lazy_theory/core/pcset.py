@@ -32,8 +32,8 @@ def shortest[N: (int, float)](steps: N, size: int) -> N:
 def group_starts(lengths: Sequence[int]) -> tuple[int, ...]:
     """Where each of a run of `lengths` starts, the first at 0: (3, 2, 2) starts at 0, 3 and 5.
     The inverse of `rhythm.meter.gaps`: meters, phrases and step patterns all lay groups end to
-    end."""
-    return tuple(accumulate(lengths[:-1], initial=0))
+    end. No lengths, no starts."""
+    return tuple(accumulate(lengths[:-1], initial=0)) if lengths else ()
 
 
 @dataclass(frozen=True, eq=False)
@@ -51,6 +51,10 @@ class PitchClassSet:
     def __post_init__(self) -> None:
         if self.size < 1:
             raise ValueError(f"size must be positive, got {self.size}")
+        if isinstance(self.pitch_classes, PitchClassSet) and self.pitch_classes.size != self.size:
+            raise ValueError(  # reducing mod another size would make a different set
+                f"a {self.pitch_classes.size}-step set given size {self.size}: pass its size"
+            )
         normalised = tuple(sorted({pc % self.size for pc in self.pitch_classes}))
         object.__setattr__(self, "pitch_classes", normalised)
 

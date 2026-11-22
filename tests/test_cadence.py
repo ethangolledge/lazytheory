@@ -123,5 +123,11 @@ class CadenceTest(unittest.TestCase):
                 self.assertEqual(landing(0, 3 * phrase + 2 * gap, size, on_target=False), 0)
 
 
+class LandingInputTest(unittest.TestCase):
+    def test_a_cycle_of_no_pulses_is_rejected(self):
+        with self.assertRaises(ValueError):
+            landing(0, 5, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

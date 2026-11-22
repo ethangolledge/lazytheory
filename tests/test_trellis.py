@@ -250,5 +250,12 @@ class TwoFiveOneTest(unittest.TestCase):
         self.assertEqual(path.tolist()[-1], [X, X, 9, 9, 8, 8])
 
 
+class CostArrayTest(unittest.TestCase):
+    def test_costs_may_be_one_array(self):
+        options = [rows([0, 2, 2, 1, 0, 0], [0, 2, 2, 0, 0, 0])] * 2
+        trellis = Trellis.build(options, moved, np.array([[0.0, 5.0], [5.0, 0.0]]))
+        self.assertEqual(trellis.shortest().picks, (0, 1))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 # Spoken rhythm (konnakol, solkattu) and the Carnatic suladi talas.
 #
 # A group of n pulses is a word of n syllables. Only the short words are listed; a longer group
-# is spelled by splitting it in two, the shorter half first (lazy_theory.core.rhythm.grouping),
+# is spelled by splitting it in two, the shorter half first (lazy_theory.rhythm.meter.grouping),
 # so 5 is "ta ka ta ki ta", 7 is "ta ki ta ta ka di mi" and 9 is "ta ka di mi ta ka ta ki ta".
 
 rest = ","  # a silent pulse
@@ -54,10 +54,10 @@ spoken = [
 6 = "ta va ki di da ma"
 7 = "ta va ki di da ma ti"
 
-# Tabla strokes as [low head, high head], each 0 silent, 1 damped, 2 open (core.stroke). The
+# Tabla strokes as [low head, high head], each 0 silent, 1 damped, 2 open (rhythm.stroke). The
 # four classes and their bols are Rohit & Rao (2021), table 3: damped, resonant treble,
 # resonant bass, resonant both. The paper doesn't say which head a damped stroke is on; it is
-# put on the high head, as core.stroke's LIGHT. Bols the paper doesn't class have no stroke.
+# put on the high head, as rhythm.stroke's LIGHT. Bols the paper doesn't class have no stroke.
 # Spelling a rhythm as bols uses the first bol listed for each stroke.
 [strokes]
 ti = [0, 1]

@@ -8,7 +8,7 @@ Theory it speaks to: tertian harmony (chords as every other scale note, `stride`
 relatives (quartal harmony is `stride` 3); modes as the same notes on another root.
 
 Could grow into: modulation (keys ranked by shared notes or by voice-leading distance between
-their scales), modal interchange (the same degree in a parallel key: see tests/test_harmony.py),
+their scales), modal interchange (the same degree in a parallel key: see tests/test_tension.py),
 and secondary dominants as `Key(scale, chord.root).chord(4)`.
 """
 
