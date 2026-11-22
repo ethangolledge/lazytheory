@@ -29,8 +29,9 @@ class Key(Rooted[Scale]):
         return self.pattern
 
     def chord(self, degree: int, notes: int = 3, stride: int = 2) -> Chord:
-        """The chord stacked on `degree` (0-based), on that degree's note."""
-        root = self.root + self.scale.pitch_classes[degree]
+        """The chord stacked on `degree` (0-based, wrapping as the scale's degrees do), on
+        that degree's note."""
+        root = self.root + self.scale[degree % len(self.scale)]
         return Chord(self.scale.chord(degree, notes, stride), root)
 
     def chords(self, notes: int = 3, stride: int = 2) -> list[Chord]:

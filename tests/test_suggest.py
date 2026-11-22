@@ -4,6 +4,7 @@ from dataclasses import replace
 import numpy as np
 from fixtures import MAJOR, STANDARD, TUNINGS
 
+from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.names import tuning_name
 from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.chord import Chord
@@ -86,6 +87,16 @@ class SuggestTest(unittest.TestCase):
         (keyed,) = suggest(STANDARD, chords, taste, context=context, context_weight=0.5, **only)
         cheapest = taste.standing(STANDARD, taste.voicings(STANDARD, Chord(MAJOR, A))).min()
         self.assertAlmostEqual(keyed.cost - plain.cost, 0.5 * cheapest)
+
+    def test_an_unplayable_context_chord_is_counted_not_fatal(self):
+        chords, taste = [Chord(MAJOR, G), Chord(MAJOR, D)], Taste()
+        impossible = Chord(PitchClassSet(tuple(range(7))), 0)  # seven adjacent semitones
+        plain = suggest(STANDARD, chords, taste)
+        keyed = suggest(STANDARD, chords, taste, context=[impossible, Chord(MAJOR, A)])
+        self.assertEqual(len(keyed), len(plain))
+        self.assertEqual(keyed[0].unplayable, 1)  # the impossible chord, never the A major
+        missed = [one.unplayable for one in keyed]
+        self.assertEqual(missed, sorted(missed))  # necks that play more of the key come first
 
     def test_only_capos_and_steps_asked_for(self):
         chords, taste = [Chord(MAJOR, G), Chord(MAJOR, D)], Taste()

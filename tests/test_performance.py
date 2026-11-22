@@ -15,6 +15,11 @@ class PerformanceTest(unittest.TestCase):
     def test_folds_later_laps_into_the_cycle(self):
         self.assertEqual(Performance((4.5, 9.0), 4).times, (0.5, 1.0))
 
+    def test_a_tap_a_rounding_error_before_the_one_is_on_the_one(self):
+        played = Performance((-1e-17,), 4)
+        self.assertEqual(played.times, (0.0,))
+        self.assertEqual(played.placed(Meter.of((4,), 4)).points, (0,))
+
     def test_silence_is_a_performance(self):
         silence = Performance((), 4)
         self.assertEqual(silence.placed(EIGHTHS).points, ())

@@ -42,6 +42,7 @@ class Suggestion(NamedTuple):
     capo: int
     path: Grid  # one voicing per chord, frets counted from the capo
     cost: float
+    unplayable: int  # context chords this neck has no allowed voicing for
 
 
 def screen(
@@ -87,8 +88,9 @@ def suggest(
 
     Cost is the cheapest path through `chords`, plus `retune` per step of retuning, plus
     `context_weight` times the cheapest voicing of each `context` chord (e.g. the rest of the
-    key), so a neck that suits these chords but not the next one ranks lower. Every chord must
-    be playable. The screen keeps `shortlist` retuning and capo pairs, and always `base` with
+    key), so a neck that suits these chords but not the next one ranks lower. Every one of
+    `chords` must be playable; a context chord that isn't is counted (`unplayable`), and necks
+    that can play more of the context rank first, then by cost. The screen keeps `shortlist` retuning and capo pairs, and always `base` with
     no capo when `steps` and `capos` both include 0. Equal costs rank the smaller retuning
     first, and a path playing the same pitches as a better one is dropped.
     """
@@ -109,18 +111,19 @@ def suggest(
         move, fret = step[choice], int(capos[capo_index])
         board = replace(base, open_strings=base.open_strings + move).capo(fret)
         options = taste.options(board, [*chords, *context])
-        if any(len(voicings) == 0 for voicings in options):
-            continue  # some chord has no voicing this player allows
+        if any(len(voicings) == 0 for voicings in options[: len(chords)]):
+            continue  # a chord of the progression has no voicing this player allows
+        playable = [voicings for voicings in options[len(chords) :] if len(voicings)]
+        unplayable = len(context) - len(playable)
         route = taste.trellis(board, options[: len(chords)]).shortest()
         effort_here = int(np.abs(move).sum())
-        nearby = taste.costs(board, options[len(chords) :]) if context else []
-        near = sum(chord_costs.min() for chord_costs in nearby)
+        near = sum(costs.min() for costs in taste.costs(board, playable))
         total = float(route.cost + retune * effort_here + context_weight * near)
         sound = np.nan_to_num(board.notes(route.path), nan=-1).tobytes()
-        suggestion = Suggestion(tuple(move.tolist()), fret, route.path, total)
-        found.append((total, effort_here, sound, suggestion))
+        suggestion = Suggestion(tuple(move.tolist()), fret, route.path, total, unplayable)
+        found.append((unplayable, total, effort_here, sound, suggestion))
 
     heard: dict[bytes, Suggestion] = {}
-    for _, _, sound, suggestion in sorted(found, key=lambda one: one[:2]):
+    for *_, sound, suggestion in sorted(found, key=lambda one: one[:3]):
         heard.setdefault(sound, suggestion)  # the same pitches from another tuning sound the same
     return list(heard.values())[:top]

@@ -34,6 +34,7 @@ def barres(frets: Grid) -> Mask:
     note all the way to that edge. Every string under it must be fretted at the barre's fret or
     higher: an open string would be damped and a lower note couldn't sound. Past the barre's
     last note, a muted string is fine (it isn't played); between its notes, it would sound.
+    Only fretted notes can be barred: open and muted strings never are.
     """
     index = np.arange(frets.shape[1])
     lower = frets[:, None, :] < frets[:, :, None]  # [voicing, first, string] below `first`'s fret
@@ -42,7 +43,10 @@ def barres(frets: Grid) -> Mask:
     sounding = np.cumsum(lower & (frets != MUTED)[:, None, :], axis=2, dtype=np.int8)
     sounding_past = sounding[:, :, -1:] - sounding  # such strings sounding past each string
     same_fret = frets[:, :, None] == frets[:, None, :]
-    barred: Mask = same_fret & (index[:, None] < index) & (under == 0) & (sounding_past == 0)
+    fretted = frets[:, :, None] > 0
+    barred: Mask = (
+        fretted & same_fret & (index[:, None] < index) & (under == 0) & (sounding_past == 0)
+    )
     return barred
 
 

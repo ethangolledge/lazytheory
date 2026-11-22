@@ -52,7 +52,7 @@ class Performance:
             raise ValueError(f"a cycle needs at least one count, got {self.counts}")
         if not all(isfinite(time) for time in self.times):
             raise ValueError(f"times must be finite, got {self.times}")
-        object.__setattr__(self, "times", tuple(sorted(time % self.counts for time in self.times)))
+        object.__setattr__(self, "times", tuple(sorted(_fold(t, self.counts) for t in self.times)))
 
     def placed(self, meter: Meter, swing: float = 1.0) -> Placement:
         """Each onset on the grid point of `meter` that sounds nearest to it when the grid is
@@ -78,3 +78,10 @@ class Performance:
             points.append(point)
             offsets.append(missed / beat)
         return Placement(tuple(points), tuple(offsets))
+
+
+def _fold(time: float, counts: int) -> float:
+    """`time` folded into one cycle, [0, counts). Floating point can round a time just before
+    the 1 (-1e-17 % 4) up to `counts` itself, which is the 1 of the next lap: that is 0."""
+    folded = time % counts
+    return 0.0 if folded >= counts else folded

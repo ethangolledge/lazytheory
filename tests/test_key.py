@@ -28,6 +28,11 @@ class KeyTest(unittest.TestCase):
         self.assertNotIn(10, key)
         self.assertNotEqual(key, Chord(SCALES["Dorian"], 2))  # same notes, not the same thing
 
+    def test_degrees_wrap_as_the_scales_do(self):
+        c_major = Key(SCALES["Ionian"], 0)
+        self.assertEqual(c_major.chord(7), c_major.chord(0))
+        self.assertEqual(c_major.chord(-1), c_major.chord(6))
+
     def test_stacking_in_thirds_reaches_the_thirteenth(self):
         self.assertEqual(SCALES["Ionian"].stacked(0, 7), (0, 4, 7, 11, 2, 5, 9))
 

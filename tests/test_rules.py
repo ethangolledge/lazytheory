@@ -5,6 +5,7 @@ from fixtures import STANDARD, X, rows
 
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import (
+    barres,
     contiguous,
     fingers,
     motion,
@@ -47,6 +48,11 @@ class FingersTest(unittest.TestCase):
             [X, 0, 2, 2, 2, 0], [X, 2, 4, 4, 3, 2], [2, 3, 2, 2, 0, 2], [5, 5, 5, X, X, X]
         )
         self.assertEqual(fingers(voicings).tolist(), [3, 4, 5, 1])
+
+    def test_open_and_muted_strings_are_never_barred(self):
+        self.assertFalse(barres(rows([0, 0, 0, 0, 0, 0])).any())
+        self.assertFalse(barres(rows([X, X, 0, 0, X, X])).any())
+        self.assertTrue(barres(rows([X, X, 3, 3, X, X]))[0, 2, 3])
 
     def test_a_string_below_the_barre_fret_breaks_it(self):
         open_, muted, lower = rows([5, 0, 5, 5, X, X], [3, X, 3, 3, X, X], [5, 4, 5, X, X, X])
