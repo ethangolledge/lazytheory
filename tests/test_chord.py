@@ -1,7 +1,6 @@
 import unittest
 
 import numpy as np
-
 from fixtures import MAJOR
 
 from lazy_theory.core.pcset import PitchClassSet
