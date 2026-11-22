@@ -1,29 +1,20 @@
 import unittest
 
 import numpy as np
+from fixtures import MAJOR, REACH, STANDARD, TUNINGS, X, rows
 
 from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.core.temperament import EqualTemperament
 from lazy_theory.instruments.arrays import MUTED
-from lazy_theory.instruments.catalog import load_tunings
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
 from lazy_theory.pitch.scale import Scale
 
-X = MUTED
-TUNINGS = load_tunings()
-STANDARD = Fretboard.from_tuning(TUNINGS["guitar standard"])
 DROP_D = Fretboard.from_tuning(TUNINGS["guitar drop D"])
 UKULELE = Fretboard.from_tuning(TUNINGS["ukulele standard"], frets=12)
-REACH = STANDARD.fret_distance[4] - STANDARD.fret_distance[1]  # one finger per fret, frets 1-4
 PHRYGIAN = Scale.from_steps((1, 2, 2, 2, 1, 2, 2))
-MAJOR = PitchClassSet((0, 4, 7))
 C, E = 0, 4  # pitch classes
-
-
-def rows(*voicings: list[int]) -> np.ndarray:
-    return np.array(voicings, dtype=np.int16)
 
 
 def contains_row(grid: np.ndarray, row: list[int]) -> bool:

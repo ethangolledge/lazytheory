@@ -1,12 +1,12 @@
 import unittest
 
+from fixtures import SCALES
+
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.pitch.catalog import load_scales
 from lazy_theory.pitch.key import Key
 from lazy_theory.pitch.names import stack_spelling as spell
 from lazy_theory.suggest.extensions import extended
 
-SCALES = load_scales()
 PHRYGIAN, DORIAN, IONIAN = SCALES["Phrygian"], SCALES["Dorian"], SCALES["Ionian"]
 
 

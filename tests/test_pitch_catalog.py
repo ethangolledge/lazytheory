@@ -2,7 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lazy_theory.instruments.catalog import load_tunings
+from fixtures import SCALES
+
 from lazy_theory.pitch.catalog import (
     accidentals,
     alteration,
@@ -15,12 +16,6 @@ from lazy_theory.pitch.catalog import (
     pitch_class,
 )
 from lazy_theory.pitch.chord import identify
-
-SCALES = load_scales()
-
-CHORDS = load_chords()
-
-TUNINGS = load_tunings()
 
 
 class BundledCatalogTest(unittest.TestCase):

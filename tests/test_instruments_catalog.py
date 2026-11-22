@@ -2,13 +2,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from fixtures import TUNINGS
+
 from lazy_theory.core.temperament import EqualTemperament
 from lazy_theory.instruments.catalog import load_tunings
 from lazy_theory.pitch.catalog import (
     pitch,
 )
-
-TUNINGS = load_tunings()
 
 
 class TuningCatalogTest(unittest.TestCase):

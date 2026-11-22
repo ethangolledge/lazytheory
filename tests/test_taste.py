@@ -1,15 +1,14 @@
 import unittest
 
 import numpy as np
+from fixtures import STANDARD
 
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.instruments.catalog import load_tunings
 from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import contiguous, fingers, placeable, ringing, within
 from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.chord import Chord
 
-STANDARD = Fretboard.from_tuning(load_tunings()["guitar standard"])
 MINOR, MAJOR = PitchClassSet((0, 3, 7)), PitchClassSet((0, 4, 7))
 E, A, C, G = 4, 9, 0, 7  # pitch classes
 

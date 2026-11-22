@@ -2,10 +2,8 @@ import unittest
 from dataclasses import replace
 
 import numpy as np
+from fixtures import MAJOR, STANDARD, TUNINGS
 
-from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.instruments.catalog import load_tunings
-from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.names import tuning_name
 from lazy_theory.instruments.taste import Taste
 from lazy_theory.pitch.chord import Chord
@@ -13,10 +11,7 @@ from lazy_theory.pitch.key import Key
 from lazy_theory.pitch.scale import Scale
 from lazy_theory.suggest.tunings import screen, suggest
 
-TUNINGS = load_tunings()
-STANDARD = Fretboard.from_tuning(TUNINGS["guitar standard"])
 OPEN_D = (-2, 0, 0, -1, -2, -2)  # D A D F# A D from E A D G B E
-MAJOR = PitchClassSet((0, 4, 7))
 D, G, A = 2, 7, 9  # pitch classes
 
 

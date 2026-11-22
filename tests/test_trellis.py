@@ -2,12 +2,10 @@ import unittest
 from unittest import mock
 
 import numpy as np
+from fixtures import IONIAN, MAJOR, REACH, STANDARD, X, rows
 
-from lazy_theory.core.pcset import PitchClassSet
 from lazy_theory.instruments.acoustics import roughness
 from lazy_theory.instruments.arrays import MUTED
-from lazy_theory.instruments.catalog import load_tunings
-from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.rules import (
     contiguous,
     fingers,
@@ -18,18 +16,8 @@ from lazy_theory.instruments.rules import (
 )
 from lazy_theory.instruments.trellis import Trellis
 from lazy_theory.pitch.chord import Chord
-from lazy_theory.pitch.scale import Scale
 
-X = MUTED
-STANDARD = Fretboard.from_tuning(load_tunings()["guitar standard"])
-REACH = STANDARD.fret_distance[4] - STANDARD.fret_distance[1]
-IONIAN = Scale.from_steps((2, 2, 1, 2, 2, 2, 1))
-MAJOR = PitchClassSet((0, 4, 7))
 C, F, G = 0, 5, 7  # pitch classes
-
-
-def rows(*voicings: list[int]) -> np.ndarray:
-    return np.array(voicings, dtype=np.int16)
 
 
 def bass(voicings: np.ndarray) -> np.ndarray:

@@ -1,14 +1,6 @@
 import unittest
 
 from lazy_theory.instruments.names import tab
-from lazy_theory.pitch.catalog import load_chords, load_scales, pitch_class
-from lazy_theory.pitch.key import Key
-
-SCALES, CHORDS = load_scales(), load_chords()
-
-
-def key(mode: str, tonic: str) -> Key:
-    return Key(SCALES[mode], pitch_class(tonic))
 
 
 class TabTest(unittest.TestCase):

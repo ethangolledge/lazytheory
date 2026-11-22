@@ -2,16 +2,15 @@
 
 import unittest
 
+from fixtures import CHORDS, IONIAN, SCALES
+
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.pitch.catalog import chord_names, load_chords, load_scales
+from lazy_theory.pitch.catalog import chord_names
 from lazy_theory.pitch.chord import Chord, identify
 from lazy_theory.pitch.key import Key
 from lazy_theory.pitch.scale import Scale
 from lazy_theory.pitch.voice_leading import voice_leading
 
-SCALES = load_scales()
-CHORDS = load_chords()
-IONIAN = SCALES["Ionian"]
 DOMINANT = 4  # 0-based degree of the fifth scale note
 TONIC = IONIAN.chord(0)
 

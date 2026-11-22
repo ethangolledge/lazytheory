@@ -1,11 +1,11 @@
 import unittest
 
+from fixtures import SCALES
+
 from lazy_theory.core.pcset import PitchClassSet
-from lazy_theory.pitch.catalog import load_scales
 from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
 
-SCALES = load_scales()
 E, F = 4, 5
 
 

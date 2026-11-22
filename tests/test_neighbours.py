@@ -1,21 +1,16 @@
 import unittest
 
 import numpy as np
+from fixtures import CHORDS, STANDARD, X
 
-from lazy_theory.instruments.arrays import MUTED
-from lazy_theory.instruments.catalog import load_tunings
-from lazy_theory.instruments.fretboard import Fretboard
 from lazy_theory.instruments.taste import Taste
-from lazy_theory.pitch.catalog import load_chords, load_scales
+from lazy_theory.pitch.catalog import load_scales
 from lazy_theory.pitch.chord import Chord
 from lazy_theory.pitch.key import Key
 from lazy_theory.suggest.drones import drones
 from lazy_theory.suggest.neighbours import named, one_finger, passing
 
-X = MUTED
-STANDARD = Fretboard.from_tuning(load_tunings()["guitar standard"])
 OPEN = Taste(highest=4, sounding=1.0)
-CHORDS = load_chords()
 C, A, F, G = 0, 9, 5, 7
 
 
