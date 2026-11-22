@@ -133,7 +133,7 @@ class MoveTest(unittest.TestCase):
         grow = takita.yati((1, 2, 3))  # srotovaha: ta / ki-ta / ta-ki-ta
         self.assertEqual(grow.sounds, (3, 2, 3, 1, 2, 3))
         self.assertEqual(grow.groups[0], (1, 2, 3))
-        self.assertEqual(takita.yati((3, 2, 1), keep="start").sounds, (1, 2, 3, 1, 2, 1))
+        self.assertEqual(takita.yati((3, 2, 1), from_start=True).sounds, (1, 2, 3, 1, 2, 1))
         with self.assertRaises(ValueError):
             takita.yati((4,))
 

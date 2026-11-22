@@ -1,7 +1,7 @@
 import unittest
 from itertools import combinations
 
-from lazy_theory.core.pcset import PitchClassSet
+from lazy_theory.core.pcset import PitchClassSet, group_starts
 from lazy_theory.rhythm.meter import (
     CLAP,
     WAVE,
@@ -271,6 +271,26 @@ class CountEdgesTest(unittest.TestCase):
         for groups in ((), (3, 0)):
             with self.subTest(groups=groups), self.assertRaises(ValueError):
                 Meter.of(groups)
+
+
+class LongCycleTest(unittest.TestCase):
+    def test_groupings_grow_with_the_answers_not_the_cycle(self):
+        every_other = PitchClassSet(tuple(range(0, 64, 2)), 64)
+        self.assertEqual(groupings(every_other), [(2,) * 32])  # one answer, at once
+
+    def test_groupings_match_filtering_every_composition(self):
+        for size in range(1, 13):
+            for onsets in combinations(range(size), 2):
+                cycle = PitchClassSet(onsets, size)
+                every = [
+                    option
+                    for option in compositions(size, (2, 3))
+                    if set(cycle) <= set(group_starts(option))
+                ]
+                self.assertEqual(groupings(cycle), every)
+
+    def test_compositions_of_any_total(self):
+        self.assertEqual(sum(1 for _ in compositions(1200, (1200, 1))), 2)
 
 
 if __name__ == "__main__":

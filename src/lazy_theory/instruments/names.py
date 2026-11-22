@@ -49,13 +49,16 @@ def tab(
             column[string].ljust(w) for column, w in zip(columns, widths, strict=True)
         )
         lines.append(f"{labels[string].ljust(pad)} |{cells}")
+    if not any(titles):
+        lines = lines[1:]  # no titles, no title line
     return "\n".join(line.rstrip() for line in lines)
 
 
 def tuning_name(open_strings: Sequence[int], tunings: Mapping[str, Tuning]) -> str | None:
     """The name of these open strings among `tunings`, or of a named tuning with every string
     moved by the same number of steps, e.g. "guitar open D +2" (two steps up); the smallest
-    move wins. None if no tuning fits."""
+    move wins, a move up over the same move down, then the catalog's order. None if no tuning
+    fits."""
     moved = {}
     for name, tuning in tunings.items():
         if len(tuning.open_strings) == len(open_strings):
@@ -64,5 +67,5 @@ def tuning_name(open_strings: Sequence[int], tunings: Mapping[str, Tuning]) -> s
                 moved[name] = shifts.pop()
     if not moved:
         return None
-    nearest = min(moved, key=lambda name: abs(moved[name]))
+    nearest = min(moved, key=lambda name: (abs(moved[name]), moved[name] < 0))  # stable
     return nearest if moved[nearest] == 0 else f"{nearest} {moved[nearest]:+d}"

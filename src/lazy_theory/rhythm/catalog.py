@@ -79,7 +79,10 @@ def load_spoken(path: Path | None = None) -> Spoken:
 def syllable_id(name: str, path: Path | None = None) -> int:
     """The sound id a phrase stores for the syllable `name` (rhythm.phrase: ids start at 1),
     in the syllables of the file at `path` (the bundled one by default)."""
-    names = load_spoken(path).names
+    return _sound_id(name, load_spoken(path).names)
+
+
+def _sound_id(name: str, names: tuple[str, ...]) -> int:
     if name not in names:
         raise ValueError(f"unknown syllable {name!r}")
     return names.index(name) + 1
@@ -123,6 +126,7 @@ def load_tals(path: Path | None = None) -> Mapping[str, Tal]:
     gestures on each section's first beat (X or a number a clap, 0 a wave); a chapu lists the
     beats it claps on."""
     tals: dict[str, Tal] = {}
+    names = load_spoken(path).names  # read once, not once per bol
     for name, entry in read(__name__, "rhythm.toml", path)["tals"].items():
         sections = entry["sections"]
         beats = sum(sections)
@@ -139,9 +143,9 @@ def load_tals(path: Path | None = None) -> Mapping[str, Tal]:
             if len(entry["theka"]) != beats:
                 raise ValueError(f"{name}: the theka needs one entry per beat ({beats})")
             theka = Phrase.beats(
-                [[syllable_id(b, path) for b in beat.split()] for beat in entry["theka"]]
+                [[_sound_id(bol, names) for bol in beat.split()] for beat in entry["theka"]]
             )
-        tals[name] = Tal(_cycle(sections, hands), theka)
+        add(tals, name, Tal(_cycle(sections, hands), theka))
     return tals
 
 

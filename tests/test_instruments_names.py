@@ -17,7 +17,7 @@ class TabTest(unittest.TestCase):
 class OtherSizeTabTest(unittest.TestCase):
     def test_strings_labelled_in_numbers(self):
         text = tab([0, 6, 11], [[0, 1, 2]], size=19)
-        self.assertEqual([line.split()[0] for line in text.splitlines()[1:]], ["11", "6", "0"])
+        self.assertEqual([line.split()[0] for line in text.splitlines()], ["11", "6", "0"])
 
 
 class TabInputTest(unittest.TestCase):
@@ -35,6 +35,11 @@ class TitleCountTest(unittest.TestCase):
     def test_a_title_needs_a_voicing(self):
         with self.assertRaises(ValueError):
             tab([28, 33], [[0, 2]], ["C", "Em"])
+
+
+class NoTitleTest(unittest.TestCase):
+    def test_no_titles_no_title_line(self):
+        self.assertEqual(tab([28, 33], []), "A |\nE |")
 
 
 if __name__ == "__main__":

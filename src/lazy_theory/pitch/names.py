@@ -1,5 +1,6 @@
 """Numbers into words and back for pitch: note names, interval names, chord symbols, Roman
-numerals. The one place the library writes or reads them.
+numerals. The one place the library writes them, and reads chord symbols; reading a single
+note name ("F#", "E2") is `pitch.catalog`'s, where the letters themselves are defined.
 
 Why: everything else works in integers, where a mistake is impossible to hide; names are how
 a musician reads the result. Keeping every pitch name in one module means a symbol and the
@@ -150,7 +151,7 @@ def chord_symbol(chord: Chord, key: Key | None = None) -> str:
     in the bass, where "Em7" leaves the inversion free). A pattern the catalog doesn't name is its
     largest named core plus its other notes as `chord_tone_names` calls them, "Em7(b9)" (a major
     seventh is written "maj7" there, since "(7)" would read as the flat one); with no named core at
-    all, every note, "E(1,b9,9)". Without a `key`, the chord is spelled in its own: the major or
+    all, every note, "E(1,b9,2)". Without a `key`, the chord is spelled in its own: the major or
     minor key on its root with the fewest accidentals, so Bb minor is "Bbm", not "A#m", and its bass
     follows."""
     if key is not None and key.size != chord.size:
@@ -278,8 +279,18 @@ def _key_spellings(key: Key) -> list[tuple[int, int, int, list[str]]]:
         altered = [len(names[step]) - 1 for step in key.scale]
         if max(altered) <= 2:
             sharps = sum(names[step].count("#") for step in key.scale)
+            for step in set(range(TWELVE)) - set(key.scale):  # outside the key: plainest name
+                names[step] = _plainest(key.root + step, names[step])
             spellings.append((altered[0], sum(altered), sharps, names))
     return spellings
+
+
+def _plainest(pitch: int, named: str) -> str:
+    """`pitch` on whichever letter takes the fewest accidentals, `named` (its interval's
+    letter, a flattened degree) when that is as plain: Gb major's C is C, not Dbb, while C
+    major's F#/Gb stays Gb, the b5."""
+    names = [named, *(_spelled(letter, pitch) for letter in LETTERS)]
+    return min(names, key=lambda name: len(name))  # ties: the first, `named`
 
 
 def _spelled(letter: str, pitch: int) -> str:

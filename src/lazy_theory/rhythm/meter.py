@@ -24,7 +24,7 @@ gestures that keep a tala are `Meter.hands`.
 from collections.abc import Callable, Collection, Iterator, Sequence
 from dataclasses import dataclass, replace
 from functools import cache
-from itertools import combinations, pairwise
+from itertools import chain, combinations, pairwise, product
 from math import lcm
 
 from lazy_theory.core.pcset import PitchClassSet, group_starts
@@ -108,9 +108,9 @@ class Meter:
     def of(cls, groups: Sequence[int], division: int | Sequence[int] = 1, bars: int = 1) -> Meter:
         """A bar of `groups` beats (7/8 as (3, 2, 2), Adi tala as (4, 2, 2)), repeated `bars`
         times, each beat split into `division` pulses, or per beat of the whole cycle:
-        (4, 5, 4, 4) puts a quintuplet on beat two. Groups and beats nest by `grouping`. Beats
-        split differently share a grid of their least common multiple (20 pulses per beat
-        above), so every position stays a whole number."""
+        (4, 5, 4, 4) puts a quintuplet on beat two. Groups and beats nest by `metric_grouping`
+        (9 as 3+3+3). Beats split differently share a grid of their least common multiple (20
+        pulses per beat above), so every position stays a whole number."""
         if bars < 1:
             raise ValueError(f"a cycle needs at least one bar, got {bars}")
         if not groups or any(group < 1 for group in groups):
@@ -220,14 +220,16 @@ def cells(split: int) -> list[tuple[int, ...]]:
 
 def compositions(total: int, parts: Collection[int]) -> Iterator[tuple[int, ...]]:
     """Every ordered way to fill `total` pulses with groups whose sizes are in `parts`: the
-    prastara of Indian prosody. (2, 3) gives the binary and ternary groupings of a meter."""
-    if total == 0:
-        yield ()
-        return
-    for part in sorted(set(parts)):
-        if 0 < part <= total:
-            for rest in compositions(total - part, parts):
-                yield (part, *rest)
+    prastara of Indian prosody. (2, 3) gives the binary and ternary groupings of a meter.
+    Smallest parts first, in order; walked with a stack, so any total works."""
+    sizes = sorted(part for part in set(parts) if part > 0)
+    stack: list[tuple[int, tuple[int, ...]]] = [(total, ())]
+    while stack:
+        left, made = stack.pop()
+        if left == 0:
+            yield made
+            continue
+        stack.extend((left - part, (*made, part)) for part in reversed(sizes) if part <= left)
 
 
 def count(total: int, parts: Collection[int]) -> int:
@@ -253,12 +255,11 @@ def gaps(onsets: PitchClassSet) -> tuple[int, ...]:
 def groupings(onsets: PitchClassSet, parts: Collection[int] = (2, 3)) -> list[tuple[int, ...]]:
     """Each way to group the cycle into `parts` with every onset starting a group: clap 1, 4
     and 6 of 7/8 and only 3+2+2 fits. Empty if an onset can't start a group, e.g. the cycle's
-    first pulse isn't one."""
-    return [
-        option
-        for option in compositions(onsets.size, parts)
-        if set(onsets) <= set(group_starts(option))
-    ]
+    first pulse isn't one. Each stretch between onsets is filled on its own, so the work
+    grows with the answers, not with every grouping of the cycle."""
+    bounds = sorted({0, *onsets, onsets.size})
+    stretches = [list(compositions(end - start, parts)) for start, end in pairwise(bounds)]
+    return [tuple(chain.from_iterable(choice)) for choice in product(*stretches)]
 
 
 def guest(pattern: Sequence[int], length: int, offset: int = 0) -> PitchClassSet:

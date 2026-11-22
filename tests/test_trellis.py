@@ -286,5 +286,16 @@ class BuildShapeTest(unittest.TestCase):
         self.assertEqual(len(routes), 1)
 
 
+class LabelShapeTest(unittest.TestCase):
+    def test_one_label_per_voicing_of_each_chord(self):
+        two = rows([0, 2, 2, 1, 0, 0], [0, 2, 2, 0, 0, 0])
+        trellis = Trellis.build([two, two], moved)
+        for labels in ([np.zeros(2)], [np.zeros(2)] * 3, [np.zeros(2), np.zeros(3)]):
+            with self.subTest(count=len(labels)), self.assertRaises(ValueError):
+                trellis.each(labels, 1.0)
+        with self.assertRaises(ValueError):
+            trellis.search([np.zeros((0, 2), dtype=bool), None])
+
+
 if __name__ == "__main__":
     unittest.main()

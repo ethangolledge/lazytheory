@@ -46,6 +46,10 @@ There isn't one yet: it is being redesigned. What it should look and feel like i
 
 ## Example
 
+The examples import each name from its home module, so you can see where it lives. The
+common ones also import from the top: `from lazy_theory import Chord, Fretboard, Taste`
+(the list is `lazy_theory.__all__`).
+
 ```python
 from lazy_theory.instruments.catalog import load_tunings
 from lazy_theory.pitch.catalog import load_chords, load_scales, pitch_class

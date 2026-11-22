@@ -239,16 +239,16 @@ class Phrase:
             body = (self + Phrase((gap,), (REST,))).grouped()
         return body * (times - 1) + statement if times > 1 else statement
 
-    def yati(self, sizes: Sequence[int], keep: str = "end") -> Phrase:
-        """Statements of the phrase cut to `sizes` tokens each, keeping its `end` (or its
-        `start`), each a group: growing sizes are srotovaha, shrinking gopuccha.
-        `rhythm.cadence.yatis` gives sizes that fill a span."""
-        if keep not in ("end", "start") or not sizes:
-            raise ValueError(f"keep the 'end' or the 'start' of at least one size, got {keep}")
+    def yati(self, sizes: Sequence[int], from_start: bool = False) -> Phrase:
+        """Statements of the phrase cut to `sizes` tokens each, keeping its end (or, with
+        `from_start`, its start), each a group: growing sizes are srotovaha, shrinking
+        gopuccha. `rhythm.cadence.yatis` gives sizes that fill a span."""
+        if not sizes:
+            raise ValueError("a yati needs at least one statement")
         if not all(1 <= size <= len(self) for size in sizes):
             raise ValueError(f"sizes must be between 1 and {len(self)}, got {sizes}")
         n = len(self)
-        cut = [self._cut(n - s, n) if keep == "end" else self._cut(0, s) for s in sizes]
+        cut = [self._cut(0, s) if from_start else self._cut(n - s, n) for s in sizes]
         return reduce(add, [statement.grouped() for statement in cut])
 
     def _padded(self, depth: int) -> Levels:

@@ -358,5 +358,23 @@ class BracketTest(unittest.TestCase):
                 parse_chord(text)
 
 
+class FlatKeyTest(unittest.TestCase):
+    def test_notes_outside_a_flat_key_take_their_plainest_name(self):
+        g_flat = key("Ionian", "Gb")
+        self.assertEqual([note_name(pc, g_flat) for pc in (0, 2, 4, 9)], ["C", "D", "E", "A"])
+        self.assertEqual(chord_symbol(Chord(CHORDS["major"], 0), g_flat), "C")
+
+    def test_no_key_spells_a_double_accidental_it_can_avoid(self):
+        for name in ("Ionian", "Aeolian", "Dorian", "Mixolydian", "Lydian", "Phrygian"):
+            for root in range(12):
+                scale = load_scales()[name]
+                with self.subTest(scale=name, root=root):
+                    k = Key(scale, root)
+                    outside = [
+                        note_name(pc, k) for pc in range(12) if (pc - root) % 12 not in scale
+                    ]
+                    self.assertTrue(all(len(spelled) <= 2 for spelled in outside), outside)
+
+
 if __name__ == "__main__":
     unittest.main()

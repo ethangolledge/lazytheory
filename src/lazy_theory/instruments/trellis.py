@@ -101,6 +101,7 @@ class Trellis:
         for chord, mask in enumerate(allowed):
             if mask is not None and (
                 mask.ndim != 2
+                or len(mask) == 0
                 or mask.shape[1] != len(self.options[chord])
                 or len(mask) > 1
                 and len(mask) != searches
@@ -126,6 +127,11 @@ class Trellis:
         backward pass gives that for every voicing), so only lines that can finish within
         `slack` are followed.
         """
+        if len(labels) != len(self.options) or any(
+            np.shape(chord_labels) != (len(voicings),)
+            for chord_labels, voicings in zip(labels, self.options, strict=True)
+        ):
+            raise ValueError("give one label per voicing of each chord")
         finish = [np.zeros(len(self.options[-1]))]  # cheapest way on from each voicing
         for step, cost in zip(reversed(self.steps), reversed(self.costs[1:]), strict=True):
             finish.insert(0, (step + cost + finish[0]).min(axis=1))

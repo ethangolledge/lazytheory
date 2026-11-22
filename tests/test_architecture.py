@@ -81,6 +81,35 @@ class LayerTest(unittest.TestCase):
         for module in graph:
             visit(module, ())
 
+    def test_top_level_names_are_the_ones_in_their_modules(self):
+        import importlib
+
+        import lazy_theory
+
+        for name in lazy_theory.__all__:
+            module = importlib.import_module(f"lazy_theory.{lazy_theory._HOMES[name]}")
+            self.assertIs(getattr(lazy_theory, name), getattr(module, name), name)
+
+    def test_type_checkers_see_the_same_top_level_names(self):
+        tree = ast.parse((PACKAGE / "__init__.py").read_text())
+        guarded = next(node for node in tree.body if isinstance(node, ast.If))
+        typed = {alias.name for node in guarded.body for alias in node.names}  # type: ignore[attr-defined]
+        import lazy_theory
+
+        self.assertEqual(typed, set(lazy_theory.__all__))
+
+    def test_the_core_loads_without_numpy(self):
+        import subprocess
+
+        code = (
+            "import sys, lazy_theory, lazy_theory.core.pcset, lazy_theory.pitch.names,"
+            " lazy_theory.rhythm.phrase; print('numpy' in sys.modules)"
+        )
+        found = subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True, check=True
+        )
+        self.assertEqual(found.stdout.strip(), "False")
+
     def test_pitch_rhythm_and_core_use_only_the_standard_library(self):
         for package in STANDARD_LIBRARY_ONLY:
             for path in (PACKAGE / package).glob("*.py"):

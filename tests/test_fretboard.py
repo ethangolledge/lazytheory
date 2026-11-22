@@ -217,5 +217,20 @@ class OpenStringTest(unittest.TestCase):
                 replace(STANDARD, open_strings=strings)
 
 
+class NeckInputTest(unittest.TestCase):
+    def test_a_neck_has_length_pitch_and_numeric_strings(self):
+        for change in (
+            {"scale_length": -648.0},
+            {"hertz": 0.0},
+            {"open_strings": [True, False]},
+            {"open_strings": ["E2"]},
+        ):
+            with (
+                self.subTest(**{k: str(v) for k, v in change.items()}),
+                self.assertRaises(ValueError),
+            ):
+                replace(STANDARD, **change)
+
+
 if __name__ == "__main__":
     unittest.main()
